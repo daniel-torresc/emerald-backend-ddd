@@ -23,8 +23,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Key Instructions
 
 - When building features, **consult the `architecture-patterns` skill** for established best practices and design patterns
+- ALWAYS follow the `ports-and-adapters` project structure from the `architecture-patterns` skill. Use it for each bounded context
 - Apply these architectural guidelines to ensure consistency and maintainability across the codebase
 - If uncertain about how to structure a feature, review the relevant patterns in the skill before proceeding
+
+## Project Conventions
+
+- **Bounded contexts** live under `src/emerald/{context}/`
+- **Value objects**: `@dataclass(frozen=True)` with validation in `__post_init__`
+- **Entity traits**: cooperative mixins using `super().__init__(**kwargs)` with `**kwargs: Any` for MRO forwarding
+- **Ports**: `typing.Protocol` (structural subtyping) — no ABC inheritance
+- **Domain events**: `@dataclass(frozen=True)` extending `DomainEvent`, with `aggregate_type` class var
+- **Commands**: `@dataclass(frozen=True)` extending `Command` base from shared kernel
+- **Exceptions**: extend the shared kernel hierarchy (`DomainError` → `InvalidValueError`, `InvariantViolationError`, etc.), each with a unique `code`
+- **Test fakes**: put in `tests/unit/{context}/fakes.py` — in-memory repository/UoW/hasher implementations
+- **Public API**: each context's `__init__.py` re-exports all public types with explicit `__all__`
 
 ## Common Commands
 
