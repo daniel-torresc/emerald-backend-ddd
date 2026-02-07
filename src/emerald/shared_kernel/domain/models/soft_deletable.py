@@ -1,8 +1,8 @@
 import uuid
 from datetime import UTC, datetime
 
-from emerald.shared_kernel.exceptions import AlreadyDeletedError, NotDeletedError
-from emerald.shared_kernel.value_objects.retention_period import RetentionPeriod
+from emerald.shared_kernel.domain.exceptions import AlreadyDeletedError, NotDeletedError
+from emerald.shared_kernel.domain.models.retention_period import RetentionPeriod
 
 
 class SoftDeletableMixin:

@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from emerald.shared_kernel.entities.timestamped import TimestampedMixin
+from emerald.shared_kernel.domain.models.timestamped import TimestampedMixin
 
 
 class _TimestampedEntity(TimestampedMixin):

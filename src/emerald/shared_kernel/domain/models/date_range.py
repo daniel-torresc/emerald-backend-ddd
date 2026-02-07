@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import date
 
-from emerald.shared_kernel.exceptions import InvalidValueError
+from emerald.shared_kernel.domain.exceptions import InvalidValueError
 
 
 @dataclass(frozen=True)

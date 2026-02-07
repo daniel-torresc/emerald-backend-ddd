@@ -1,4 +1,4 @@
-from emerald.shared_kernel.value_objects import Currency
+from emerald.shared_kernel.domain.models import Currency
 
 
 class TestCurrencyAttributes:
@@ -27,13 +27,13 @@ class TestCurrencyAttributes:
 
     def test_eur_attributes(self) -> None:
         assert Currency.EUR.code == "EUR"
-        assert Currency.EUR.symbol == "€"
+        assert Currency.EUR.symbol == "\u20ac"
         assert Currency.EUR.name == "Euro"
         assert Currency.EUR.decimal_places == 2
 
     def test_gbp_attributes(self) -> None:
         assert Currency.GBP.code == "GBP"
-        assert Currency.GBP.symbol == "£"
+        assert Currency.GBP.symbol == "\u00a3"
 
     def test_mxn_attributes(self) -> None:
         assert Currency.MXN.code == "MXN"

@@ -1,4 +1,4 @@
-from emerald.shared_kernel.exceptions.base import (
+from emerald.shared_kernel.domain.exceptions.base import (
     AlreadyDeletedError,
     AlreadyExistsError,
     AuthorizationError,

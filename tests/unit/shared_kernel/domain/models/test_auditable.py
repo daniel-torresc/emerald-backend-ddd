@@ -2,7 +2,7 @@ import uuid
 
 import pytest
 
-from emerald.shared_kernel.entities.auditable import AuditableMixin
+from emerald.shared_kernel.domain.models.auditable import AuditableMixin
 
 
 class _AuditableEntity(AuditableMixin):

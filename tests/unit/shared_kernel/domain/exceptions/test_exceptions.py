@@ -1,6 +1,6 @@
 import pytest
 
-from emerald.shared_kernel.exceptions import (
+from emerald.shared_kernel.domain.exceptions import (
     AlreadyDeletedError,
     AlreadyExistsError,
     AuthorizationError,

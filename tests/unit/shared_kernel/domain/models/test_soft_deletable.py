@@ -2,9 +2,9 @@ import uuid
 
 import pytest
 
-from emerald.shared_kernel.entities.soft_deletable import SoftDeletableMixin
-from emerald.shared_kernel.exceptions import AlreadyDeletedError, NotDeletedError
-from emerald.shared_kernel.value_objects import RetentionPeriod, RetentionUnit
+from emerald.shared_kernel.domain.exceptions import AlreadyDeletedError, NotDeletedError
+from emerald.shared_kernel.domain.models import RetentionPeriod, RetentionUnit
+from emerald.shared_kernel.domain.models.soft_deletable import SoftDeletableMixin
 
 
 class _SoftDeletableEntity(SoftDeletableMixin):

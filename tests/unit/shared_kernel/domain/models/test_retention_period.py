@@ -2,8 +2,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from emerald.shared_kernel.exceptions import InvalidValueError
-from emerald.shared_kernel.value_objects import RetentionPeriod, RetentionUnit
+from emerald.shared_kernel.domain.exceptions import InvalidValueError
+from emerald.shared_kernel.domain.models import RetentionPeriod, RetentionUnit
 
 
 class TestRetentionPeriodConstruction:

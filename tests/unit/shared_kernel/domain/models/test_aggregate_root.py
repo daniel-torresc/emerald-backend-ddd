@@ -2,8 +2,8 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
-from emerald.shared_kernel.entities import AggregateRoot
-from emerald.shared_kernel.events import DomainEvent
+from emerald.shared_kernel.domain.events import DomainEvent
+from emerald.shared_kernel.domain.models import AggregateRoot
 
 
 @dataclass(frozen=True)

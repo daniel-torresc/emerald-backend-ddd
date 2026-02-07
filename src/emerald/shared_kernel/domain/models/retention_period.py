@@ -4,7 +4,7 @@ from enum import Enum
 
 from dateutil.relativedelta import relativedelta
 
-from emerald.shared_kernel.exceptions import InvalidValueError
+from emerald.shared_kernel.domain.exceptions import InvalidValueError
 
 
 class RetentionUnit(Enum):

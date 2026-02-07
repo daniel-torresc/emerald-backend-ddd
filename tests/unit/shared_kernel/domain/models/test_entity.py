@@ -2,7 +2,7 @@ import uuid
 
 import pytest
 
-from emerald.shared_kernel.entities import Entity
+from emerald.shared_kernel.domain.models import Entity
 
 
 class TestEntityIdentity:

@@ -2,8 +2,8 @@ from decimal import Decimal
 
 import pytest
 
-from emerald.shared_kernel.exceptions import CurrencyMismatchError, InvalidValueError
-from emerald.shared_kernel.value_objects import Currency, Money
+from emerald.shared_kernel.domain.exceptions import CurrencyMismatchError, InvalidValueError
+from emerald.shared_kernel.domain.models import Currency, Money
 
 
 class TestMoneyConstruction:

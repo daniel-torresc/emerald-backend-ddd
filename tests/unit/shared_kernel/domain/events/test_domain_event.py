@@ -4,7 +4,7 @@ from datetime import datetime
 
 import pytest
 
-from emerald.shared_kernel.events import DomainEvent
+from emerald.shared_kernel.domain.events import DomainEvent
 
 
 class TestDomainEventBase:

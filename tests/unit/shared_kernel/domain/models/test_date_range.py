@@ -2,8 +2,8 @@ from datetime import date
 
 import pytest
 
-from emerald.shared_kernel.exceptions import InvalidValueError
-from emerald.shared_kernel.value_objects import DateRange
+from emerald.shared_kernel.domain.exceptions import InvalidValueError
+from emerald.shared_kernel.domain.models import DateRange
 
 
 class TestDateRangeConstruction:
