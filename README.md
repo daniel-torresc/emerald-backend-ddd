@@ -2,6 +2,11 @@
 
 Emerald Finance Platform — a personal and family finance management system built with Domain-Driven Design in Python.
 
+## Features
+
+- **Shared Kernel** (Spec-001) — Foundation value objects (`Money`, `Currency`, `DateRange`, `RetentionPeriod`), entity traits (`Entity`, `AggregateRoot`, mixins for timestamps/audit/soft-delete), `DomainEvent` base, and a domain exception hierarchy.
+- **User Registration & Identity** (Spec-002) — `User` aggregate root with full lifecycle state machine (Pending → Active → Suspended → Deleted), email/username value objects, password strength validation, auth provider management (password + Google/Microsoft), and a `UserRegistrationService` application service.
+
 ## Prerequisites
 
 - Python 3.13+
@@ -12,7 +17,34 @@ Emerald Finance Platform — a personal and family finance management system bui
 ```bash
 # Install all dependencies
 uv sync
+
+# Rebuild after source changes
+uv sync --reinstall-package emerald-backend
 ```
+
+## Architecture
+
+The project follows **Ports & Adapters** (Hexagonal Architecture) with DDD bounded contexts:
+
+```
+src/emerald/
+├── shared_kernel/          # Cross-context foundation types
+│   ├── domain/             # Value objects, entities, events, exceptions
+│   └── application/        # Base Command, AbstractUnitOfWork
+└── iam/                    # Identity & Access Management context
+    ├── domain/
+    │   ├── models/         # User aggregate, value objects
+    │   ├── events/         # Domain events (UserRegistered, etc.)
+    │   ├── exceptions/     # IAM-specific exceptions
+    │   ├── ports/          # PasswordHasher protocol
+    │   └── services/       # Password validation functions
+    └── application/
+        ├── dto/            # Commands (RegisterUser)
+        ├── ports/outbound/ # UserRepository, UnitOfWork
+        └── services/       # UserRegistrationService
+```
+
+Specifications live in `.specs/` — see [`.specs/README.md`](.specs/README.md) for the full catalog and dependency graph.
 
 ## Running Tests
 
@@ -23,11 +55,12 @@ uv run pytest
 # Run tests with verbose output
 uv run pytest -v
 
-# Run a specific test module
-uv run pytest tests/unit/shared_kernel/value_objects/test_money.py
+# Run tests for a specific bounded context
+uv run pytest tests/unit/iam/
+uv run pytest tests/unit/shared_kernel/
 
-# Run a specific test class or function
-uv run pytest tests/unit/shared_kernel/entities/test_entity.py::TestEntityEquality
+# Run a specific test module
+uv run pytest tests/unit/iam/domain/models/test_user.py
 ```
 
 ## Code Quality
