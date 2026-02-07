@@ -4,14 +4,15 @@ version = "0.1.0"
 description = "Emerald Finance Platform - Backend"
 requires-python = ">=3.13"
 dependencies = [
+    "pydantic-settings>=2.12.0",
     "python-dateutil>=2.9.0",
 ]
 
 [dependency-groups]
 dev = [
-    "ty>=0.0.15",
-    "pytest>=8.0",
+    "pytest>=9.0.2",
     "ruff>=0.9.0",
+    "ty>=0.0.15",
 ]
 
 [build-system]
@@ -32,4 +33,3 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
-
