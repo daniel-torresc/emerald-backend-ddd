@@ -1,6 +1,7 @@
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
+from typing import ClassVar
 
 from emerald.shared_kernel.domain.events import DomainEvent
 from emerald.shared_kernel.domain.models import AggregateRoot
@@ -8,6 +9,7 @@ from emerald.shared_kernel.domain.models import AggregateRoot
 
 @dataclass(frozen=True)
 class _TestEvent(DomainEvent):
+    aggregate_type: ClassVar[str] = "Test"
     detail: str = ""
 
 
@@ -34,7 +36,7 @@ class TestAggregateRootAttributes:
 class TestAggregateRootEvents:
     def test_register_event(self) -> None:
         ar = AggregateRoot()
-        event = _TestEvent(aggregate_id=ar.id, aggregate_type="Test", detail="created")
+        event = _TestEvent(aggregate_id=ar.id, detail="created")
         ar._register_event(event)
         events = ar.collect_events()
         assert len(events) == 1
@@ -42,9 +44,9 @@ class TestAggregateRootEvents:
 
     def test_events_returned_in_order(self) -> None:
         ar = AggregateRoot()
-        e1 = _TestEvent(aggregate_id=ar.id, aggregate_type="Test", detail="first")
-        e2 = _TestEvent(aggregate_id=ar.id, aggregate_type="Test", detail="second")
-        e3 = _TestEvent(aggregate_id=ar.id, aggregate_type="Test", detail="third")
+        e1 = _TestEvent(aggregate_id=ar.id, detail="first")
+        e2 = _TestEvent(aggregate_id=ar.id, detail="second")
+        e3 = _TestEvent(aggregate_id=ar.id, detail="third")
         ar._register_event(e1)
         ar._register_event(e2)
         ar._register_event(e3)
@@ -54,13 +56,13 @@ class TestAggregateRootEvents:
 
     def test_collect_clears_events(self) -> None:
         ar = AggregateRoot()
-        ar._register_event(_TestEvent(aggregate_id=ar.id, aggregate_type="Test", detail="x"))
+        ar._register_event(_TestEvent(aggregate_id=ar.id, detail="x"))
         ar.collect_events()
         assert ar.collect_events() == []
 
     def test_second_collect_without_new_events_returns_empty(self) -> None:
         ar = AggregateRoot()
-        ar._register_event(_TestEvent(aggregate_id=ar.id, aggregate_type="Test", detail="x"))
+        ar._register_event(_TestEvent(aggregate_id=ar.id, detail="x"))
         ar.collect_events()
         assert ar.collect_events() == []
 

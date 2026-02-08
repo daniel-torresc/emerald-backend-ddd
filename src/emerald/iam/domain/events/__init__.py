@@ -1,3 +1,11 @@
+from emerald.iam.domain.events.auth_events import (
+    AllSessionsRevoked,
+    LoginFailed,
+    PasswordResetRequested,
+    TokenFamilyCompromised,
+    TokenRefreshed,
+    TokenRevoked,
+)
 from emerald.iam.domain.events.user_events import (
     AuthProviderLinked,
     AuthProviderUnlinked,
@@ -14,10 +22,16 @@ from emerald.iam.domain.events.user_events import (
 )
 
 __all__ = [
+    "AllSessionsRevoked",
     "AuthProviderLinked",
     "AuthProviderUnlinked",
     "EmailVerified",
+    "LoginFailed",
     "PasswordChanged",
+    "PasswordResetRequested",
+    "TokenFamilyCompromised",
+    "TokenRefreshed",
+    "TokenRevoked",
     "UserEmailChanged",
     "UserLoggedIn",
     "UserRecovered",

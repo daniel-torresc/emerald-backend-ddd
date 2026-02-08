@@ -1,0 +1,101 @@
+import pytest
+
+from emerald.iam.application.dto.auth_commands import LoginUser, LogoutAllSessions, LogoutSession
+from emerald.iam.application.services.authentication import AuthenticationService
+from emerald.iam.domain.events.auth_events import AllSessionsRevoked, TokenRevoked
+from emerald.iam.domain.models.email_address import EmailAddress
+from emerald.iam.domain.models.hashed_password import HashedPassword
+from emerald.iam.domain.models.user import User
+from emerald.iam.domain.models.username import Username
+from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasher, FakeTokenService
+
+
+def _create_active_user(uow: FakeIamUnitOfWork) -> User:
+    user = User.register(
+        EmailAddress("test@example.com"),
+        Username("testuser"),
+        HashedPassword("hashed:Password123!"),
+    )
+    user.verify_email()
+    user.collect_events()
+    uow.users.add(user)
+    return user
+
+
+@pytest.fixture
+def auth_env():
+    uow = FakeIamUnitOfWork()
+    hasher = FakePasswordHasher()
+    token_service = FakeTokenService()
+    service = AuthenticationService(uow, hasher, token_service)
+    return service, uow, hasher, token_service
+
+
+def _login(service: AuthenticationService):
+    return service.login(
+        LoginUser(email="test@example.com", password="Password123!", portal_context="REGULAR")
+    )
+
+
+def test_logout_valid_token_revokes_it(auth_env):
+    service, uow, _, token_service = auth_env
+    _create_active_user(uow)
+    login_result = _login(service)
+
+    service.logout(LogoutSession(refresh_token=login_result.refresh_token))
+
+    token_hash = token_service.hash_token(login_result.refresh_token)
+    token = uow.refresh_tokens.find_by_hash(token_hash)
+    assert token is not None
+    assert token.is_revoked()
+
+
+def test_logout_emits_token_revoked(auth_env):
+    service, uow, _, _ = auth_env
+    _create_active_user(uow)
+    login_result = _login(service)
+    service.collect_events()  # Clear login events
+
+    service.logout(LogoutSession(refresh_token=login_result.refresh_token))
+
+    events = service.collect_events()
+    assert any(isinstance(e, TokenRevoked) for e in events)
+
+
+def test_logout_nonexistent_token_silently_ignored(auth_env):
+    service, uow, _, _ = auth_env
+
+    # Should not raise any exception
+    service.logout(LogoutSession(refresh_token="nonexistent_token"))
+
+
+def test_logout_all_revokes_all_tokens(auth_env):
+    service, uow, _, token_service = auth_env
+    user = _create_active_user(uow)
+
+    # Create multiple sessions
+    result1 = _login(service)
+    result2 = _login(service)
+    result3 = _login(service)
+
+    service.logout_all(LogoutAllSessions(user_id=str(user.id)))
+
+    # All tokens should be revoked
+    for raw_token in [result1.refresh_token, result2.refresh_token, result3.refresh_token]:
+        token_hash = token_service.hash_token(raw_token)
+        token = uow.refresh_tokens.find_by_hash(token_hash)
+        assert token is not None
+        assert token.is_revoked()
+
+
+def test_logout_all_emits_all_sessions_revoked(auth_env):
+    service, uow, _, _ = auth_env
+    user = _create_active_user(uow)
+    _login(service)
+    _login(service)
+    service.collect_events()  # Clear login events
+
+    service.logout_all(LogoutAllSessions(user_id=str(user.id)))
+
+    events = service.collect_events()
+    assert any(isinstance(e, AllSessionsRevoked) for e in events)

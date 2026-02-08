@@ -28,6 +28,7 @@ from emerald.iam.domain.exceptions import (
 from emerald.iam.domain.models.auth_provider import AuthProvider, ProviderType
 from emerald.iam.domain.models.email_address import EmailAddress
 from emerald.iam.domain.models.hashed_password import HashedPassword
+from emerald.iam.domain.models.system_role import SystemRole
 from emerald.iam.domain.models.user_preferences import UserPreferences
 from emerald.iam.domain.models.user_status import UserStatus
 from emerald.iam.domain.models.username import Username
@@ -56,6 +57,7 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         full_name: str | None = None,
         last_login_at: datetime | None = None,
         suspension_reason: str | None = None,
+        system_role: SystemRole = SystemRole.USER,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -72,6 +74,7 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         self.preferences = preferences if preferences is not None else UserPreferences()
         self.last_login_at = last_login_at
         self.suspension_reason = suspension_reason
+        self.system_role = system_role
 
     # -- Factory ---------------------------------------------------------------
 
@@ -166,6 +169,20 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
     def change_password(self, new_hashed: HashedPassword, old_hash_to_archive: str) -> None:
         """Change password, archiving the old hash in history."""
         self._require_status(UserStatus.ACTIVE, "change_password")
+        self.password_history.append(old_hash_to_archive)
+        if len(self.password_history) > _MAX_PASSWORD_HISTORY:
+            self.password_history = self.password_history[-_MAX_PASSWORD_HISTORY:]
+        self.password = new_hashed
+        self._touch()
+        self._register_event(PasswordChanged(aggregate_id=self.id))
+
+    def reset_password(self, new_hashed: HashedPassword, old_hash_to_archive: str) -> None:
+        """Reset password — allowed from ACTIVE or SUSPENDED status."""
+        if self.status not in (UserStatus.ACTIVE, UserStatus.SUSPENDED):
+            raise InvalidStateTransitionError(
+                f"Cannot reset_password from {self.status.value} "
+                f"(requires {UserStatus.ACTIVE.value} or {UserStatus.SUSPENDED.value})"
+            )
         self.password_history.append(old_hash_to_archive)
         if len(self.password_history) > _MAX_PASSWORD_HISTORY:
             self.password_history = self.password_history[-_MAX_PASSWORD_HISTORY:]
