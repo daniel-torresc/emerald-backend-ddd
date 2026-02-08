@@ -1,6 +1,7 @@
 from emerald.shared_kernel.domain.exceptions import (
     AlreadyExistsError,
     ConflictError,
+    DomainError,
     InvalidValueError,
     InvariantViolationError,
     NotFoundError,
@@ -107,5 +108,85 @@ class CannotUnlinkLastProviderError(InvariantViolationError):
         self,
         message: str = "Cannot unlink last provider",
         code: str = "CANNOT_UNLINK_LAST_PROVIDER",
+    ) -> None:
+        super().__init__(message, code)
+
+
+# -- Authentication Exceptions (Spec 003) ------------------------------------
+
+
+class AuthenticationFailedError(DomainError):
+    """Authentication failed — intentionally vague to prevent information leakage."""
+
+    def __init__(
+        self,
+        message: str = "Authentication failed",
+        code: str = "AUTHENTICATION_FAILED",
+    ) -> None:
+        super().__init__(message, code)
+
+
+class EmailNotVerifiedError(DomainError):
+    """User email has not been verified."""
+
+    def __init__(
+        self,
+        message: str = "Email not verified",
+        code: str = "EMAIL_NOT_VERIFIED",
+    ) -> None:
+        super().__init__(message, code)
+
+
+class AccountSuspendedError(DomainError):
+    """User account is suspended."""
+
+    def __init__(
+        self,
+        message: str = "Account suspended",
+        code: str = "ACCOUNT_SUSPENDED",
+    ) -> None:
+        super().__init__(message, code)
+
+
+class InvalidTokenError(InvalidValueError):
+    """Token is structurally invalid or unrecognized."""
+
+    def __init__(
+        self,
+        message: str = "Invalid token",
+        code: str = "INVALID_TOKEN",
+    ) -> None:
+        super().__init__(message, code)
+
+
+class TokenExpiredError(DomainError):
+    """Token has expired."""
+
+    def __init__(
+        self,
+        message: str = "Token expired",
+        code: str = "TOKEN_EXPIRED",
+    ) -> None:
+        super().__init__(message, code)
+
+
+class TokenAlreadyRevokedError(ConflictError):
+    """Attempting to revoke an already-revoked token."""
+
+    def __init__(
+        self,
+        message: str = "Token already revoked",
+        code: str = "TOKEN_ALREADY_REVOKED",
+    ) -> None:
+        super().__init__(message, code)
+
+
+class TokenAlreadyUsedError(ConflictError):
+    """Attempting to use an already-consumed reset token."""
+
+    def __init__(
+        self,
+        message: str = "Token already used",
+        code: str = "TOKEN_ALREADY_USED",
     ) -> None:
         super().__init__(message, code)
