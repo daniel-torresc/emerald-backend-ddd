@@ -1,11 +1,31 @@
-from emerald.iam.application.dto import RegisterUser
-from emerald.iam.application.ports import AbstractIamUnitOfWork, UserRepository
-from emerald.iam.application.services import UserRegistrationService
+from emerald.iam.application.dto import (
+    LoginResult,
+    LoginUser,
+    LogoutAllSessions,
+    LogoutSession,
+    RefreshAccessToken,
+    RegisterUser,
+    RequestPasswordReset,
+    SubmitPasswordReset,
+)
+from emerald.iam.application.ports import (
+    AbstractIamUnitOfWork,
+    PasswordResetTokenRepository,
+    RefreshTokenRepository,
+    UserRepository,
+)
+from emerald.iam.application.services import AuthenticationService, UserRegistrationService
 from emerald.iam.domain.events import (
+    AllSessionsRevoked,
     AuthProviderLinked,
     AuthProviderUnlinked,
     EmailVerified,
+    LoginFailed,
     PasswordChanged,
+    PasswordResetRequested,
+    TokenFamilyCompromised,
+    TokenRefreshed,
+    TokenRevoked,
     UserEmailChanged,
     UserLoggedIn,
     UserRecovered,
@@ -16,39 +36,58 @@ from emerald.iam.domain.events import (
     UserUsernameChanged,
 )
 from emerald.iam.domain.exceptions import (
+    AccountSuspendedError,
+    AuthenticationFailedError,
     CannotUnlinkLastProviderError,
     EmailAlreadyExistsError,
+    EmailNotVerifiedError,
     InvalidEmailError,
     InvalidStateTransitionError,
+    InvalidTokenError,
     InvalidUsernameError,
     PasswordAlreadySetError,
     PasswordReusedError,
     PasswordTooWeakError,
     ProviderAlreadyLinkedError,
     ProviderNotLinkedError,
+    TokenAlreadyRevokedError,
+    TokenAlreadyUsedError,
+    TokenExpiredError,
     UsernameAlreadyExistsError,
 )
 from emerald.iam.domain.models import (
+    AccessTokenClaims,
+    AuthenticatedIdentity,
     AuthProvider,
     EmailAddress,
     HashedPassword,
+    PasswordResetToken,
+    PortalContext,
     ProviderType,
+    RefreshToken,
+    SystemRole,
     User,
     Username,
     UserPreferences,
     UserStatus,
 )
-from emerald.iam.domain.ports import PasswordHasher
+from emerald.iam.domain.ports import PasswordHasher, TokenService
 from emerald.iam.domain.services import validate_not_in_history, validate_password_strength
 
 __all__ = [
-    # Entity
+    # Aggregates & Entities
+    "PasswordResetToken",
+    "RefreshToken",
     "User",
-    # Value Objects
+    # Value Objects & Enums
+    "AccessTokenClaims",
     "AuthProvider",
+    "AuthenticatedIdentity",
     "EmailAddress",
     "HashedPassword",
+    "PortalContext",
     "ProviderType",
+    "SystemRole",
     "UserPreferences",
     "UserStatus",
     "Username",
@@ -56,10 +95,16 @@ __all__ = [
     "validate_not_in_history",
     "validate_password_strength",
     # Events
+    "AllSessionsRevoked",
     "AuthProviderLinked",
     "AuthProviderUnlinked",
     "EmailVerified",
+    "LoginFailed",
     "PasswordChanged",
+    "PasswordResetRequested",
+    "TokenFamilyCompromised",
+    "TokenRefreshed",
+    "TokenRevoked",
     "UserEmailChanged",
     "UserLoggedIn",
     "UserRecovered",
@@ -69,23 +114,41 @@ __all__ = [
     "UserUnsuspended",
     "UserUsernameChanged",
     # Exceptions
+    "AccountSuspendedError",
+    "AuthenticationFailedError",
     "CannotUnlinkLastProviderError",
     "EmailAlreadyExistsError",
+    "EmailNotVerifiedError",
     "InvalidEmailError",
     "InvalidStateTransitionError",
+    "InvalidTokenError",
     "InvalidUsernameError",
     "PasswordAlreadySetError",
     "PasswordReusedError",
     "PasswordTooWeakError",
     "ProviderAlreadyLinkedError",
     "ProviderNotLinkedError",
+    "TokenAlreadyRevokedError",
+    "TokenAlreadyUsedError",
+    "TokenExpiredError",
     "UsernameAlreadyExistsError",
-    # Commands
+    # Commands & DTOs
+    "LoginResult",
+    "LoginUser",
+    "LogoutAllSessions",
+    "LogoutSession",
+    "RefreshAccessToken",
     "RegisterUser",
+    "RequestPasswordReset",
+    "SubmitPasswordReset",
     # Ports
     "AbstractIamUnitOfWork",
     "PasswordHasher",
+    "PasswordResetTokenRepository",
+    "RefreshTokenRepository",
+    "TokenService",
     "UserRepository",
     # Services
+    "AuthenticationService",
     "UserRegistrationService",
 ]
