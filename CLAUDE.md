@@ -36,7 +36,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Domain events**: `@dataclass(frozen=True)` extending `DomainEvent`, with `aggregate_type` class var
 - **Commands**: `@dataclass(frozen=True)` extending `Command` base from shared kernel
 - **Exceptions**: extend the shared kernel hierarchy (`DomainError` → `InvalidValueError`, `InvariantViolationError`, etc.), each with a unique `code`
-- **Test fakes**: put in `tests/unit/{context}/fakes.py` — in-memory repository/UoW/hasher implementations
+- **Entities (non-aggregate)**: extend `Entity` directly (not `AggregateRoot`) when managed by a service rather than being an aggregate root (e.g., `RefreshToken`, `PasswordResetToken`)
+- **Domain constants**: TTLs, limits, and other domain-level configuration live in `{context}/domain/constants.py` — not infrastructure config
+- **Service-level events**: application services that emit events outside of aggregate methods collect them via a `collect_events()` method on the service (separate from aggregate event collection)
+- **Test fakes**: put in `tests/unit/{context}/fakes.py` — in-memory repository/UoW/hasher/token-service implementations
+- **Test factory helpers**: use `dict[str, Any]` annotation for defaults dicts and `**overrides: Any` to satisfy `ty` strict type checking
 - **Public API**: each context's `__init__.py` re-exports all public types with explicit `__all__`
 
 ## Common Commands
