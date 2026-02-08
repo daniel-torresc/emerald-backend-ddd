@@ -294,7 +294,7 @@ The value object that IAM exposes to downstream bounded contexts after successfu
 
 ```
 RefreshTokenRepository (Protocol):
-  + save(token: RefreshToken) -> None
+  + add(token: RefreshToken) -> None
   + find_by_hash(token_hash: str) -> RefreshToken?
   + find_active_families_by_user(user_id: UUID) -> list[UUID]
   + revoke_family(family_id: UUID) -> None
@@ -302,7 +302,7 @@ RefreshTokenRepository (Protocol):
   + count_active_families(user_id: UUID) -> int
 
 PasswordResetTokenRepository (Protocol):
-  + save(token: PasswordResetToken) -> None
+  + add(token: PasswordResetToken) -> None
   + find_by_hash(token_hash: str) -> PasswordResetToken?
   + invalidate_existing_for_user(user_id: UUID) -> None
 ```
