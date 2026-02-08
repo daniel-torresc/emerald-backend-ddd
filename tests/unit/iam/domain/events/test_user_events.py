@@ -93,7 +93,7 @@ class TestPasswordChangedEvent:
         event = PasswordChanged(aggregate_id=uuid.uuid4())
         attrs = vars(event)
         for key, value in attrs.items():
-            if isinstance(value, str) and key not in ("aggregate_type",):
+            if isinstance(value, str):
                 assert "password" not in value.lower()
 
 
