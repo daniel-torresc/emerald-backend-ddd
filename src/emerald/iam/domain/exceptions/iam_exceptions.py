@@ -190,3 +190,116 @@ class TokenAlreadyUsedError(ConflictError):
         code: str = "TOKEN_ALREADY_USED",
     ) -> None:
         super().__init__(message, code)
+
+
+# -- Role & Permission Exceptions (Spec 004) ---------------------------------
+
+
+class InvalidRoleTransitionError(InvariantViolationError):
+    """Invalid role transition (e.g., promoting non-USER or forbidden path)."""
+
+    def __init__(
+        self,
+        message: str = "Invalid role transition",
+        code: str = "INVALID_ROLE_TRANSITION",
+    ) -> None:
+        super().__init__(message, code)
+
+
+class CannotDemoteSuperadminError(InvariantViolationError):
+    """Attempting to demote SUPERADMIN."""
+
+    def __init__(
+        self,
+        message: str = "Cannot demote SUPERADMIN",
+        code: str = "CANNOT_DEMOTE_SUPERADMIN",
+    ) -> None:
+        super().__init__(message, code)
+
+
+class CannotDeleteSuperadminError(InvariantViolationError):
+    """Attempting to soft-delete SUPERADMIN."""
+
+    def __init__(
+        self,
+        message: str = "Cannot delete SUPERADMIN",
+        code: str = "CANNOT_DELETE_SUPERADMIN",
+    ) -> None:
+        super().__init__(message, code)
+
+
+class CannotSuspendSuperadminError(InvariantViolationError):
+    """Attempting to suspend SUPERADMIN."""
+
+    def __init__(
+        self,
+        message: str = "Cannot suspend SUPERADMIN",
+        code: str = "CANNOT_SUSPEND_SUPERADMIN",
+    ) -> None:
+        super().__init__(message, code)
+
+
+class EmptyAdminPermissionsError(InvalidValueError):
+    """Promoting with empty permissions set."""
+
+    def __init__(
+        self,
+        message: str = "Admin permissions must not be empty",
+        code: str = "EMPTY_ADMIN_PERMISSIONS",
+    ) -> None:
+        super().__init__(message, code)
+
+
+class InsufficientPermissionsError(DomainError):
+    """Insufficient permissions for the requested operation."""
+
+    def __init__(
+        self,
+        message: str = "Insufficient permissions",
+        code: str = "INSUFFICIENT_PERMISSIONS",
+    ) -> None:
+        super().__init__(message, code)
+
+
+class NotAdminError(InvariantViolationError):
+    """Target user is not an ADMIN — cannot grant/revoke permissions."""
+
+    def __init__(
+        self,
+        message: str = "User is not an admin",
+        code: str = "NOT_ADMIN",
+    ) -> None:
+        super().__init__(message, code)
+
+
+class CannotGrantUnownedPermissionError(DomainError):
+    """ADMIN trying to grant a permission they don't have."""
+
+    def __init__(
+        self,
+        message: str = "Cannot grant a permission you do not have",
+        code: str = "CANNOT_GRANT_UNOWNED_PERMISSION",
+    ) -> None:
+        super().__init__(message, code)
+
+
+class LastAdminPermissionError(InvariantViolationError):
+    """Revoking would leave ADMIN with zero permissions."""
+
+    def __init__(
+        self,
+        message: str = "Cannot revoke last admin permission",
+        code: str = "LAST_ADMIN_PERMISSION",
+    ) -> None:
+        super().__init__(message, code)
+
+
+class SuperadminAlreadyExistsError(AlreadyExistsError):
+    """SUPERADMIN already provisioned."""
+
+    def __init__(
+        self,
+        message: str = "SUPERADMIN already exists",
+        code: str = "SUPERADMIN_ALREADY_EXISTS",
+    ) -> None:
+        super().__init__(message, code)
