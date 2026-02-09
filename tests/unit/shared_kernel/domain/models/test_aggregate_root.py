@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import ClassVar
 
+import pytest
+
 from emerald.shared_kernel.domain.events import DomainEvent
 from emerald.shared_kernel.domain.models import AggregateRoot
 
@@ -69,3 +71,37 @@ class TestAggregateRootEvents:
     def test_no_events_initially(self) -> None:
         ar = AggregateRoot()
         assert ar.collect_events() == []
+
+
+class TestAggregateRootVersion:
+    def test_version_starts_at_zero(self) -> None:
+        ar = AggregateRoot()
+        assert ar.version == 0
+
+    def test_version_provided_via_kwarg(self) -> None:
+        ar = AggregateRoot(version=5)
+        assert ar.version == 5
+
+    def test_increment_version_increases_by_one(self) -> None:
+        ar = AggregateRoot()
+        ar._increment_version()
+        assert ar.version == 1
+        ar._increment_version()
+        assert ar.version == 2
+
+    def test_touch_increments_version(self) -> None:
+        ar = AggregateRoot()
+        ar._touch()
+        assert ar.version == 1
+
+    def test_touch_also_updates_timestamp(self) -> None:
+        ar = AggregateRoot()
+        original_updated = ar.updated_at
+        ar._touch()
+        assert ar.updated_at >= original_updated
+        assert ar.version == 1
+
+    def test_version_is_read_only_property(self) -> None:
+        ar = AggregateRoot()
+        with pytest.raises(AttributeError):
+            ar.version = 42  # type: ignore[misc]
