@@ -303,3 +303,61 @@ class SuperadminAlreadyExistsError(AlreadyExistsError):
         code: str = "SUPERADMIN_ALREADY_EXISTS",
     ) -> None:
         super().__init__(message, code)
+
+
+# -- Federated Authentication Exceptions (Spec 005) --------------------------
+
+
+class ProviderEmailNotVerifiedError(DomainError):
+    """Provider reports the email as unverified."""
+
+    def __init__(
+        self,
+        message: str = "Your email must be verified with the provider first",
+        code: str = "PROVIDER_EMAIL_NOT_VERIFIED",
+    ) -> None:
+        super().__init__(message, code)
+
+
+class ProviderEmailMismatchError(DomainError):
+    """Provider email does not match the user's account email."""
+
+    def __init__(
+        self,
+        message: str = "Provider email must match your account email",
+        code: str = "PROVIDER_EMAIL_MISMATCH",
+    ) -> None:
+        super().__init__(message, code)
+
+
+class ProviderExternalIdMismatchError(ConflictError):
+    """Same provider type linked but with a different external user identity."""
+
+    def __init__(
+        self,
+        message: str = "This provider is already linked to a different identity",
+        code: str = "PROVIDER_EXTERNAL_ID_MISMATCH",
+    ) -> None:
+        super().__init__(message, code)
+
+
+class OAuthStateInvalidError(DomainError):
+    """OAuth state parameter mismatch or expired."""
+
+    def __init__(
+        self,
+        message: str = "Authentication session expired, please try again",
+        code: str = "OAUTH_STATE_INVALID",
+    ) -> None:
+        super().__init__(message, code)
+
+
+class OAuthCodeExchangeError(DomainError):
+    """Code exchange with the provider failed."""
+
+    def __init__(
+        self,
+        message: str = "Authentication failed, please try again",
+        code: str = "OAUTH_CODE_EXCHANGE_FAILED",
+    ) -> None:
+        super().__init__(message, code)

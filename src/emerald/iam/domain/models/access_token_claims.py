@@ -16,6 +16,7 @@ class AccessTokenClaims:
     iat: datetime
     exp: datetime
     jti: uuid.UUID
+    username: str | None = None
 
     def __post_init__(self) -> None:
         if self.iat.tzinfo is None:

@@ -13,6 +13,10 @@ from emerald.iam.domain.events.role_events import (
     UserDemotedToUser,
     UserPromotedToAdmin,
 )
+from emerald.iam.domain.events.social_events import (
+    SocialLoginCompleted,
+    UserRegisteredViaSocialProvider,
+)
 from emerald.iam.domain.events.user_events import (
     AuthProviderLinked,
     AuthProviderUnlinked,
@@ -38,6 +42,7 @@ __all__ = [
     "LoginFailed",
     "PasswordChanged",
     "PasswordResetRequested",
+    "SocialLoginCompleted",
     "SuperadminProvisioned",
     "TokenFamilyCompromised",
     "TokenRefreshed",
@@ -48,6 +53,7 @@ __all__ = [
     "UserPromotedToAdmin",
     "UserRecovered",
     "UserRegistered",
+    "UserRegisteredViaSocialProvider",
     "UserSoftDeleted",
     "UserSuspended",
     "UserUnsuspended",
