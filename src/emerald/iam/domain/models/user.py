@@ -4,6 +4,12 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from emerald.iam.domain.events.role_events import (
+    AdminPermissionGranted,
+    AdminPermissionRevoked,
+    UserDemotedToUser,
+    UserPromotedToAdmin,
+)
 from emerald.iam.domain.events.user_events import (
     AuthProviderLinked,
     AuthProviderUnlinked,
@@ -19,12 +25,22 @@ from emerald.iam.domain.events.user_events import (
     UserUsernameChanged,
 )
 from emerald.iam.domain.exceptions import (
+    CannotDeleteSuperadminError,
+    CannotDemoteSuperadminError,
+    CannotGrantUnownedPermissionError,
+    CannotSuspendSuperadminError,
     CannotUnlinkLastProviderError,
+    EmptyAdminPermissionsError,
+    InsufficientPermissionsError,
+    InvalidRoleTransitionError,
     InvalidStateTransitionError,
+    LastAdminPermissionError,
+    NotAdminError,
     PasswordAlreadySetError,
     ProviderAlreadyLinkedError,
     ProviderNotLinkedError,
 )
+from emerald.iam.domain.models.admin_permission import AdminPermission, AdminPermissionType
 from emerald.iam.domain.models.auth_provider import AuthProvider, ProviderType
 from emerald.iam.domain.models.email_address import EmailAddress
 from emerald.iam.domain.models.hashed_password import HashedPassword
@@ -58,6 +74,7 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         last_login_at: datetime | None = None,
         suspension_reason: str | None = None,
         system_role: SystemRole = SystemRole.USER,
+        admin_permissions: frozenset[AdminPermission] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -75,6 +92,7 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         self.last_login_at = last_login_at
         self.suspension_reason = suspension_reason
         self.system_role = system_role
+        self.admin_permissions = admin_permissions
 
     # -- Factory ---------------------------------------------------------------
 
@@ -240,7 +258,7 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         self._register_event(
             AuthProviderUnlinked(
                 aggregate_id=self.id,
-                provider_type=provider_type.value,
+                provider_type=str(provider_type.value),
             )
         )
 
@@ -248,6 +266,8 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
 
     def suspend(self, reason: str | None = None) -> None:
         """ACTIVE -> SUSPENDED."""
+        if self.system_role == SystemRole.SUPERADMIN:
+            raise CannotSuspendSuperadminError()
         self._require_status(UserStatus.ACTIVE, "suspend")
         self.status = UserStatus.SUSPENDED
         self.suspension_reason = reason
@@ -269,6 +289,8 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         reason: str | None = None,
     ) -> None:
         """ACTIVE or SUSPENDED -> DELETED."""
+        if self.system_role == SystemRole.SUPERADMIN:
+            raise CannotDeleteSuperadminError()
         if self.status not in (UserStatus.ACTIVE, UserStatus.SUSPENDED):
             raise InvalidStateTransitionError(f"Cannot soft_delete from {self.status.value}")
         # Delegate to SoftDeletableMixin for timestamp/retention handling
@@ -295,6 +317,139 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         self.last_login_at = datetime.now(UTC)
         self._touch()
         self._register_event(UserLoggedIn(aggregate_id=self.id))
+
+    # -- Role Management (Spec 004) -------------------------------------------
+
+    def promote_to_admin(
+        self,
+        permissions: set[AdminPermission],
+        promoted_by_role: SystemRole,
+        promoted_by_id: uuid.UUID,
+    ) -> None:
+        """Promote USER to ADMIN with the given permissions."""
+        if self.system_role != SystemRole.USER:
+            raise InvalidRoleTransitionError(
+                f"Cannot promote from {self.system_role.value} (must be USER)"
+            )
+        if not permissions:
+            raise EmptyAdminPermissionsError()
+        if promoted_by_role != SystemRole.SUPERADMIN:
+            raise InsufficientPermissionsError("Only SUPERADMIN can promote users")
+
+        self.system_role = SystemRole.ADMIN
+        self.admin_permissions = frozenset(permissions)
+        self._touch()
+        self._register_event(
+            UserPromotedToAdmin(
+                aggregate_id=self.id,
+                permissions=frozenset(p.value.value for p in permissions),
+                promoted_by_id=promoted_by_id,
+            )
+        )
+
+    def demote_to_user(
+        self,
+        demoted_by_role: SystemRole,
+        demoted_by_id: uuid.UUID,
+    ) -> None:
+        """Demote ADMIN to USER, clearing all permissions."""
+        if self.system_role == SystemRole.SUPERADMIN:
+            raise CannotDemoteSuperadminError()
+        if self.system_role != SystemRole.ADMIN:
+            raise InvalidRoleTransitionError(
+                f"Cannot demote from {self.system_role.value} (must be ADMIN)"
+            )
+        if demoted_by_role != SystemRole.SUPERADMIN:
+            raise InsufficientPermissionsError("Only SUPERADMIN can demote admins")
+
+        self.system_role = SystemRole.USER
+        self.admin_permissions = None
+        self._touch()
+        self._register_event(
+            UserDemotedToUser(
+                aggregate_id=self.id,
+                demoted_by_id=demoted_by_id,
+            )
+        )
+
+    # -- Admin Permission Management (Spec 004) -------------------------------
+
+    def grant_admin_permission(
+        self,
+        permission: AdminPermission,
+        granted_by_role: SystemRole,
+        granted_by_id: uuid.UUID,
+        granted_by_has_permission: bool,
+    ) -> None:
+        """Add a permission to an existing ADMIN."""
+        if self.system_role != SystemRole.ADMIN:
+            raise NotAdminError()
+        if not granted_by_role.is_admin_or_above():
+            raise InsufficientPermissionsError("Only ADMIN or SUPERADMIN can grant permissions")
+        if not granted_by_has_permission:
+            raise CannotGrantUnownedPermissionError()
+
+        # Idempotent: if already held, no-op
+        if self.admin_permissions is not None and permission in self.admin_permissions:
+            return
+
+        current = self.admin_permissions or frozenset()
+        self.admin_permissions = current | frozenset({permission})
+        self._touch()
+        self._register_event(
+            AdminPermissionGranted(
+                aggregate_id=self.id,
+                permission=permission.value.value,
+                granted_by_id=granted_by_id,
+            )
+        )
+
+    def revoke_admin_permission(
+        self,
+        permission: AdminPermission,
+        revoked_by_role: SystemRole,
+        revoked_by_id: uuid.UUID,
+    ) -> None:
+        """Remove a permission from an ADMIN."""
+        if self.system_role != SystemRole.ADMIN:
+            raise NotAdminError()
+        if revoked_by_role != SystemRole.SUPERADMIN:
+            raise InsufficientPermissionsError("Only SUPERADMIN can revoke permissions")
+
+        # Idempotent: if not held, no-op
+        if self.admin_permissions is None or permission not in self.admin_permissions:
+            return
+
+        if len(self.admin_permissions) <= 1:
+            raise LastAdminPermissionError()
+
+        self.admin_permissions = self.admin_permissions - frozenset({permission})
+        self._touch()
+        self._register_event(
+            AdminPermissionRevoked(
+                aggregate_id=self.id,
+                permission=permission.value.value,
+                revoked_by_id=revoked_by_id,
+            )
+        )
+
+    # -- Permission Checks (Spec 004) -----------------------------------------
+
+    def has_admin_permission(self, permission: AdminPermission) -> bool:
+        """Check whether this user has a specific admin permission."""
+        if self.system_role == SystemRole.SUPERADMIN:
+            return True
+        if self.admin_permissions is None:
+            return False
+        if permission in self.admin_permissions:
+            return True
+        # FULL_ADMIN includes everything
+        full_admin = AdminPermission(AdminPermissionType.FULL_ADMIN)
+        return full_admin in self.admin_permissions
+
+    def can_access_admin_portal(self) -> bool:
+        """Whether this user can access the admin portal."""
+        return self.system_role.is_admin_or_above()
 
     # -- Private Helpers -------------------------------------------------------
 

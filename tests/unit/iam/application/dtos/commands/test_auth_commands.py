@@ -1,6 +1,6 @@
 import dataclasses
 
-from emerald.iam.application.dto.auth_commands import (
+from emerald.iam.application.dtos.commands import (
     LoginUser,
     LogoutAllSessions,
     LogoutSession,
@@ -8,7 +8,7 @@ from emerald.iam.application.dto.auth_commands import (
     RequestPasswordReset,
     SubmitPasswordReset,
 )
-from emerald.shared_kernel.application.dto.commands import Command
+from emerald.shared_kernel.application.dtos.commands import Command
 
 # -- LoginUser -----------------------------------------------------------------
 

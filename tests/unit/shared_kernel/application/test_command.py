@@ -2,7 +2,7 @@ from dataclasses import FrozenInstanceError, dataclass
 
 import pytest
 
-from emerald.shared_kernel.application.dto.commands import Command
+from emerald.shared_kernel.application.dtos.commands import Command
 
 
 class TestCommand:

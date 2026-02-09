@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from emerald.shared_kernel.application.dto.commands import Command
+from emerald.shared_kernel.application.dtos.commands import Command
 
 
 @dataclass(frozen=True)

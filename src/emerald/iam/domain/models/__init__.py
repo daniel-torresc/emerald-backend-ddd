@@ -1,4 +1,5 @@
 from emerald.iam.domain.models.access_token_claims import AccessTokenClaims
+from emerald.iam.domain.models.admin_permission import AdminPermission, AdminPermissionType
 from emerald.iam.domain.models.auth_provider import AuthProvider, ProviderType
 from emerald.iam.domain.models.authenticated_identity import AuthenticatedIdentity
 from emerald.iam.domain.models.email_address import EmailAddress
@@ -14,6 +15,8 @@ from emerald.iam.domain.models.username import Username
 
 __all__ = [
     "AccessTokenClaims",
+    "AdminPermission",
+    "AdminPermissionType",
     "AuthProvider",
     "AuthenticatedIdentity",
     "EmailAddress",

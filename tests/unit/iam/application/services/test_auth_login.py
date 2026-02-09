@@ -3,8 +3,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from emerald.iam.application.dto.auth_commands import LoginUser
-from emerald.iam.application.dto.auth_dtos import LoginResult
+from emerald.iam.application.dtos.commands import LoginUser
+from emerald.iam.application.dtos.responses import LoginResult
 from emerald.iam.application.services.authentication import AuthenticationService
 from emerald.iam.domain.constants import ACCESS_TOKEN_TTL, MAX_CONCURRENT_SESSIONS
 from emerald.iam.domain.events import UserLoggedIn

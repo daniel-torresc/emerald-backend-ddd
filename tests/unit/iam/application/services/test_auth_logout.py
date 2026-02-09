@@ -1,6 +1,6 @@
 import pytest
 
-from emerald.iam.application.dto.auth_commands import LoginUser, LogoutAllSessions, LogoutSession
+from emerald.iam.application.dtos.commands import LoginUser, LogoutAllSessions, LogoutSession
 from emerald.iam.application.services.authentication import AuthenticationService
 from emerald.iam.domain.events.auth_events import AllSessionsRevoked, TokenRevoked
 from emerald.iam.domain.models.email_address import EmailAddress
