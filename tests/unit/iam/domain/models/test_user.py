@@ -18,7 +18,10 @@ from emerald.iam.domain.events import (
     UserUsernameChanged,
 )
 from emerald.iam.domain.exceptions import (
+    AccountSuspendedError,
+    AuthenticationFailedError,
     CannotUnlinkLastProviderError,
+    EmailNotVerifiedError,
     InvalidStateTransitionError,
     PasswordAlreadySetError,
     ProviderAlreadyLinkedError,
@@ -611,3 +614,98 @@ class TestLoginRecording:
         user.collect_events()
         with pytest.raises(InvalidStateTransitionError):
             user.record_login()
+
+
+# -- Authentication Validation Guards ------------------------------------------
+
+
+class TestUserAuthenticationValidation:
+    def test_validate_can_authenticate_active_passes(self):
+        user = _make_active_user()
+        user.validate_can_authenticate()  # should not raise
+
+    def test_validate_can_authenticate_pending_raises_email_not_verified(self):
+        user = _make_user()
+        with pytest.raises(EmailNotVerifiedError):
+            user.validate_can_authenticate()
+
+    def test_validate_can_authenticate_suspended_raises_account_suspended(self):
+        user = _make_active_user()
+        user.suspend()
+        user.collect_events()
+        with pytest.raises(AccountSuspendedError):
+            user.validate_can_authenticate()
+
+    def test_validate_can_authenticate_deleted_raises_authentication_failed(self):
+        user = _make_active_user()
+        user.soft_delete(uuid.uuid4(), RetentionPeriod(90, RetentionUnit.DAYS))
+        user.collect_events()
+        with pytest.raises(AuthenticationFailedError):
+            user.validate_can_authenticate()
+
+    def test_validate_can_social_login_active_passes(self):
+        user = _make_active_user()
+        user.validate_can_social_login()  # should not raise
+
+    def test_validate_can_social_login_pending_passes(self):
+        user = _make_user()
+        user.validate_can_social_login()  # PENDING is allowed for social
+
+    def test_validate_can_social_login_suspended_raises(self):
+        user = _make_active_user()
+        user.suspend()
+        user.collect_events()
+        with pytest.raises(AccountSuspendedError):
+            user.validate_can_social_login()
+
+    def test_validate_can_social_login_deleted_raises(self):
+        user = _make_active_user()
+        user.soft_delete(uuid.uuid4(), RetentionPeriod(90, RetentionUnit.DAYS))
+        user.collect_events()
+        with pytest.raises(AuthenticationFailedError):
+            user.validate_can_social_login()
+
+    def test_validate_can_link_provider_active_passes(self):
+        user = _make_active_user()
+        user.validate_can_link_provider()  # should not raise
+
+    def test_validate_can_link_provider_non_active_raises(self):
+        user = _make_user()  # PENDING_VERIFICATION
+        with pytest.raises(AuthenticationFailedError):
+            user.validate_can_link_provider()
+
+    def test_validate_can_set_username_active_passes(self):
+        user = _make_active_user()
+        user.validate_can_set_username()  # should not raise
+
+    def test_validate_can_set_username_non_active_raises(self):
+        user = _make_user()  # PENDING_VERIFICATION
+        with pytest.raises(AuthenticationFailedError):
+            user.validate_can_set_username()
+
+
+# -- Version Control -----------------------------------------------------------
+
+
+class TestUserVersionControl:
+    def test_register_factory_creates_user_at_version_zero(self):
+        user = User.register(
+            email=EmailAddress("a@b.com"),
+            username=Username("testuser"),
+            hashed_password=HashedPassword("hash123"),
+        )
+        assert user.version == 0
+
+    def test_verify_email_increments_version(self):
+        user = _make_user()
+        assert user.version == 0
+        user.verify_email()
+        assert user.version == 1
+
+    def test_multiple_mutations_increment_version_each_time(self):
+        user = _make_active_user()  # verify_email already bumped to 1
+        initial_version = user.version
+        user.update_full_name("Alice")
+        assert user.version == initial_version + 1
+        user.update_full_name("Bob")
+        assert user.version == initial_version + 2

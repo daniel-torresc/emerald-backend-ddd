@@ -8,3 +8,4 @@ class LoginResult:
     access_token: str
     refresh_token: str
     expires_in: int
+    is_new_registration: bool = False

@@ -8,9 +8,22 @@ from emerald.shared_kernel.domain.models.timestamped import TimestampedMixin
 class AggregateRoot(TimestampedMixin, Entity):
     """Base for all aggregate roots — combines Identity + Timestamps + event collection."""
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, *, version: int = 0, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._events: list[DomainEvent] = []
+        self._version = version
+
+    @property
+    def version(self) -> int:
+        return self._version
+
+    def _increment_version(self) -> None:
+        self._version += 1
+
+    def _touch(self) -> None:
+        """Update timestamp and increment version."""
+        super()._touch()
+        self._increment_version()
 
     def _register_event(self, event: DomainEvent) -> None:
         """Add an event to the internal collection."""

@@ -14,10 +14,20 @@ from emerald.iam.application.dtos.commands.role_management import (
     ProvisionSuperadmin,
     RevokeAdminPermission,
 )
+from emerald.iam.application.dtos.commands.social_auth import (
+    CompleteOAuthLogin,
+    InitiateOAuthLogin,
+    LinkAuthProviderViaOAuth,
+    SetOnboardingUsername,
+    UnlinkAuthProvider,
+)
 
 __all__ = [
+    "CompleteOAuthLogin",
     "DemoteToUser",
     "GrantAdminPermission",
+    "InitiateOAuthLogin",
+    "LinkAuthProviderViaOAuth",
     "LoginUser",
     "LogoutAllSessions",
     "LogoutSession",
@@ -27,5 +37,7 @@ __all__ = [
     "RegisterUser",
     "RequestPasswordReset",
     "RevokeAdminPermission",
+    "SetOnboardingUsername",
     "SubmitPasswordReset",
+    "UnlinkAuthProvider",
 ]

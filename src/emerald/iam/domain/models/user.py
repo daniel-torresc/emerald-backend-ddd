@@ -10,6 +10,7 @@ from emerald.iam.domain.events.role_events import (
     UserDemotedToUser,
     UserPromotedToAdmin,
 )
+from emerald.iam.domain.events.social_events import UserRegisteredViaSocialProvider
 from emerald.iam.domain.events.user_events import (
     AuthProviderLinked,
     AuthProviderUnlinked,
@@ -25,11 +26,14 @@ from emerald.iam.domain.events.user_events import (
     UserUsernameChanged,
 )
 from emerald.iam.domain.exceptions import (
+    AccountSuspendedError,
+    AuthenticationFailedError,
     CannotDeleteSuperadminError,
     CannotDemoteSuperadminError,
     CannotGrantUnownedPermissionError,
     CannotSuspendSuperadminError,
     CannotUnlinkLastProviderError,
+    EmailNotVerifiedError,
     EmptyAdminPermissionsError,
     InsufficientPermissionsError,
     InvalidRoleTransitionError,
@@ -63,7 +67,7 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         self,
         *,
         email: EmailAddress,
-        username: Username,
+        username: Username | None = None,
         password: HashedPassword | None = None,
         password_history: list[str] | None = None,
         auth_providers: set[AuthProvider] | None = None,
@@ -128,6 +132,38 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         )
         return user
 
+    @classmethod
+    def register_via_social(
+        cls,
+        email: EmailAddress,
+        full_name: str | None,
+        auth_provider: AuthProvider,
+    ) -> User:
+        """Create a new user via social provider registration."""
+        user_id = uuid.uuid4()
+        user = cls(
+            email=email,
+            username=None,
+            password=None,
+            auth_providers={auth_provider},
+            status=UserStatus.ACTIVE,
+            email_verified=True,
+            password_history=[],
+            preferences=UserPreferences(),
+            full_name=full_name,
+            id=user_id,
+            created_by=user_id,
+        )
+        user._register_event(
+            UserRegisteredViaSocialProvider(
+                aggregate_id=user.id,
+                email=str(email),
+                provider_type=auth_provider.provider_type.value,
+                full_name=full_name,
+            )
+        )
+        return user
+
     # -- Email Verification ----------------------------------------------------
 
     def verify_email(self) -> None:
@@ -159,7 +195,7 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
     def update_username(self, new_username: Username) -> None:
         """Change username."""
         self._require_status(UserStatus.ACTIVE, "update_username")
-        old_username = str(self.username)
+        old_username = str(self.username) if self.username is not None else ""
         self.username = new_username
         self._touch()
         self._register_event(
@@ -224,7 +260,11 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
 
     def link_auth_provider(self, provider: AuthProvider) -> None:
         """Link an additional auth provider."""
-        self._require_status(UserStatus.ACTIVE, "link_auth_provider")
+        if self.status not in (UserStatus.ACTIVE, UserStatus.PENDING_VERIFICATION):
+            raise InvalidStateTransitionError(
+                f"Cannot link_auth_provider from {self.status.value} "
+                f"(requires {UserStatus.ACTIVE.value} or {UserStatus.PENDING_VERIFICATION.value})"
+            )
         if provider in self.auth_providers:
             raise ProviderAlreadyLinkedError(
                 f"Provider {provider.provider_type.value} is already linked"
@@ -451,6 +491,34 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         """Whether this user can access the admin portal."""
         return self.system_role.is_admin_or_above()
 
+    # -- Authentication Guards -------------------------------------------------
+
+    def validate_can_authenticate(self) -> None:
+        """Guard: user can log in via password. Raises specific exceptions."""
+        if self.status == UserStatus.DELETED:
+            raise AuthenticationFailedError()
+        if self.status == UserStatus.PENDING_VERIFICATION:
+            raise EmailNotVerifiedError()
+        if self.status == UserStatus.SUSPENDED:
+            raise AccountSuspendedError()
+
+    def validate_can_social_login(self) -> None:
+        """Guard: user can log in via social provider. Allows PENDING_VERIFICATION."""
+        if self.status == UserStatus.DELETED:
+            raise AuthenticationFailedError()
+        if self.status == UserStatus.SUSPENDED:
+            raise AccountSuspendedError()
+
+    def validate_can_link_provider(self) -> None:
+        """Guard: user can link a new auth provider."""
+        if self.status != UserStatus.ACTIVE:
+            raise AuthenticationFailedError()
+
+    def validate_can_set_username(self) -> None:
+        """Guard: user can set onboarding username."""
+        if self.status != UserStatus.ACTIVE:
+            raise AuthenticationFailedError()
+
     # -- Private Helpers -------------------------------------------------------
 
     def _require_status(self, required: UserStatus, action: str) -> None:
@@ -459,7 +527,3 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
             raise InvalidStateTransitionError(
                 f"Cannot {action} from {self.status.value} (requires {required.value})"
             )
-
-    def _touch(self) -> None:
-        """Update the updated_at timestamp."""
-        self.updated_at = datetime.now(UTC)
