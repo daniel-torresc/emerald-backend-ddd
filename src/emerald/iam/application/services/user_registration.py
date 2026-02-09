@@ -1,4 +1,4 @@
-from emerald.iam.application.dto.commands import RegisterUser
+from emerald.iam.application.dtos.commands import RegisterUser
 from emerald.iam.application.ports.outbound.unit_of_work import AbstractIamUnitOfWork
 from emerald.iam.domain.exceptions import EmailAlreadyExistsError, UsernameAlreadyExistsError
 from emerald.iam.domain.models.email_address import EmailAddress

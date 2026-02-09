@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from emerald.iam.application.dto.auth_commands import (
+from emerald.iam.application.dtos.commands import (
     LoginUser,
     LogoutAllSessions,
     LogoutSession,
@@ -11,9 +11,13 @@ from emerald.iam.application.dto.auth_commands import (
     RequestPasswordReset,
     SubmitPasswordReset,
 )
-from emerald.iam.application.dto.auth_dtos import LoginResult
+from emerald.iam.application.dtos.responses import LoginResult
 from emerald.iam.application.ports.outbound.unit_of_work import AbstractIamUnitOfWork
-from emerald.iam.domain.constants import ACCESS_TOKEN_TTL, MAX_CONCURRENT_SESSIONS
+from emerald.iam.domain.constants import (
+    ACCESS_TOKEN_TTL,
+    MAX_CONCURRENT_SESSIONS,
+    REFRESH_TOKEN_TTL_SUPERADMIN,
+)
 from emerald.iam.domain.events.auth_events import (
     AllSessionsRevoked,
     LoginFailed,
@@ -37,6 +41,7 @@ from emerald.iam.domain.models.hashed_password import HashedPassword
 from emerald.iam.domain.models.password_reset_token import PasswordResetToken
 from emerald.iam.domain.models.portal_context import PortalContext
 from emerald.iam.domain.models.refresh_token import RefreshToken
+from emerald.iam.domain.models.system_role import SystemRole
 from emerald.iam.domain.models.user_status import UserStatus
 from emerald.iam.domain.ports.password_hasher import PasswordHasher
 from emerald.iam.domain.ports.token_service import TokenService
@@ -109,12 +114,17 @@ class AuthenticationService:
 
             # 8. Create RefreshToken entity
             now = datetime.now(UTC)
+            refresh_ttl = (
+                REFRESH_TOKEN_TTL_SUPERADMIN
+                if user.system_role == SystemRole.SUPERADMIN
+                else portal_context.refresh_ttl
+            )
             refresh_token = RefreshToken(
                 user_id=user.id,
                 token_hash=refresh_hash,
                 family_id=family_id,
                 portal_context=portal_context,
-                expires_at=now + portal_context.refresh_ttl,
+                expires_at=now + refresh_ttl,
                 created_at=now,
             )
 
@@ -179,19 +189,26 @@ class AuthenticationService:
             # 6. Generate new refresh token in same family
             raw_refresh, refresh_hash = self._token_service.generate_refresh_token()
             now = datetime.now(UTC)
-            new_refresh_token = RefreshToken(
-                user_id=token.user_id,
-                token_hash=refresh_hash,
-                family_id=token.family_id,
-                portal_context=token.portal_context,
-                expires_at=now + token.portal_context.refresh_ttl,
-                created_at=now,
-            )
 
             # 7. Look up user for current claims
             user = self._uow.users.find_by_id(token.user_id)
             if user is None:
                 raise InvalidTokenError()
+
+            # 7b. Create new refresh token with SUPERADMIN TTL override
+            refresh_ttl = (
+                REFRESH_TOKEN_TTL_SUPERADMIN
+                if user.system_role == SystemRole.SUPERADMIN
+                else token.portal_context.refresh_ttl
+            )
+            new_refresh_token = RefreshToken(
+                user_id=token.user_id,
+                token_hash=refresh_hash,
+                family_id=token.family_id,
+                portal_context=token.portal_context,
+                expires_at=now + refresh_ttl,
+                created_at=now,
+            )
 
             # 8. Build new AccessTokenClaims
             jti = uuid.uuid4()

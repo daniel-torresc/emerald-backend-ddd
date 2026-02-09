@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from emerald.iam.domain.models.email_address import EmailAddress
+    from emerald.iam.domain.models.system_role import SystemRole
     from emerald.iam.domain.models.user import User
     from emerald.iam.domain.models.username import Username
 
@@ -34,4 +35,8 @@ class UserRepository(Protocol):
 
     def exists_by_username(self, username: Username, include_recently_deleted: bool = True) -> bool:
         """Check if username is taken (optionally including recently deleted)."""
+        ...
+
+    def exists_by_role(self, role: SystemRole) -> bool:
+        """Check if any user with the given system role exists."""
         ...
