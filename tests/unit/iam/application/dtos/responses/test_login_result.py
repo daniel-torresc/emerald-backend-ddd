@@ -2,7 +2,7 @@ import dataclasses
 
 import pytest
 
-from emerald.iam.application.dto.auth_dtos import LoginResult
+from emerald.iam.application.dtos.responses import LoginResult
 
 
 def test_login_result_is_frozen_dataclass():

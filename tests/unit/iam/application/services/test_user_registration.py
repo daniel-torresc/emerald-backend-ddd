@@ -1,6 +1,6 @@
 import pytest
 
-from emerald.iam.application.dto.commands import RegisterUser
+from emerald.iam.application.dtos.commands import RegisterUser
 from emerald.iam.application.services.user_registration import UserRegistrationService
 from emerald.iam.domain.events import UserRegistered
 from emerald.iam.domain.exceptions import (

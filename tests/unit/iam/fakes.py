@@ -9,6 +9,7 @@ from emerald.iam.domain.models.access_token_claims import AccessTokenClaims
 from emerald.iam.domain.models.email_address import EmailAddress
 from emerald.iam.domain.models.password_reset_token import PasswordResetToken
 from emerald.iam.domain.models.refresh_token import RefreshToken
+from emerald.iam.domain.models.system_role import SystemRole
 from emerald.iam.domain.models.user import User
 from emerald.iam.domain.models.username import Username
 from emerald.shared_kernel.domain.events.domain_event import DomainEvent
@@ -50,6 +51,9 @@ class FakeUserRepository:
 
     def exists_by_username(self, username: Username, include_recently_deleted: bool = True) -> bool:
         return any(user.username == username for user in self._users.values())
+
+    def exists_by_role(self, role: SystemRole) -> bool:
+        return any(user.system_role == role for user in self._users.values())
 
 
 class FakePasswordHasher:

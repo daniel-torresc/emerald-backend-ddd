@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from emerald.iam.application.dto.auth_commands import (
+from emerald.iam.application.dtos.commands import (
     LoginUser,
     RequestPasswordReset,
     SubmitPasswordReset,

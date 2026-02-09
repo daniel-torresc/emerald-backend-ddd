@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from emerald.iam.application.dto.auth_commands import RequestPasswordReset
+from emerald.iam.application.dtos.commands import RequestPasswordReset
 from emerald.iam.application.services.authentication import AuthenticationService
 from emerald.iam.domain.constants import PASSWORD_RESET_TOKEN_TTL
 from emerald.iam.domain.events.auth_events import PasswordResetRequested

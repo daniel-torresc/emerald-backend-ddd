@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from emerald.iam.application.dto.auth_commands import LoginUser
+from emerald.iam.application.dtos.commands import LoginUser
 from emerald.iam.application.services.authentication import AuthenticationService
 from emerald.iam.domain.exceptions import InvalidTokenError
 from emerald.iam.domain.models.access_token_claims import AccessTokenClaims
