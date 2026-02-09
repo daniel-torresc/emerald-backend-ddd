@@ -5,8 +5,11 @@ from collections.abc import Iterator
 from datetime import UTC, datetime
 
 from emerald.iam.application.ports.outbound.unit_of_work import AbstractIamUnitOfWork
+from emerald.iam.domain.exceptions import OAuthCodeExchangeError
 from emerald.iam.domain.models.access_token_claims import AccessTokenClaims
+from emerald.iam.domain.models.auth_provider import ProviderType
 from emerald.iam.domain.models.email_address import EmailAddress
+from emerald.iam.domain.models.oidc_claims import OidcClaims
 from emerald.iam.domain.models.password_reset_token import PasswordResetToken
 from emerald.iam.domain.models.refresh_token import RefreshToken
 from emerald.iam.domain.models.system_role import SystemRole
@@ -160,6 +163,36 @@ class FakePasswordResetTokenRepository:
         for token in self._tokens.values():
             if token.user_id == user_id and token.used_at is None:
                 token.used_at = now
+
+
+class FakeOidcProvider:
+    """Fake OIDC provider for testing social auth flows."""
+
+    def __init__(self) -> None:
+        self._claims: dict[str, OidcClaims] = {}
+        self._auth_urls: dict[str, str] = {}
+        self.generate_call_count: int = 0
+        self.exchange_call_count: int = 0
+
+    def set_claims_for_code(self, code: str, claims: OidcClaims) -> None:
+        self._claims[code] = claims
+
+    def set_auth_url(self, state: str, url: str) -> None:
+        self._auth_urls[state] = url
+
+    def generate_authorization_url(
+        self, provider_type: ProviderType, redirect_uri: str, state: str
+    ) -> str:
+        self.generate_call_count += 1
+        return self._auth_urls.get(state, f"https://provider.example.com/auth?state={state}")
+
+    def exchange_code_for_claims(
+        self, provider_type: ProviderType, code: str, redirect_uri: str
+    ) -> OidcClaims:
+        self.exchange_call_count += 1
+        if code not in self._claims:
+            raise OAuthCodeExchangeError()
+        return self._claims[code]
 
 
 class FakeIamUnitOfWork(AbstractIamUnitOfWork):
