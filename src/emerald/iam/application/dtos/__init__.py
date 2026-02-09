@@ -1,6 +1,9 @@
 from emerald.iam.application.dtos.commands import (
+    CompleteOAuthLogin,
     DemoteToUser,
     GrantAdminPermission,
+    InitiateOAuthLogin,
+    LinkAuthProviderViaOAuth,
     LoginUser,
     LogoutAllSessions,
     LogoutSession,
@@ -10,13 +13,18 @@ from emerald.iam.application.dtos.commands import (
     RegisterUser,
     RequestPasswordReset,
     RevokeAdminPermission,
+    SetOnboardingUsername,
     SubmitPasswordReset,
+    UnlinkAuthProvider,
 )
 from emerald.iam.application.dtos.responses import LoginResult
 
 __all__ = [
+    "CompleteOAuthLogin",
     "DemoteToUser",
     "GrantAdminPermission",
+    "InitiateOAuthLogin",
+    "LinkAuthProviderViaOAuth",
     "LoginResult",
     "LoginUser",
     "LogoutAllSessions",
@@ -27,5 +35,7 @@ __all__ = [
     "RegisterUser",
     "RequestPasswordReset",
     "RevokeAdminPermission",
+    "SetOnboardingUsername",
     "SubmitPasswordReset",
+    "UnlinkAuthProvider",
 ]
