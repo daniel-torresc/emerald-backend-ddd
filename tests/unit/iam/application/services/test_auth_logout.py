@@ -3,10 +3,10 @@ import pytest
 from emerald.iam.application.dtos.commands import LoginUser, LogoutAllSessions, LogoutSession
 from emerald.iam.application.services.authentication import AuthenticationService
 from emerald.iam.domain.events.auth_events import AllSessionsRevoked, TokenRevoked
-from emerald.iam.domain.models.email_address import EmailAddress
-from emerald.iam.domain.models.hashed_password import HashedPassword
-from emerald.iam.domain.models.user import User
-from emerald.iam.domain.models.username import Username
+from emerald.iam.domain.models.aggregates.user import User
+from emerald.iam.domain.models.value_objects.email_address import EmailAddress
+from emerald.iam.domain.models.value_objects.hashed_password import HashedPassword
+from emerald.iam.domain.models.value_objects.username import Username
 from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasher, FakeTokenService
 
 

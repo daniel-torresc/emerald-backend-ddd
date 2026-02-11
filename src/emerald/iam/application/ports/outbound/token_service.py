@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from emerald.iam.domain.models.access_token_claims import AccessTokenClaims
+from emerald.iam.domain.models.value_objects.access_token_claims import AccessTokenClaims
 
 
 class TokenService(Protocol):

@@ -5,8 +5,8 @@ from typing import Any
 import pytest
 
 from emerald.iam.domain.exceptions import TokenAlreadyRevokedError
-from emerald.iam.domain.models.portal_context import PortalContext
-from emerald.iam.domain.models.refresh_token import RefreshToken
+from emerald.iam.domain.models.entities.refresh_token import RefreshToken
+from emerald.iam.domain.models.value_objects.portal_context import PortalContext
 
 
 def _make_token(**overrides: Any) -> RefreshToken:

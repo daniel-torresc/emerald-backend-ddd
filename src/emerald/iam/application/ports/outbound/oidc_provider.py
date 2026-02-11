@@ -1,7 +1,7 @@
 from typing import Protocol
 
-from emerald.iam.domain.models.auth_provider import ProviderType
-from emerald.iam.domain.models.oidc_claims import OidcClaims
+from emerald.iam.domain.models.value_objects.auth_provider import ProviderType
+from emerald.iam.domain.models.value_objects.oidc_claims import OidcClaims
 
 
 class OidcProvider(Protocol):

@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from emerald.iam.domain.models.portal_context import PortalContext
+from emerald.iam.domain.models.value_objects.portal_context import PortalContext
 
 
 class TestPortalContext:

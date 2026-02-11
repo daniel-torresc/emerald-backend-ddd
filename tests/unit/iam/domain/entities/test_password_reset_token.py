@@ -6,7 +6,7 @@ import pytest
 
 from emerald.iam.domain.constants import PASSWORD_RESET_TOKEN_TTL
 from emerald.iam.domain.exceptions import TokenAlreadyUsedError
-from emerald.iam.domain.models.password_reset_token import PasswordResetToken
+from emerald.iam.domain.models.entities.password_reset_token import PasswordResetToken
 
 
 def _make_reset_token(**overrides: Any) -> PasswordResetToken:

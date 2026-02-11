@@ -37,9 +37,9 @@ All soft-deletable entities follow this state model:
 
 ```
 ┌──────────┐      soft_delete()     ┌──────────────┐     hard_delete()     ┌───────────────┐
-│  ACTIVE  │───────────────────────►│ SOFT DELETED  │──────────────────────►│ HARD DELETED   │
-│          │                        │   (in Trash)  │                       │  (Permanent)   │
-└──────────┘                        └──────────────┘                        └───────────────┘
+│  ACTIVE  │───────────────────────►│ SOFT DELETED │──────────────────────►│ HARD DELETED  │
+│          │                        │   (in Trash) │                       │  (Permanent)  │
+└──────────┘                        └──────────────┘                       └───────────────┘
      ▲                                    │
      │              recover()             │
      └────────────────────────────────────┘

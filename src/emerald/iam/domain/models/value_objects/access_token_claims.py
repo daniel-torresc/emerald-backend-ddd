@@ -2,7 +2,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from emerald.iam.domain.models.system_role import SystemRole
+from emerald.iam.domain.models.value_objects.system_role import SystemRole
 from emerald.shared_kernel import InvalidValueError
 
 

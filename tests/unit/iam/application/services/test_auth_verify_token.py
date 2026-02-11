@@ -6,13 +6,13 @@ import pytest
 from emerald.iam.application.dtos.commands import LoginUser
 from emerald.iam.application.services.authentication import AuthenticationService
 from emerald.iam.domain.exceptions import InvalidTokenError
-from emerald.iam.domain.models.access_token_claims import AccessTokenClaims
-from emerald.iam.domain.models.authenticated_identity import AuthenticatedIdentity
-from emerald.iam.domain.models.email_address import EmailAddress
-from emerald.iam.domain.models.hashed_password import HashedPassword
-from emerald.iam.domain.models.system_role import SystemRole
-from emerald.iam.domain.models.user import User
-from emerald.iam.domain.models.username import Username
+from emerald.iam.domain.models.aggregates.user import User
+from emerald.iam.domain.models.value_objects.access_token_claims import AccessTokenClaims
+from emerald.iam.domain.models.value_objects.authenticated_identity import AuthenticatedIdentity
+from emerald.iam.domain.models.value_objects.email_address import EmailAddress
+from emerald.iam.domain.models.value_objects.hashed_password import HashedPassword
+from emerald.iam.domain.models.value_objects.system_role import SystemRole
+from emerald.iam.domain.models.value_objects.username import Username
 from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasher, FakeTokenService
 
 

@@ -1,8 +1,8 @@
 import uuid
 from datetime import UTC, datetime
 
-from emerald.iam.domain.models.portal_context import PortalContext
-from emerald.shared_kernel.domain.models.entity import Entity
+from emerald.iam.domain.models.value_objects.portal_context import PortalContext
+from emerald.shared_kernel.domain.models.base.entity import Entity
 
 
 class RefreshToken(Entity):

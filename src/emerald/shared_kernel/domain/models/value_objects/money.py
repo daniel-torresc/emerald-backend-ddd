@@ -3,7 +3,7 @@ from decimal import ROUND_HALF_EVEN, Decimal, InvalidOperation
 from typing import Any
 
 from emerald.shared_kernel.domain.exceptions import CurrencyMismatchError, InvalidValueError
-from emerald.shared_kernel.domain.models.currency import Currency
+from emerald.shared_kernel.domain.models.value_objects.currency import Currency
 
 
 @dataclass(frozen=True)

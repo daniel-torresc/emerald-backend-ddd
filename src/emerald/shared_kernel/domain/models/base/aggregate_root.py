@@ -1,8 +1,8 @@
 from typing import Any
 
 from emerald.shared_kernel.domain.events.domain_event import DomainEvent
-from emerald.shared_kernel.domain.models.entity import Entity
-from emerald.shared_kernel.domain.models.timestamped import TimestampedMixin
+from emerald.shared_kernel.domain.models.base.entity import Entity
+from emerald.shared_kernel.domain.models.base.timestamped import TimestampedMixin
 
 
 class AggregateRoot(TimestampedMixin, Entity):

@@ -8,12 +8,12 @@ from emerald.iam.domain.exceptions import (
     SuperadminAlreadyExistsError,
     UsernameAlreadyExistsError,
 )
-from emerald.iam.domain.models.email_address import EmailAddress
-from emerald.iam.domain.models.hashed_password import HashedPassword
-from emerald.iam.domain.models.system_role import SystemRole
-from emerald.iam.domain.models.user import User
-from emerald.iam.domain.models.user_status import UserStatus
-from emerald.iam.domain.models.username import Username
+from emerald.iam.domain.models.aggregates.user import User
+from emerald.iam.domain.models.value_objects.email_address import EmailAddress
+from emerald.iam.domain.models.value_objects.hashed_password import HashedPassword
+from emerald.iam.domain.models.value_objects.system_role import SystemRole
+from emerald.iam.domain.models.value_objects.user_status import UserStatus
+from emerald.iam.domain.models.value_objects.username import Username
 from emerald.iam.domain.ports.password_hasher import PasswordHasher
 from emerald.iam.domain.services.password_validation import validate_password_strength
 

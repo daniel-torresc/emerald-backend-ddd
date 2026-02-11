@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime
 
 from emerald.iam.domain.constants import PASSWORD_RESET_TOKEN_TTL
-from emerald.shared_kernel.domain.models.entity import Entity
+from emerald.shared_kernel.domain.models.base.entity import Entity
 
 
 class PasswordResetToken(Entity):

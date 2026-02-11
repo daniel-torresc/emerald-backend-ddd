@@ -14,13 +14,16 @@ from emerald.iam.domain.exceptions import (
     AuthenticationFailedError,
     EmailNotVerifiedError,
 )
-from emerald.iam.domain.models.email_address import EmailAddress
-from emerald.iam.domain.models.hashed_password import HashedPassword
-from emerald.iam.domain.models.portal_context import PortalContext
-from emerald.iam.domain.models.refresh_token import RefreshToken
-from emerald.iam.domain.models.user import User
-from emerald.iam.domain.models.username import Username
-from emerald.shared_kernel.domain.models.retention_period import RetentionPeriod, RetentionUnit
+from emerald.iam.domain.models.aggregates.user import User
+from emerald.iam.domain.models.entities.refresh_token import RefreshToken
+from emerald.iam.domain.models.value_objects.email_address import EmailAddress
+from emerald.iam.domain.models.value_objects.hashed_password import HashedPassword
+from emerald.iam.domain.models.value_objects.portal_context import PortalContext
+from emerald.iam.domain.models.value_objects.username import Username
+from emerald.shared_kernel.domain.models.value_objects.retention_period import (
+    RetentionPeriod,
+    RetentionUnit,
+)
 from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasher, FakeTokenService
 
 
