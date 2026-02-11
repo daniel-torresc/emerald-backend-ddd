@@ -1,7 +1,7 @@
 # Spec 006: Data Lifecycle Management
 
 **Version:** 1.0
-**Status:** Draft
+**Status:** Implemented
 **Bounded Context:** Shared Kernel (framework) + Cross-Cutting (orchestration)
 **Dependencies:** 001 (Shared Kernel)
 **Blocks:** 007 (Account Management), 013 (Classification & Taxonomies)
@@ -591,30 +591,42 @@ This aligns with the `**kwargs: Any` convention used by all other mixins for coo
 
 ## 18. Module Structure
 
-All framework code lives in `src/emerald/shared_kernel/`:
+All framework code lives in `src/emerald/shared_kernel/`, following the same ports-and-adapters structure used by IAM and other bounded contexts. Types are distributed by **role**, not grouped by feature:
 
 ```
 src/emerald/shared_kernel/
 ├── domain/
+│   ├── constants.py                             # NEW: retention defaults, cooling-off, cascade rules, warnings
+│   ├── events/
+│   │   ├── domain_event.py                      # Existing
+│   │   └── lifecycle_events.py                  # NEW: 6 events + HardDeleteTrigger, RetentionWarningType
+│   ├── exceptions/
+│   │   ├── base.py                              # Existing (AlreadyDeletedError, NotDeletedError)
+│   │   └── lifecycle_exceptions.py              # NEW: 6 exceptions
 │   ├── models/
 │   │   ├── base/
-│   │   │   └── soft_deletable.py           # Enhanced mixin (kwargs: Any)
+│   │   │   └── soft_deletable.py                # ENHANCED: **kwargs: Any
+│   │   ├── entities/
+│   │   │   └── user_retention_preference.py     # NEW
 │   │   └── value_objects/
-│   │       └── retention_period.py          # Already exists
-│   ├── lifecycle/
-│   │   ├── __init__.py                      # Public API
-│   │   ├── constants.py                     # Retention defaults, cascade rules, cooling-off
-│   │   ├── deletable_entity_type.py         # DeletableEntityType enum
-│   │   ├── cascade_rules.py                 # Typed cascade maps
-│   │   ├── events.py                        # 6 domain events + supporting enums
-│   │   ├── commands.py                      # 6 commands
-│   │   ├── exceptions.py                    # 6 new exceptions
-│   │   ├── value_objects.py                 # TrashItem, CascadeSummary, HardDeleteConfirmation
-│   │   ├── user_retention_preference.py     # UserRetentionPreference entity
-│   │   ├── ports.py                         # RetentionPolicyRepository, ScheduledDeletionPort, TrashQueryPort
-│   │   └── retention_policy_service.py      # RetentionPolicyService domain service
-│   └── ...
-└── ...
+│   │       ├── retention_period.py              # Existing
+│   │       ├── deletable_entity_type.py         # NEW: DeletableEntityType enum
+│   │       ├── trash_item.py                    # NEW
+│   │       ├── cascade_summary.py               # NEW
+│   │       └── hard_delete_confirmation.py      # NEW
+│   └── services/
+│       └── retention_policy_service.py          # NEW: domain service
+├── application/
+│   ├── dtos/
+│   │   ├── commands.py                          # Existing (Command base)
+│   │   └── lifecycle_commands.py                # NEW: 6 commands
+│   └── ports/
+│       └── outbound/
+│           ├── unit_of_work.py                  # Existing
+│           ├── retention_policy_repository.py   # NEW
+│           ├── scheduled_deletion_port.py       # NEW
+│           └── trash_query_port.py              # NEW
+└── __init__.py                                  # Updated: re-export lifecycle public API
 ```
 
 ---
