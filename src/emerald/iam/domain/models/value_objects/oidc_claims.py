@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from emerald.iam.domain.models.auth_provider import ProviderType
+from emerald.iam.domain.models.value_objects.auth_provider import ProviderType
 from emerald.shared_kernel.domain.exceptions import InvalidValueError
 
 

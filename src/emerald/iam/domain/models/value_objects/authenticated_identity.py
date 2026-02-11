@@ -1,8 +1,8 @@
 import uuid
 from dataclasses import dataclass
 
-from emerald.iam.domain.models.email_address import EmailAddress
-from emerald.iam.domain.models.system_role import SystemRole
+from emerald.iam.domain.models.value_objects.email_address import EmailAddress
+from emerald.iam.domain.models.value_objects.system_role import SystemRole
 
 
 @dataclass(frozen=True, eq=False)

@@ -4,8 +4,8 @@ from typing import Any
 
 import pytest
 
-from emerald.iam.domain.models.access_token_claims import AccessTokenClaims
-from emerald.iam.domain.models.system_role import SystemRole
+from emerald.iam.domain.models.value_objects.access_token_claims import AccessTokenClaims
+from emerald.iam.domain.models.value_objects.system_role import SystemRole
 from emerald.shared_kernel.domain.exceptions import InvalidValueError
 
 

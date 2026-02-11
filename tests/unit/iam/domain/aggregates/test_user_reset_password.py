@@ -4,11 +4,14 @@ import pytest
 
 from emerald.iam.domain.events import PasswordChanged
 from emerald.iam.domain.exceptions import InvalidStateTransitionError
-from emerald.iam.domain.models.email_address import EmailAddress
-from emerald.iam.domain.models.hashed_password import HashedPassword
-from emerald.iam.domain.models.user import User
-from emerald.iam.domain.models.username import Username
-from emerald.shared_kernel.domain.models.retention_period import RetentionPeriod, RetentionUnit
+from emerald.iam.domain.models.aggregates.user import User
+from emerald.iam.domain.models.value_objects.email_address import EmailAddress
+from emerald.iam.domain.models.value_objects.hashed_password import HashedPassword
+from emerald.iam.domain.models.value_objects.username import Username
+from emerald.shared_kernel.domain.models.value_objects.retention_period import (
+    RetentionPeriod,
+    RetentionUnit,
+)
 
 
 def _make_pending_user() -> User:

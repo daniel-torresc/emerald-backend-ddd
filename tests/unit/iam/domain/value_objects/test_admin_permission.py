@@ -1,6 +1,9 @@
 import pytest
 
-from emerald.iam.domain.models.admin_permission import AdminPermission, AdminPermissionType
+from emerald.iam.domain.models.value_objects.admin_permission import (
+    AdminPermission,
+    AdminPermissionType,
+)
 
 # -- Creation ------------------------------------------------------------------
 

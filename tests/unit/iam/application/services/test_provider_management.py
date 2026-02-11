@@ -14,13 +14,13 @@ from emerald.iam.domain.exceptions import (
     ProviderEmailMismatchError,
     ProviderNotLinkedError,
 )
-from emerald.iam.domain.models.auth_provider import AuthProvider, ProviderType
-from emerald.iam.domain.models.email_address import EmailAddress
-from emerald.iam.domain.models.hashed_password import HashedPassword
-from emerald.iam.domain.models.oidc_claims import OidcClaims
-from emerald.iam.domain.models.user import User
-from emerald.iam.domain.models.user_status import UserStatus
-from emerald.iam.domain.models.username import Username
+from emerald.iam.domain.models.aggregates.user import User
+from emerald.iam.domain.models.value_objects.auth_provider import AuthProvider, ProviderType
+from emerald.iam.domain.models.value_objects.email_address import EmailAddress
+from emerald.iam.domain.models.value_objects.hashed_password import HashedPassword
+from emerald.iam.domain.models.value_objects.oidc_claims import OidcClaims
+from emerald.iam.domain.models.value_objects.user_status import UserStatus
+from emerald.iam.domain.models.value_objects.username import Username
 from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasher, FakeTokenService
 
 

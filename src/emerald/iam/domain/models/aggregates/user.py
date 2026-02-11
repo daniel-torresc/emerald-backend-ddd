@@ -44,18 +44,21 @@ from emerald.iam.domain.exceptions import (
     ProviderAlreadyLinkedError,
     ProviderNotLinkedError,
 )
-from emerald.iam.domain.models.admin_permission import AdminPermission, AdminPermissionType
-from emerald.iam.domain.models.auth_provider import AuthProvider, ProviderType
-from emerald.iam.domain.models.email_address import EmailAddress
-from emerald.iam.domain.models.hashed_password import HashedPassword
-from emerald.iam.domain.models.system_role import SystemRole
-from emerald.iam.domain.models.user_preferences import UserPreferences
-from emerald.iam.domain.models.user_status import UserStatus
-from emerald.iam.domain.models.username import Username
-from emerald.shared_kernel.domain.models.aggregate_root import AggregateRoot
-from emerald.shared_kernel.domain.models.auditable import AuditableMixin
-from emerald.shared_kernel.domain.models.retention_period import RetentionPeriod
-from emerald.shared_kernel.domain.models.soft_deletable import SoftDeletableMixin
+from emerald.iam.domain.models.value_objects.admin_permission import (
+    AdminPermission,
+    AdminPermissionType,
+)
+from emerald.iam.domain.models.value_objects.auth_provider import AuthProvider, ProviderType
+from emerald.iam.domain.models.value_objects.email_address import EmailAddress
+from emerald.iam.domain.models.value_objects.hashed_password import HashedPassword
+from emerald.iam.domain.models.value_objects.system_role import SystemRole
+from emerald.iam.domain.models.value_objects.user_preferences import UserPreferences
+from emerald.iam.domain.models.value_objects.user_status import UserStatus
+from emerald.iam.domain.models.value_objects.username import Username
+from emerald.shared_kernel.domain.models.base.aggregate_root import AggregateRoot
+from emerald.shared_kernel.domain.models.base.auditable import AuditableMixin
+from emerald.shared_kernel.domain.models.base.soft_deletable import SoftDeletableMixin
+from emerald.shared_kernel.domain.models.value_objects.retention_period import RetentionPeriod
 
 _MAX_PASSWORD_HISTORY = 5
 

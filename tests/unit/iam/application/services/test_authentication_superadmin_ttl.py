@@ -5,14 +5,17 @@ from typing import Any
 from emerald.iam.application.dtos.commands import LoginUser, RefreshAccessToken
 from emerald.iam.application.services.authentication import AuthenticationService
 from emerald.iam.domain.constants import REFRESH_TOKEN_TTL_SUPERADMIN
-from emerald.iam.domain.models.admin_permission import AdminPermission, AdminPermissionType
-from emerald.iam.domain.models.email_address import EmailAddress
-from emerald.iam.domain.models.hashed_password import HashedPassword
-from emerald.iam.domain.models.portal_context import PortalContext
-from emerald.iam.domain.models.system_role import SystemRole
-from emerald.iam.domain.models.user import User
-from emerald.iam.domain.models.user_status import UserStatus
-from emerald.iam.domain.models.username import Username
+from emerald.iam.domain.models.aggregates.user import User
+from emerald.iam.domain.models.value_objects.admin_permission import (
+    AdminPermission,
+    AdminPermissionType,
+)
+from emerald.iam.domain.models.value_objects.email_address import EmailAddress
+from emerald.iam.domain.models.value_objects.hashed_password import HashedPassword
+from emerald.iam.domain.models.value_objects.portal_context import PortalContext
+from emerald.iam.domain.models.value_objects.system_role import SystemRole
+from emerald.iam.domain.models.value_objects.user_status import UserStatus
+from emerald.iam.domain.models.value_objects.username import Username
 from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasher, FakeTokenService
 
 MASTER_DATA = AdminPermission(AdminPermissionType.MASTER_DATA_ADMIN)

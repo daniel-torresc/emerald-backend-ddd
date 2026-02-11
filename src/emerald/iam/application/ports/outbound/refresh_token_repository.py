@@ -4,7 +4,7 @@ import uuid
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
-    from emerald.iam.domain.models.refresh_token import RefreshToken
+    from emerald.iam.domain.models.entities.refresh_token import RefreshToken
 
 
 class RefreshTokenRepository(Protocol):

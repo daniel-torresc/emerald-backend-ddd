@@ -4,7 +4,7 @@ import pytest
 
 from emerald.shared_kernel.domain.exceptions import AlreadyDeletedError, NotDeletedError
 from emerald.shared_kernel.domain.models import RetentionPeriod, RetentionUnit
-from emerald.shared_kernel.domain.models.soft_deletable import SoftDeletableMixin
+from emerald.shared_kernel.domain.models.base.soft_deletable import SoftDeletableMixin
 
 
 class _SoftDeletableEntity(SoftDeletableMixin):

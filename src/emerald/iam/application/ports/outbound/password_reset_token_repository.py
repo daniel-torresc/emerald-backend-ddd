@@ -4,7 +4,7 @@ import uuid
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
-    from emerald.iam.domain.models.password_reset_token import PasswordResetToken
+    from emerald.iam.domain.models.entities.password_reset_token import PasswordResetToken
 
 
 class PasswordResetTokenRepository(Protocol):

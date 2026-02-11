@@ -6,15 +6,15 @@ from datetime import UTC, datetime
 
 from emerald.iam.application.ports.outbound.unit_of_work import AbstractIamUnitOfWork
 from emerald.iam.domain.exceptions import OAuthCodeExchangeError
-from emerald.iam.domain.models.access_token_claims import AccessTokenClaims
-from emerald.iam.domain.models.auth_provider import ProviderType
-from emerald.iam.domain.models.email_address import EmailAddress
-from emerald.iam.domain.models.oidc_claims import OidcClaims
-from emerald.iam.domain.models.password_reset_token import PasswordResetToken
-from emerald.iam.domain.models.refresh_token import RefreshToken
-from emerald.iam.domain.models.system_role import SystemRole
-from emerald.iam.domain.models.user import User
-from emerald.iam.domain.models.username import Username
+from emerald.iam.domain.models.aggregates.user import User
+from emerald.iam.domain.models.entities.password_reset_token import PasswordResetToken
+from emerald.iam.domain.models.entities.refresh_token import RefreshToken
+from emerald.iam.domain.models.value_objects.access_token_claims import AccessTokenClaims
+from emerald.iam.domain.models.value_objects.auth_provider import ProviderType
+from emerald.iam.domain.models.value_objects.email_address import EmailAddress
+from emerald.iam.domain.models.value_objects.oidc_claims import OidcClaims
+from emerald.iam.domain.models.value_objects.system_role import SystemRole
+from emerald.iam.domain.models.value_objects.username import Username
 from emerald.shared_kernel.domain.events.domain_event import DomainEvent
 
 

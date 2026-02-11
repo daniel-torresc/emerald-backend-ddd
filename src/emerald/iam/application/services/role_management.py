@@ -10,7 +10,10 @@ from emerald.iam.application.dtos.commands import (
 )
 from emerald.iam.application.ports.outbound.unit_of_work import AbstractIamUnitOfWork
 from emerald.iam.domain.exceptions import InsufficientPermissionsError
-from emerald.iam.domain.models.admin_permission import AdminPermission, AdminPermissionType
+from emerald.iam.domain.models.value_objects.admin_permission import (
+    AdminPermission,
+    AdminPermissionType,
+)
 from emerald.shared_kernel.domain.exceptions import NotFoundError
 
 
