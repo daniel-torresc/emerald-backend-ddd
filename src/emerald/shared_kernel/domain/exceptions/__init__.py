@@ -11,17 +11,31 @@ from emerald.shared_kernel.domain.exceptions.base import (
     NotFoundError,
     ValidationError,
 )
+from emerald.shared_kernel.domain.exceptions.lifecycle_exceptions import (
+    BelowPlatformDefaultError,
+    BelowRegulatoryMinimumError,
+    ConfirmationRequiredError,
+    CoolingOffActiveError,
+    HardDeleteNotScheduledError,
+    ParentDeletedError,
+)
 
 __all__ = [
     "AlreadyDeletedError",
     "AlreadyExistsError",
     "AuthorizationError",
+    "BelowPlatformDefaultError",
+    "BelowRegulatoryMinimumError",
     "ConflictError",
+    "ConfirmationRequiredError",
+    "CoolingOffActiveError",
     "CurrencyMismatchError",
     "DomainError",
+    "HardDeleteNotScheduledError",
     "InvariantViolationError",
     "InvalidValueError",
     "NotDeletedError",
     "NotFoundError",
+    "ParentDeletedError",
     "ValidationError",
 ]
