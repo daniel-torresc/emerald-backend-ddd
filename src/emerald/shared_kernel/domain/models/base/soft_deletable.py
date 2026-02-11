@@ -1,5 +1,6 @@
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 from emerald.shared_kernel.domain.exceptions import AlreadyDeletedError, NotDeletedError
 from emerald.shared_kernel.domain.models.value_objects.retention_period import RetentionPeriod
@@ -8,7 +9,7 @@ from emerald.shared_kernel.domain.models.value_objects.retention_period import R
 class SoftDeletableMixin:
     """Mixin providing soft-delete lifecycle with retention scheduling."""
 
-    def __init__(self, **kwargs: object) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         self.deleted_at: datetime | None = None
         self.deleted_by: uuid.UUID | None = None
         self.deletion_reason: str | None = None
