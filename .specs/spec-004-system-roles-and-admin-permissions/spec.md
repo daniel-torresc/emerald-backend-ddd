@@ -1,7 +1,7 @@
 # Spec 004: System Roles & Admin Permissions
 
 **Version:** 1.0
-**Status:** Draft
+**Status:** Implemented
 **Bounded Context:** Identity & Access Management (IAM)
 **Dependencies:** 002 (User Registration & Identity), 003 (Authentication & Sessions)
 **Blocks:** None (enabling spec — consumed by presentation layer for portal access)

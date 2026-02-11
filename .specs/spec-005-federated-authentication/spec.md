@@ -1,7 +1,7 @@
 # Spec 005: Federated Authentication
 
 **Version:** 1.0
-**Status:** Draft
+**Status:** Implemented
 **Bounded Context:** Identity & Access Management (IAM)
 **Dependencies:** 002 (User Registration & Identity), 003 (Authentication & Sessions)
 **Date:** 2026-02-09
