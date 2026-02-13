@@ -4,5 +4,8 @@ from emerald.core_finance.application.services.account_management import (
 from emerald.core_finance.application.services.account_sharing import (
     AccountSharingService,
 )
+from emerald.core_finance.application.services.transaction_management import (
+    TransactionManagementService,
+)
 
-__all__ = ["AccountManagementService", "AccountSharingService"]
+__all__ = ["AccountManagementService", "AccountSharingService", "TransactionManagementService"]
