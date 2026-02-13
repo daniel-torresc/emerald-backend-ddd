@@ -8,6 +8,7 @@ from emerald.core_finance.application.ports.outbound.unit_of_work import (
 )
 from emerald.core_finance.domain.models.aggregates.account import Account
 from emerald.core_finance.domain.models.value_objects.account_name import AccountName
+from emerald.core_finance.domain.models.value_objects.permission_level import PermissionLevel
 from emerald.shared_kernel.domain.events.domain_event import DomainEvent
 
 
@@ -49,6 +50,18 @@ class FakeAccountRepository:
             if account.created_by == user_id and account.account_name == account_name:
                 return True
         return False
+
+    def find_accessible_by_user(
+        self, user_id: uuid.UUID, include_deleted: bool = False
+    ) -> list[Account]:
+        results: list[Account] = []
+        for account in self._accounts.values():
+            if not include_deleted and account.is_deleted():
+                continue
+            if account.has_permission(user_id, PermissionLevel.VIEWER):
+                self.seen.add(account)
+                results.append(account)
+        return results
 
 
 class FakeCoreFinanceUnitOfWork(AbstractCoreFinanceUnitOfWork):

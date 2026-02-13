@@ -8,7 +8,6 @@ class AbstractCoreFinanceUnitOfWork(AbstractUnitOfWork):
     """Unit of Work for the Core Finance bounded context."""
 
     accounts: AccountRepository
-    # TODO(spec-008): Add shares: AccountShareRepository
     # TODO(spec-009): Add transactions: TransactionRepository
     # TODO(spec-011): Add cards: CardRepository
 

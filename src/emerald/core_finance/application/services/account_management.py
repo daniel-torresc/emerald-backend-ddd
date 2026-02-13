@@ -15,7 +15,7 @@ from emerald.core_finance.application.ports.outbound.unit_of_work import (
 from emerald.core_finance.domain.exceptions import (
     AccountNameAlreadyExistsError,
     AccountNotFoundError,
-    NotAccountOwnerError,
+    InsufficientPermissionError,
 )
 from emerald.core_finance.domain.models.aggregates.account import Account
 from emerald.core_finance.domain.models.value_objects.account_name import AccountName
@@ -62,17 +62,17 @@ class AccountManagementService:
             notes=cmd.notes,
         )
         self._uow.accounts.save(account)
-        # TODO(spec-008): Create OWNER AccountShare after account creation
         self._uow.commit()
         return account
 
     def rename_account(self, cmd: RenameAccount) -> None:
         """Rename an account, checking ownership and uniqueness."""
         account = self._load_account(cmd.account_id)
-        self._verify_ownership(account, cmd.requesting_user_id)
+        self._verify_owner(account, cmd.requesting_user_id)
 
         new_name = AccountName(cmd.new_name)
-        if self._uow.accounts.exists_by_name_for_user(new_name, account.created_by):
+        owner_user_id = account.get_owner().user_id
+        if self._uow.accounts.exists_by_name_for_user(new_name, owner_user_id):
             raise AccountNameAlreadyExistsError()
 
         account.update_name(new_name, cmd.requesting_user_id)
@@ -81,28 +81,28 @@ class AccountManagementService:
     def update_account_type(self, cmd: UpdateAccountType) -> None:
         """Update account type."""
         account = self._load_account(cmd.account_id)
-        self._verify_ownership(account, cmd.requesting_user_id)
+        self._verify_owner(account, cmd.requesting_user_id)
         account.update_account_type(cmd.account_type_id, cmd.requesting_user_id)
         self._uow.commit()
 
     def update_financial_institution(self, cmd: UpdateFinancialInstitution) -> None:
         """Update financial institution."""
         account = self._load_account(cmd.account_id)
-        self._verify_ownership(account, cmd.requesting_user_id)
+        self._verify_owner(account, cmd.requesting_user_id)
         account.update_financial_institution(cmd.financial_institution_id, cmd.requesting_user_id)
         self._uow.commit()
 
     def update_account_notes(self, cmd: UpdateAccountNotes) -> None:
         """Update account notes."""
         account = self._load_account(cmd.account_id)
-        self._verify_ownership(account, cmd.requesting_user_id)
+        self._verify_owner(account, cmd.requesting_user_id)
         account.update_notes(cmd.notes, cmd.requesting_user_id)
         self._uow.commit()
 
     def soft_delete_account(self, cmd: SoftDeleteAccount) -> None:
         """Soft-delete an account with retention period."""
         account = self._load_account(cmd.account_id, include_deleted=True)
-        self._verify_ownership(account, cmd.requesting_user_id)
+        self._verify_owner(account, cmd.requesting_user_id)
 
         retention = self._retention_policy_service.get_effective_retention(
             DeletableEntityType.FINANCIAL_ACCOUNT, cmd.requesting_user_id
@@ -113,7 +113,7 @@ class AccountManagementService:
     def recover_account(self, cmd: RecoverAccount) -> None:
         """Recover a soft-deleted account."""
         account = self._load_account(cmd.account_id, include_deleted=True)
-        self._verify_ownership(account, cmd.requesting_user_id)
+        self._verify_owner(account, cmd.requesting_user_id)
         account.recover()
         self._uow.commit()
 
@@ -126,13 +126,9 @@ class AccountManagementService:
             raise AccountNotFoundError(f"Account {account_id} not found")
         return account
 
-    def _verify_ownership(self, account: Account, requesting_user_id: uuid.UUID) -> None:
-        """Verify the requesting user owns the account.
-
-        TODO(spec-008): Replace with share-based permission check where different
-          operations require different permission levels (OWNER, EDITOR, VIEWER).
-        """
-        if account.created_by != requesting_user_id:
-            raise NotAccountOwnerError(
-                f"User {requesting_user_id} is not the owner of account {account.id}"
+    def _verify_owner(self, account: Account, requesting_user_id: uuid.UUID) -> None:
+        """Verify the requesting user is the account owner via share-based permission."""
+        if not account.is_owner(requesting_user_id):
+            raise InsufficientPermissionError(
+                f"User {requesting_user_id} does not have OWNER permission on account {account.id}"
             )

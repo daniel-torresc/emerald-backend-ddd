@@ -14,7 +14,7 @@ from emerald.core_finance.application.services.account_management import (
 from emerald.core_finance.domain.exceptions import (
     AccountNameAlreadyExistsError,
     AccountNotFoundError,
-    NotAccountOwnerError,
+    InsufficientPermissionError,
 )
 from emerald.core_finance.domain.models.value_objects.account_name import AccountName
 from emerald.shared_kernel.domain.services.retention_policy_service import RetentionPolicyService
@@ -68,12 +68,12 @@ class TestRenameAccount:
                 )
             )
 
-    def test_raises_not_owner(self) -> None:
+    def test_raises_insufficient_permission(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
         account = service.create_account(_make_create_cmd(owner_user_id=uid))
 
-        with pytest.raises(NotAccountOwnerError):
+        with pytest.raises(InsufficientPermissionError):
             service.rename_account(
                 RenameAccount(
                     account_id=account.id,
