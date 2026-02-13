@@ -18,5 +18,6 @@ class AccountRepository(Protocol):
 
     def exists_by_name_for_user(self, account_name: AccountName, user_id: uuid.UUID) -> bool: ...
 
-    # TODO(spec-008): Add find_accessible_by_user(user_id, include_deleted) -> list[Account]
-    #   Returns accounts where the user has any AccountShare (not just created_by).
+    def find_accessible_by_user(
+        self, user_id: uuid.UUID, include_deleted: bool = False
+    ) -> list[Account]: ...

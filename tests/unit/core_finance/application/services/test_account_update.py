@@ -15,8 +15,8 @@ from emerald.core_finance.application.services.account_management import (
 )
 from emerald.core_finance.domain.exceptions import (
     AccountNotFoundError,
+    InsufficientPermissionError,
     InvalidAccountNotesError,
-    NotAccountOwnerError,
 )
 from emerald.shared_kernel.domain.services.retention_policy_service import RetentionPolicyService
 from tests.unit.core_finance.fakes import FakeCoreFinanceUnitOfWork
@@ -74,12 +74,12 @@ class TestUpdateAccountType:
                 )
             )
 
-    def test_raises_not_owner(self) -> None:
+    def test_raises_insufficient_permission(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
         account = service.create_account(_make_create_cmd(owner_user_id=uid))
 
-        with pytest.raises(NotAccountOwnerError):
+        with pytest.raises(InsufficientPermissionError):
             service.update_account_type(
                 UpdateAccountType(
                     account_id=account.id,
@@ -118,12 +118,12 @@ class TestUpdateFinancialInstitution:
                 )
             )
 
-    def test_raises_not_owner(self) -> None:
+    def test_raises_insufficient_permission(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
         account = service.create_account(_make_create_cmd(owner_user_id=uid))
 
-        with pytest.raises(NotAccountOwnerError):
+        with pytest.raises(InsufficientPermissionError):
             service.update_financial_institution(
                 UpdateFinancialInstitution(
                     account_id=account.id,
@@ -175,12 +175,12 @@ class TestUpdateAccountNotes:
                 )
             )
 
-    def test_raises_not_owner(self) -> None:
+    def test_raises_insufficient_permission(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
         account = service.create_account(_make_create_cmd(owner_user_id=uid))
 
-        with pytest.raises(NotAccountOwnerError):
+        with pytest.raises(InsufficientPermissionError):
             service.update_account_notes(
                 UpdateAccountNotes(
                     account_id=account.id,

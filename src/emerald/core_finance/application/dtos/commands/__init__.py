@@ -7,6 +7,13 @@ from emerald.core_finance.application.dtos.commands.account_commands import (
     UpdateAccountType,
     UpdateFinancialInstitution,
 )
+from emerald.core_finance.application.dtos.commands.sharing_commands import (
+    LeaveAccountShare,
+    RevokeAccountShare,
+    ShareAccountWith,
+    TransferAccountOwnership,
+    UpdateSharePermission,
+)
 
 __all__ = [
     "CreateAccount",
@@ -16,4 +23,9 @@ __all__ = [
     "UpdateAccountNotes",
     "UpdateAccountType",
     "UpdateFinancialInstitution",
+    "LeaveAccountShare",
+    "RevokeAccountShare",
+    "ShareAccountWith",
+    "TransferAccountOwnership",
+    "UpdateSharePermission",
 ]

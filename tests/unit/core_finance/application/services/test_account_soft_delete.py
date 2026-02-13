@@ -13,7 +13,7 @@ from emerald.core_finance.application.services.account_management import (
 )
 from emerald.core_finance.domain.exceptions import (
     AccountNotFoundError,
-    NotAccountOwnerError,
+    InsufficientPermissionError,
 )
 from emerald.shared_kernel.domain.exceptions import AlreadyDeletedError
 from emerald.shared_kernel.domain.services.retention_policy_service import RetentionPolicyService
@@ -90,12 +90,12 @@ class TestSoftDeleteAccount:
                 )
             )
 
-    def test_raises_not_owner(self) -> None:
+    def test_raises_insufficient_permission(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
         account = service.create_account(_make_create_cmd(owner_user_id=uid))
 
-        with pytest.raises(NotAccountOwnerError):
+        with pytest.raises(InsufficientPermissionError):
             service.soft_delete_account(
                 SoftDeleteAccount(
                     account_id=account.id,
