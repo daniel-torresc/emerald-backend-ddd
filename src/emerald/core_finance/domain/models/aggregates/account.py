@@ -204,20 +204,6 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
             )
         )
 
-    # -- Balance calculation (stub) --------------------------------------------
-
-    def calculate_balance(self) -> Money:
-        """Return the current balance. Stub: returns opening_balance until Spec 009."""
-        # TODO(spec-009): Return opening_balance + sum(t.amount for t in transactions
-        #   where t.deleted_at IS NULL and t.parent_transaction_id IS NULL)
-        return self._opening_balance
-
-    @property
-    def transaction_count(self) -> int:
-        """Return the number of transactions. Stub: returns 0 until Spec 009."""
-        # TODO(spec-009): Return count of non-deleted transactions belonging to this account
-        return 0
-
     # -- Share management methods ----------------------------------------------
 
     def share_with(
@@ -253,7 +239,7 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
             AccountShared(
                 aggregate_id=self.id,
                 user_id=user_id,
-                permission_level=permission.value,
+                permission_level=str(permission.value),
                 granted_by=granted_by,
             )
         )
@@ -285,8 +271,8 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
             AccountShareUpdated(
                 aggregate_id=self.id,
                 user_id=user_id,
-                old_permission=old_permission.value,
-                new_permission=new_permission.value,
+                old_permission=str(old_permission.value),
+                new_permission=str(new_permission.value),
                 updated_by=updated_by,
             )
         )

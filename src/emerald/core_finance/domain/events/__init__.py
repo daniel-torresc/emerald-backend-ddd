@@ -11,6 +11,13 @@ from emerald.core_finance.domain.events.sharing_events import (
     AccountShareRevoked,
     AccountShareUpdated,
 )
+from emerald.core_finance.domain.events.transaction_events import (
+    TransactionCreated,
+    TransactionRecovered,
+    TransactionReviewed,
+    TransactionSoftDeleted,
+    TransactionUpdated,
+)
 
 __all__ = [
     "AccountCreated",
@@ -22,4 +29,9 @@ __all__ = [
     "AccountShareLeft",
     "AccountShareRevoked",
     "AccountShareUpdated",
+    "TransactionCreated",
+    "TransactionRecovered",
+    "TransactionReviewed",
+    "TransactionSoftDeleted",
+    "TransactionUpdated",
 ]

@@ -1,44 +1,68 @@
 from emerald.core_finance.application.dtos import (
     CreateAccount,
+    CreateTransaction,
     LeaveAccountShare,
     RecoverAccount,
+    RecoverTransaction,
     RenameAccount,
+    ReviewTransaction,
     RevokeAccountShare,
     ShareAccountWith,
     SoftDeleteAccount,
+    SoftDeleteTransaction,
     TransferAccountOwnership,
+    UnreviewTransaction,
     UpdateAccountNotes,
     UpdateAccountType,
     UpdateFinancialInstitution,
     UpdateSharePermission,
+    UpdateTransactionAmount,
+    UpdateTransactionComments,
+    UpdateTransactionDates,
+    UpdateTransactionDescription,
+    UpdateTransactionMerchant,
 )
 from emerald.core_finance.application.ports import (
     AbstractCoreFinanceUnitOfWork,
     AccountRepository,
+    TransactionRepository,
 )
 from emerald.core_finance.application.services import (
     AccountManagementService,
     AccountSharingService,
+    TransactionManagementService,
 )
 
 __all__ = [
     # Commands
     "CreateAccount",
+    "CreateTransaction",
     "LeaveAccountShare",
     "RecoverAccount",
+    "RecoverTransaction",
     "RenameAccount",
+    "ReviewTransaction",
     "RevokeAccountShare",
     "ShareAccountWith",
     "SoftDeleteAccount",
+    "SoftDeleteTransaction",
     "TransferAccountOwnership",
+    "UnreviewTransaction",
     "UpdateAccountNotes",
     "UpdateAccountType",
     "UpdateFinancialInstitution",
     "UpdateSharePermission",
+    "UpdateTransactionAmount",
+    "UpdateTransactionComments",
+    "UpdateTransactionDates",
+    "UpdateTransactionDescription",
+    "UpdateTransactionMerchant",
     # Ports
     "AbstractCoreFinanceUnitOfWork",
     "AccountRepository",
+    "TransactionRepository",
     # Services
     "AccountManagementService",
     "AccountSharingService",
+    "TransactionManagementService",
 ]

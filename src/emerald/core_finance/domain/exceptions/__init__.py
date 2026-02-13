@@ -20,6 +20,15 @@ from emerald.core_finance.domain.exceptions.sharing_exceptions import (
     ShareAlreadyRevokedError,
     ShareNotFoundError,
 )
+from emerald.core_finance.domain.exceptions.transaction_exceptions import (
+    DuplicateExternalIdError,
+    EmptyDescriptionError,
+    InvalidCommentsError,
+    InvalidMerchantError,
+    ParentAccountDeletedError,
+    TransactionDeletedError,
+    TransactionNotFoundError,
+)
 
 __all__ = [
     "AccountNameAlreadyExistsError",
@@ -40,4 +49,11 @@ __all__ = [
     "MaxSharesReachedError",
     "ShareAlreadyRevokedError",
     "ShareNotFoundError",
+    "DuplicateExternalIdError",
+    "EmptyDescriptionError",
+    "InvalidCommentsError",
+    "InvalidMerchantError",
+    "ParentAccountDeletedError",
+    "TransactionDeletedError",
+    "TransactionNotFoundError",
 ]

@@ -1,0 +1,151 @@
+from __future__ import annotations
+
+import dataclasses
+import uuid
+from decimal import Decimal
+
+import pytest
+
+from emerald.core_finance.domain.events.transaction_events import (
+    TransactionCreated,
+    TransactionRecovered,
+    TransactionReviewed,
+    TransactionSoftDeleted,
+    TransactionUpdated,
+)
+from emerald.shared_kernel.domain.events.domain_event import DomainEvent
+
+
+class TestTransactionCreated:
+    def test_is_domain_event(self) -> None:
+        assert issubclass(TransactionCreated, DomainEvent)
+
+    def test_aggregate_type(self) -> None:
+        assert TransactionCreated.aggregate_type == "transaction"
+
+    def test_fields(self) -> None:
+        tid = uuid.uuid4()
+        aid = uuid.uuid4()
+        uid = uuid.uuid4()
+        event = TransactionCreated(
+            aggregate_id=tid,
+            account_id=aid,
+            amount=Decimal("50.00"),
+            currency_code="USD",
+            import_source_type="MANUAL",
+            created_by=uid,
+        )
+        assert event.aggregate_id == tid
+        assert event.account_id == aid
+        assert event.amount == Decimal("50.00")
+        assert event.currency_code == "USD"
+        assert event.import_source_type == "MANUAL"
+        assert event.created_by == uid
+
+    def test_frozen(self) -> None:
+        event = TransactionCreated(aggregate_id=uuid.uuid4())
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            event.account_id = uuid.uuid4()  # type: ignore[misc]
+
+
+class TestTransactionUpdated:
+    def test_is_domain_event(self) -> None:
+        assert issubclass(TransactionUpdated, DomainEvent)
+
+    def test_aggregate_type(self) -> None:
+        assert TransactionUpdated.aggregate_type == "transaction"
+
+    def test_fields(self) -> None:
+        tid = uuid.uuid4()
+        aid = uuid.uuid4()
+        uid = uuid.uuid4()
+        event = TransactionUpdated(
+            aggregate_id=tid,
+            account_id=aid,
+            updated_by=uid,
+            changed_fields=frozenset({"merchant", "comments"}),
+        )
+        assert event.aggregate_id == tid
+        assert event.account_id == aid
+        assert event.updated_by == uid
+        assert event.changed_fields == frozenset({"merchant", "comments"})
+
+    def test_frozen(self) -> None:
+        event = TransactionUpdated(aggregate_id=uuid.uuid4())
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            event.updated_by = uuid.uuid4()  # type: ignore[misc]
+
+
+class TestTransactionReviewed:
+    def test_is_domain_event(self) -> None:
+        assert issubclass(TransactionReviewed, DomainEvent)
+
+    def test_aggregate_type(self) -> None:
+        assert TransactionReviewed.aggregate_type == "transaction"
+
+    def test_fields(self) -> None:
+        tid = uuid.uuid4()
+        aid = uuid.uuid4()
+        uid = uuid.uuid4()
+        event = TransactionReviewed(
+            aggregate_id=tid,
+            account_id=aid,
+            reviewed_by=uid,
+        )
+        assert event.aggregate_id == tid
+        assert event.account_id == aid
+        assert event.reviewed_by == uid
+
+    def test_frozen(self) -> None:
+        event = TransactionReviewed(aggregate_id=uuid.uuid4())
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            event.reviewed_by = uuid.uuid4()  # type: ignore[misc]
+
+
+class TestTransactionSoftDeleted:
+    def test_is_domain_event(self) -> None:
+        assert issubclass(TransactionSoftDeleted, DomainEvent)
+
+    def test_aggregate_type(self) -> None:
+        assert TransactionSoftDeleted.aggregate_type == "transaction"
+
+    def test_fields(self) -> None:
+        tid = uuid.uuid4()
+        aid = uuid.uuid4()
+        uid = uuid.uuid4()
+        event = TransactionSoftDeleted(
+            aggregate_id=tid,
+            account_id=aid,
+            deleted_by=uid,
+        )
+        assert event.aggregate_id == tid
+        assert event.account_id == aid
+        assert event.deleted_by == uid
+
+    def test_frozen(self) -> None:
+        event = TransactionSoftDeleted(aggregate_id=uuid.uuid4())
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            event.deleted_by = uuid.uuid4()  # type: ignore[misc]
+
+
+class TestTransactionRecovered:
+    def test_is_domain_event(self) -> None:
+        assert issubclass(TransactionRecovered, DomainEvent)
+
+    def test_aggregate_type(self) -> None:
+        assert TransactionRecovered.aggregate_type == "transaction"
+
+    def test_fields(self) -> None:
+        tid = uuid.uuid4()
+        aid = uuid.uuid4()
+        event = TransactionRecovered(
+            aggregate_id=tid,
+            account_id=aid,
+        )
+        assert event.aggregate_id == tid
+        assert event.account_id == aid
+
+    def test_frozen(self) -> None:
+        event = TransactionRecovered(aggregate_id=uuid.uuid4())
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            event.account_id = uuid.uuid4()  # type: ignore[misc]
