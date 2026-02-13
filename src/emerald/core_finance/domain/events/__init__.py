@@ -16,6 +16,8 @@ from emerald.core_finance.domain.events.transaction_events import (
     TransactionRecovered,
     TransactionReviewed,
     TransactionSoftDeleted,
+    TransactionSplit,
+    TransactionSplitsJoined,
     TransactionUpdated,
 )
 
@@ -33,5 +35,7 @@ __all__ = [
     "TransactionRecovered",
     "TransactionReviewed",
     "TransactionSoftDeleted",
+    "TransactionSplit",
+    "TransactionSplitsJoined",
     "TransactionUpdated",
 ]

@@ -1,6 +1,7 @@
 from emerald.core_finance.application.dtos import (
     CreateAccount,
     CreateTransaction,
+    JoinTransactionSplits,
     LeaveAccountShare,
     RecoverAccount,
     RecoverTransaction,
@@ -10,6 +11,7 @@ from emerald.core_finance.application.dtos import (
     ShareAccountWith,
     SoftDeleteAccount,
     SoftDeleteTransaction,
+    SplitTransaction,
     TransferAccountOwnership,
     UnreviewTransaction,
     UpdateAccountNotes,
@@ -37,6 +39,7 @@ __all__ = [
     # Commands
     "CreateAccount",
     "CreateTransaction",
+    "JoinTransactionSplits",
     "LeaveAccountShare",
     "RecoverAccount",
     "RecoverTransaction",
@@ -46,6 +49,7 @@ __all__ = [
     "ShareAccountWith",
     "SoftDeleteAccount",
     "SoftDeleteTransaction",
+    "SplitTransaction",
     "TransferAccountOwnership",
     "UnreviewTransaction",
     "UpdateAccountNotes",

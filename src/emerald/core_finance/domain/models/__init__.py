@@ -7,6 +7,7 @@ from emerald.core_finance.domain.models.value_objects import (
     ImportSourceType,
     PermissionLevel,
     ReviewStatus,
+    SplitRequest,
     UserReference,
 )
 
@@ -19,6 +20,7 @@ __all__ = [
     "ImportSourceType",
     "PermissionLevel",
     "ReviewStatus",
+    "SplitRequest",
     "Transaction",
     "UserReference",
 ]

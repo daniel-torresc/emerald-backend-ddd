@@ -3,9 +3,11 @@ from datetime import UTC, datetime
 
 from emerald.core_finance.application.dtos.commands.transaction_commands import (
     CreateTransaction,
+    JoinTransactionSplits,
     RecoverTransaction,
     ReviewTransaction,
     SoftDeleteTransaction,
+    SplitTransaction,
     UnreviewTransaction,
     UpdateTransactionAmount,
     UpdateTransactionComments,
@@ -25,6 +27,8 @@ from emerald.core_finance.domain.exceptions.sharing_exceptions import (
 from emerald.core_finance.domain.exceptions.transaction_exceptions import (
     DuplicateExternalIdError,
     ParentAccountDeletedError,
+    ParentDeletedError,
+    SplitAmountMismatchError,
     TransactionDeletedError,
     TransactionNotFoundError,
 )
@@ -166,7 +170,7 @@ class TransactionManagementService:
             self._uow.commit()
 
     def update_amount(self, cmd: UpdateTransactionAmount) -> None:
-        """Update a transaction's amount."""
+        """Update a transaction's amount. Auto-joins split parents; validates sum for children."""
         with self._uow:
             account = self._load_account(cmd.account_id)
             self._verify_permission(account, cmd.requesting_user_id, PermissionLevel.EDITOR)
@@ -181,8 +185,63 @@ class TransactionManagementService:
                     f"does not match account currency {account.currency.code}"
                 )
 
+            # Auto-join if updating a split parent
+            if transaction.is_split_parent:
+                children = self._uow.transactions.find_children(transaction.id)
+                transaction.join_splits(child_count=len(children))
+                self._uow.transactions.hard_delete_children(transaction.id)
+
+            # Validate sum for split children
+            if transaction.is_split_child():
+                parent = self._uow.transactions.find_by_id(
+                    transaction.parent_transaction_id  # type: ignore[arg-type]
+                )
+                if parent is not None:
+                    siblings = self._uow.transactions.find_children(parent.id)
+                    new_sum = Money.zero(amount.currency)
+                    for sibling in siblings:
+                        if sibling.id == transaction.id:
+                            new_sum = new_sum + amount
+                        else:
+                            new_sum = new_sum + sibling.amount
+                    if new_sum != parent.amount:
+                        raise SplitAmountMismatchError(
+                            expected=str(parent.amount),
+                            actual=str(new_sum),
+                        )
+
             transaction.update_amount(amount, cmd.requesting_user_id)
             self._uow.transactions.save(transaction)
+            self._uow.commit()
+
+    # -- Splitting -------------------------------------------------------------
+
+    def split_transaction(self, cmd: SplitTransaction) -> list[Transaction]:
+        """Split a transaction into children."""
+        with self._uow:
+            account = self._load_account(cmd.account_id)
+            self._verify_permission(account, cmd.requesting_user_id, PermissionLevel.EDITOR)
+            parent = self._load_transaction(cmd.transaction_id)
+            self._verify_not_deleted(parent)
+
+            children = parent.split(list(cmd.splits), cmd.requesting_user_id)
+            self._uow.transactions.save(parent)
+            self._uow.transactions.save_many(children)
+            self._uow.commit()
+            return children
+
+    def join_transaction_splits(self, cmd: JoinTransactionSplits) -> None:
+        """Join (undo) a transaction split by hard-deleting children."""
+        with self._uow:
+            account = self._load_account(cmd.account_id)
+            self._verify_permission(account, cmd.requesting_user_id, PermissionLevel.EDITOR)
+            parent = self._load_transaction(cmd.transaction_id)
+            self._verify_not_deleted(parent)
+
+            children = self._uow.transactions.find_children(cmd.transaction_id)
+            parent.join_splits(child_count=len(children))
+            self._uow.transactions.hard_delete_children(cmd.transaction_id)
+            self._uow.transactions.save(parent)
             self._uow.commit()
 
     # -- Review ----------------------------------------------------------------
@@ -212,7 +271,7 @@ class TransactionManagementService:
     # -- Lifecycle -------------------------------------------------------------
 
     def soft_delete_transaction(self, cmd: SoftDeleteTransaction) -> None:
-        """Soft-delete a transaction."""
+        """Soft-delete a transaction. Cascades to children if split parent."""
         with self._uow:
             account = self._load_account(cmd.account_id)
             self._verify_permission(account, cmd.requesting_user_id, PermissionLevel.EDITOR)
@@ -220,18 +279,49 @@ class TransactionManagementService:
             retention = self._retention_policy_service.get_effective_retention(
                 DeletableEntityType.TRANSACTION, cmd.requesting_user_id
             )
+
+            # Cascade soft-delete to children if split parent
+            if transaction.is_split_parent:
+                children = self._uow.transactions.find_children(transaction.id)
+                for child in children:
+                    child.soft_delete(cmd.requesting_user_id, retention, cmd.reason)
+                    self._uow.transactions.save(child)
+
             transaction.soft_delete(cmd.requesting_user_id, retention, cmd.reason)
             self._uow.transactions.save(transaction)
             self._uow.commit()
 
     def recover_transaction(self, cmd: RecoverTransaction) -> None:
-        """Recover a soft-deleted transaction."""
+        """Recover a soft-deleted transaction.
+
+        Validates parent for children, cascades for parents.
+        """
         with self._uow:
             account = self._load_account(cmd.account_id)
             self._verify_permission(account, cmd.requesting_user_id, PermissionLevel.OWNER)
             if account.is_deleted():
                 raise ParentAccountDeletedError()
             transaction = self._load_transaction(cmd.transaction_id, include_deleted=True)
+
+            # If recovering a split child, verify parent is not deleted
+            if transaction.is_split_child():
+                parent = self._uow.transactions.find_by_id(
+                    transaction.parent_transaction_id,  # type: ignore[arg-type]
+                    include_deleted=True,
+                )
+                if parent is not None and parent.is_deleted():
+                    raise ParentDeletedError()
+
+            # If recovering a split parent, cascade to deleted children
+            if transaction.is_split_parent:
+                children = self._uow.transactions.find_children(
+                    transaction.id, include_deleted=True
+                )
+                for child in children:
+                    if child.is_deleted():
+                        child.recover()
+                        self._uow.transactions.save(child)
+
             transaction.recover()
             self._uow.transactions.save(transaction)
             self._uow.commit()

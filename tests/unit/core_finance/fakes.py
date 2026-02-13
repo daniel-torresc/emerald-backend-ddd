@@ -158,10 +158,11 @@ class FakeTransactionRepository:
         matching = [
             t
             for t in self._transactions.values()
-            if t.account_id == account_id and not t.is_deleted()
+            if t.account_id == account_id
+            and not t.is_deleted()
+            and not (exclude_split_parents and t.is_split_parent)
         ]
         if not matching:
-            # Need a currency to construct Money — use first matching or default
             from emerald.shared_kernel.domain.models.value_objects.currency import Currency
 
             return Money(Decimal("0"), Currency.USD)
@@ -170,6 +171,28 @@ class FakeTransactionRepository:
         for txn in matching:
             total += txn.amount.amount
         return Money(total, currency)
+
+    def find_children(
+        self,
+        parent_transaction_id: uuid.UUID,
+        include_deleted: bool = False,
+    ) -> list[Transaction]:
+        return [
+            t
+            for t in self._transactions.values()
+            if t.parent_transaction_id == parent_transaction_id
+            and (include_deleted or not t.is_deleted())
+        ]
+
+    def hard_delete_children(self, parent_transaction_id: uuid.UUID) -> int:
+        to_remove = [
+            tid
+            for tid, t in self._transactions.items()
+            if t.parent_transaction_id == parent_transaction_id
+        ]
+        for tid in to_remove:
+            del self._transactions[tid]
+        return len(to_remove)
 
     @staticmethod
     def _paginate(

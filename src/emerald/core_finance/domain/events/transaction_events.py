@@ -52,3 +52,24 @@ class TransactionRecovered(DomainEvent):
 
     account_id: uuid.UUID = uuid.UUID(int=0)
     aggregate_type: ClassVar[str] = "transaction"
+
+
+@dataclass(frozen=True)
+class TransactionSplit(DomainEvent):
+    """Emitted when a transaction is split into children."""
+
+    parent_transaction_id: uuid.UUID = uuid.UUID(int=0)
+    account_id: uuid.UUID = uuid.UUID(int=0)
+    child_count: int = 0
+    child_ids: tuple[uuid.UUID, ...] = ()
+    aggregate_type: ClassVar[str] = "transaction"
+
+
+@dataclass(frozen=True)
+class TransactionSplitsJoined(DomainEvent):
+    """Emitted when split children are joined back into the parent."""
+
+    parent_transaction_id: uuid.UUID = uuid.UUID(int=0)
+    account_id: uuid.UUID = uuid.UUID(int=0)
+    removed_child_count: int = 0
+    aggregate_type: ClassVar[str] = "transaction"

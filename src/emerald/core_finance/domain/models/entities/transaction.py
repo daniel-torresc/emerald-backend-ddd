@@ -8,21 +8,33 @@ from emerald.core_finance.domain.constants import (
     MAX_COMMENTS_LENGTH,
     MAX_MERCHANT_LENGTH,
     MAX_ORIGINAL_DESCRIPTION_LENGTH,
+    MAX_SPLITS_PER_TRANSACTION,
     MAX_USER_DESCRIPTION_LENGTH,
+    MIN_SPLITS_PER_TRANSACTION,
 )
 from emerald.core_finance.domain.events.transaction_events import (
     TransactionRecovered,
     TransactionReviewed,
     TransactionSoftDeleted,
+    TransactionSplit,
+    TransactionSplitsJoined,
     TransactionUpdated,
 )
 from emerald.core_finance.domain.exceptions.transaction_exceptions import (
+    AlreadySplitError,
+    CannotSplitChildError,
     EmptyDescriptionError,
     InvalidCommentsError,
     InvalidMerchantError,
+    MaxSplitsExceededError,
+    MinimumSplitsRequiredError,
+    NotSplitParentError,
+    SplitAmountMismatchError,
+    TransactionDeletedError,
 )
 from emerald.core_finance.domain.models.value_objects.import_source import ImportSource
 from emerald.core_finance.domain.models.value_objects.review_status import ReviewStatus
+from emerald.core_finance.domain.models.value_objects.split_request import SplitRequest
 from emerald.shared_kernel.domain.events.domain_event import DomainEvent
 from emerald.shared_kernel.domain.models.base.auditable import AuditableMixin
 from emerald.shared_kernel.domain.models.base.entity import Entity
@@ -53,6 +65,7 @@ class Transaction(SoftDeletableMixin, AuditableMixin, TimestampedMixin, Entity):
         card_id: uuid.UUID | None = None,
         parent_transaction_id: uuid.UUID | None = None,
         external_id: str | None = None,
+        is_split_parent: bool = False,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -69,6 +82,7 @@ class Transaction(SoftDeletableMixin, AuditableMixin, TimestampedMixin, Entity):
         self.card_id = card_id
         self._parent_transaction_id = parent_transaction_id
         self._external_id = external_id
+        self._is_split_parent = is_split_parent
         self._events: list[DomainEvent] = []
 
     # -- Immutable properties --------------------------------------------------
@@ -305,15 +319,104 @@ class Transaction(SoftDeletableMixin, AuditableMixin, TimestampedMixin, Entity):
             )
         )
 
-    # -- Stub methods (Spec 010) -----------------------------------------------
+    # -- Split methods (Spec 010) -----------------------------------------------
 
+    @property
     def is_split_parent(self) -> bool:
-        """Stub: returns False until Spec 010 implements splitting."""
-        return False
+        """Whether this transaction has been split into children."""
+        return self._is_split_parent
 
     def is_split_child(self) -> bool:
         """Whether this transaction is a split child."""
         return self._parent_transaction_id is not None
+
+    def split(self, splits: list[SplitRequest], split_by: uuid.UUID) -> list[Transaction]:
+        """Split this transaction into child transactions.
+
+        Validates all invariants, creates children, and marks self as split parent.
+        Returns the list of newly created child transactions.
+        """
+        if self.is_deleted():
+            raise TransactionDeletedError()
+        if self.is_split_child():
+            raise CannotSplitChildError()
+        if self._is_split_parent:
+            raise AlreadySplitError()
+        if len(splits) < MIN_SPLITS_PER_TRANSACTION:
+            raise MinimumSplitsRequiredError()
+        if len(splits) > MAX_SPLITS_PER_TRANSACTION:
+            raise MaxSplitsExceededError()
+
+        # Validate currency and sum
+        from emerald.shared_kernel.domain.exceptions import CurrencyMismatchError
+
+        total = Money.zero(self.amount.currency)
+        for sr in splits:
+            if sr.amount.currency != self.amount.currency:
+                raise CurrencyMismatchError(
+                    f"Split currency {sr.amount.currency.code} "
+                    f"does not match parent currency {self.amount.currency.code}"
+                )
+            total = total + sr.amount
+        if total != self.amount:
+            raise SplitAmountMismatchError(expected=str(self.amount), actual=str(total))
+
+        # Create children
+        children: list[Transaction] = []
+        child_value_date: date | None = (
+            self.value_date if isinstance(self.value_date, date) else None
+        )
+        for sr in splits:
+            child = Transaction.create(
+                account_id=self._account_id,
+                transaction_date=self.transaction_date,
+                amount=sr.amount,
+                original_description=sr.description,
+                created_by=split_by,
+                import_source=self._import_source,
+                value_date=child_value_date,
+                merchant=sr.merchant,
+                comments=sr.comments,
+                external_id=None,
+                parent_transaction_id=self.id,
+                card_id=self.card_id,
+            )
+            child.review_status = ReviewStatus.REVIEWED
+            children.append(child)
+
+        self._is_split_parent = True
+        self._touch()
+        self._register_event(
+            TransactionSplit(
+                aggregate_id=self.id,
+                parent_transaction_id=self.id,
+                account_id=self._account_id,
+                child_count=len(children),
+                child_ids=tuple(c.id for c in children),
+            )
+        )
+        return children
+
+    def join_splits(self, child_count: int) -> None:
+        """Undo a split — mark this transaction as no longer split.
+
+        The service is responsible for hard-deleting the children.
+        """
+        if self.is_deleted():
+            raise TransactionDeletedError()
+        if not self._is_split_parent:
+            raise NotSplitParentError()
+
+        self._is_split_parent = False
+        self._touch()
+        self._register_event(
+            TransactionSplitsJoined(
+                aggregate_id=self.id,
+                parent_transaction_id=self.id,
+                account_id=self._account_id,
+                removed_child_count=child_count,
+            )
+        )
 
     # -- Event collection ------------------------------------------------------
 

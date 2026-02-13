@@ -54,3 +54,11 @@ class TransactionRepository(Protocol):
         account_id: uuid.UUID,
         exclude_split_parents: bool = True,
     ) -> Money: ...
+
+    def find_children(
+        self,
+        parent_transaction_id: uuid.UUID,
+        include_deleted: bool = False,
+    ) -> list[Transaction]: ...
+
+    def hard_delete_children(self, parent_transaction_id: uuid.UUID) -> int: ...
