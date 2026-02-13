@@ -8,6 +8,11 @@ from emerald.core_finance.domain.events import (
     AccountShareUpdated,
     AccountSoftDeleted,
     AccountUpdated,
+    TransactionCreated,
+    TransactionRecovered,
+    TransactionReviewed,
+    TransactionSoftDeleted,
+    TransactionUpdated,
 )
 from emerald.core_finance.domain.exceptions import (
     AccountNameAlreadyExistsError,
@@ -20,23 +25,44 @@ from emerald.core_finance.domain.exceptions import (
     CannotModifyOwnerShareError,
     CannotRevokeOwnerError,
     CannotShareWithSelfError,
+    DuplicateExternalIdError,
+    EmptyDescriptionError,
     InsufficientPermissionError,
     InvalidAccountNameError,
     InvalidAccountNotesError,
+    InvalidCommentsError,
     InvalidIBANError,
+    InvalidMerchantError,
     InvalidUserReferenceError,
     MaxSharesReachedError,
+    ParentAccountDeletedError,
     ShareAlreadyRevokedError,
     ShareNotFoundError,
+    TransactionDeletedError,
+    TransactionNotFoundError,
 )
-from emerald.core_finance.domain.models import IBAN, Account, AccountName, UserReference
+from emerald.core_finance.domain.models import (
+    IBAN,
+    Account,
+    AccountName,
+    ImportSource,
+    ImportSourceType,
+    ReviewStatus,
+    Transaction,
+    UserReference,
+)
 
 __all__ = [
     # Aggregates
     "Account",
+    # Entities
+    "Transaction",
     # Value Objects
     "AccountName",
     "IBAN",
+    "ImportSource",
+    "ImportSourceType",
+    "ReviewStatus",
     "UserReference",
     # Events
     "AccountCreated",
@@ -48,6 +74,11 @@ __all__ = [
     "AccountShareUpdated",
     "AccountSoftDeleted",
     "AccountUpdated",
+    "TransactionCreated",
+    "TransactionRecovered",
+    "TransactionReviewed",
+    "TransactionSoftDeleted",
+    "TransactionUpdated",
     # Exceptions
     "AccountNameAlreadyExistsError",
     "AccountNotActiveError",
@@ -59,12 +90,19 @@ __all__ = [
     "CannotModifyOwnerShareError",
     "CannotRevokeOwnerError",
     "CannotShareWithSelfError",
+    "DuplicateExternalIdError",
+    "EmptyDescriptionError",
     "InsufficientPermissionError",
     "InvalidAccountNameError",
     "InvalidAccountNotesError",
+    "InvalidCommentsError",
     "InvalidIBANError",
+    "InvalidMerchantError",
     "InvalidUserReferenceError",
     "MaxSharesReachedError",
+    "ParentAccountDeletedError",
     "ShareAlreadyRevokedError",
     "ShareNotFoundError",
+    "TransactionDeletedError",
+    "TransactionNotFoundError",
 ]
