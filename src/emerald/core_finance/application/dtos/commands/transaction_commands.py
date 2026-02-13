@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 
+from emerald.core_finance.domain.models.value_objects.split_request import SplitRequest
 from emerald.shared_kernel.application.dtos.commands import Command
 
 
@@ -111,3 +112,22 @@ class RecoverTransaction(Command):
     account_id: uuid.UUID = uuid.UUID(int=0)
     requesting_user_id: uuid.UUID = uuid.UUID(int=0)
     transaction_id: uuid.UUID = uuid.UUID(int=0)
+
+
+@dataclass(frozen=True)
+class SplitTransaction(Command):
+    """Command to split a transaction into children."""
+
+    account_id: uuid.UUID = uuid.UUID(int=0)
+    transaction_id: uuid.UUID = uuid.UUID(int=0)
+    splits: tuple[SplitRequest, ...] = ()
+    requesting_user_id: uuid.UUID = uuid.UUID(int=0)
+
+
+@dataclass(frozen=True)
+class JoinTransactionSplits(Command):
+    """Command to join (undo) a transaction split."""
+
+    account_id: uuid.UUID = uuid.UUID(int=0)
+    transaction_id: uuid.UUID = uuid.UUID(int=0)
+    requesting_user_id: uuid.UUID = uuid.UUID(int=0)

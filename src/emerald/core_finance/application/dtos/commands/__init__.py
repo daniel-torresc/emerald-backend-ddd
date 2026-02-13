@@ -16,9 +16,11 @@ from emerald.core_finance.application.dtos.commands.sharing_commands import (
 )
 from emerald.core_finance.application.dtos.commands.transaction_commands import (
     CreateTransaction,
+    JoinTransactionSplits,
     RecoverTransaction,
     ReviewTransaction,
     SoftDeleteTransaction,
+    SplitTransaction,
     UnreviewTransaction,
     UpdateTransactionAmount,
     UpdateTransactionComments,
@@ -41,9 +43,11 @@ __all__ = [
     "TransferAccountOwnership",
     "UpdateSharePermission",
     "CreateTransaction",
+    "JoinTransactionSplits",
     "RecoverTransaction",
     "ReviewTransaction",
     "SoftDeleteTransaction",
+    "SplitTransaction",
     "UnreviewTransaction",
     "UpdateTransactionAmount",
     "UpdateTransactionComments",
