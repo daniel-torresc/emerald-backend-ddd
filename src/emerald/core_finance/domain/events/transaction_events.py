@@ -73,3 +73,23 @@ class TransactionSplitsJoined(DomainEvent):
     account_id: uuid.UUID = uuid.UUID(int=0)
     removed_child_count: int = 0
     aggregate_type: ClassVar[str] = "transaction"
+
+
+@dataclass(frozen=True)
+class TransactionCardLinked(DomainEvent):
+    """Emitted when a transaction is linked to a card."""
+
+    transaction_id: uuid.UUID = uuid.UUID(int=0)
+    card_id: uuid.UUID = uuid.UUID(int=0)
+    account_id: uuid.UUID = uuid.UUID(int=0)
+    aggregate_type: ClassVar[str] = "transaction"
+
+
+@dataclass(frozen=True)
+class TransactionCardUnlinked(DomainEvent):
+    """Emitted when a transaction is unlinked from a card."""
+
+    transaction_id: uuid.UUID = uuid.UUID(int=0)
+    previous_card_id: uuid.UUID = uuid.UUID(int=0)
+    account_id: uuid.UUID = uuid.UUID(int=0)
+    aggregate_type: ClassVar[str] = "transaction"

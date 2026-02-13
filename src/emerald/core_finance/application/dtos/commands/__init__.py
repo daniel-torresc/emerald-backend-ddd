@@ -7,6 +7,19 @@ from emerald.core_finance.application.dtos.commands.account_commands import (
     UpdateAccountType,
     UpdateFinancialInstitution,
 )
+from emerald.core_finance.application.dtos.commands.card_commands import (
+    AddCard,
+    LinkTransactionToCard,
+    RecoverCard,
+    RemoveCard,
+    UnlinkTransactionFromCard,
+    UpdateCardCreditLimit,
+    UpdateCardExpiry,
+    UpdateCardIssuingInstitution,
+    UpdateCardName,
+    UpdateCardNetwork,
+    UpdateCardNotes,
+)
 from emerald.core_finance.application.dtos.commands.sharing_commands import (
     LeaveAccountShare,
     RevokeAccountShare,
@@ -30,6 +43,17 @@ from emerald.core_finance.application.dtos.commands.transaction_commands import 
 )
 
 __all__ = [
+    "AddCard",
+    "LinkTransactionToCard",
+    "RecoverCard",
+    "RemoveCard",
+    "UnlinkTransactionFromCard",
+    "UpdateCardCreditLimit",
+    "UpdateCardExpiry",
+    "UpdateCardIssuingInstitution",
+    "UpdateCardName",
+    "UpdateCardNetwork",
+    "UpdateCardNotes",
     "CreateAccount",
     "RecoverAccount",
     "RenameAccount",
