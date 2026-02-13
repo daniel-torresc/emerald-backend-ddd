@@ -6,6 +6,14 @@ from emerald.core_finance.domain.exceptions.account_exceptions import (
     InvalidIBANError,
     InvalidUserReferenceError,
 )
+from emerald.core_finance.domain.exceptions.card_exceptions import (
+    CardNotFoundError,
+    CurrencyMismatchError,
+    InvalidCardDataError,
+    InvalidCardNumberError,
+    InvalidCreditLimitError,
+    MaxCardsReachedError,
+)
 from emerald.core_finance.domain.exceptions.sharing_exceptions import (
     AccountNotActiveError,
     AlreadyOwnerError,
@@ -44,6 +52,12 @@ __all__ = [
     "InvalidAccountNotesError",
     "InvalidIBANError",
     "InvalidUserReferenceError",
+    "CardNotFoundError",
+    "CurrencyMismatchError",
+    "InvalidCardDataError",
+    "InvalidCardNumberError",
+    "InvalidCreditLimitError",
+    "MaxCardsReachedError",
     "AccountNotActiveError",
     "AlreadyOwnerError",
     "AlreadySharedError",

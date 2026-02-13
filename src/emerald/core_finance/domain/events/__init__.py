@@ -4,6 +4,12 @@ from emerald.core_finance.domain.events.account_events import (
     AccountSoftDeleted,
     AccountUpdated,
 )
+from emerald.core_finance.domain.events.card_events import (
+    CardCreated,
+    CardRecovered,
+    CardSoftDeleted,
+    CardUpdated,
+)
 from emerald.core_finance.domain.events.sharing_events import (
     AccountOwnershipTransferred,
     AccountShared,
@@ -12,6 +18,8 @@ from emerald.core_finance.domain.events.sharing_events import (
     AccountShareUpdated,
 )
 from emerald.core_finance.domain.events.transaction_events import (
+    TransactionCardLinked,
+    TransactionCardUnlinked,
     TransactionCreated,
     TransactionRecovered,
     TransactionReviewed,
@@ -26,11 +34,17 @@ __all__ = [
     "AccountRecovered",
     "AccountSoftDeleted",
     "AccountUpdated",
+    "CardCreated",
+    "CardRecovered",
+    "CardSoftDeleted",
+    "CardUpdated",
     "AccountOwnershipTransferred",
     "AccountShared",
     "AccountShareLeft",
     "AccountShareRevoked",
     "AccountShareUpdated",
+    "TransactionCardLinked",
+    "TransactionCardUnlinked",
     "TransactionCreated",
     "TransactionRecovered",
     "TransactionReviewed",

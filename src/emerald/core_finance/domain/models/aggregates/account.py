@@ -3,12 +3,18 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from emerald.core_finance.domain.constants import MAX_SHARES_PER_ACCOUNT
+from emerald.core_finance.domain.constants import MAX_CARDS_PER_ACCOUNT, MAX_SHARES_PER_ACCOUNT
 from emerald.core_finance.domain.events.account_events import (
     AccountCreated,
     AccountRecovered,
     AccountSoftDeleted,
     AccountUpdated,
+)
+from emerald.core_finance.domain.events.card_events import (
+    CardCreated,
+    CardRecovered,
+    CardSoftDeleted,
+    CardUpdated,
 )
 from emerald.core_finance.domain.events.sharing_events import (
     AccountOwnershipTransferred,
@@ -18,6 +24,13 @@ from emerald.core_finance.domain.events.sharing_events import (
     AccountShareUpdated,
 )
 from emerald.core_finance.domain.exceptions import InvalidAccountNotesError
+from emerald.core_finance.domain.exceptions.card_exceptions import (
+    CardNotFoundError,
+    MaxCardsReachedError,
+)
+from emerald.core_finance.domain.exceptions.card_exceptions import (
+    CurrencyMismatchError as CardCurrencyMismatchError,
+)
 from emerald.core_finance.domain.exceptions.sharing_exceptions import (
     AccountNotActiveError,
     AlreadyOwnerError,
@@ -32,7 +45,9 @@ from emerald.core_finance.domain.exceptions.sharing_exceptions import (
     ShareNotFoundError,
 )
 from emerald.core_finance.domain.models.entities.account_share import AccountShare
+from emerald.core_finance.domain.models.entities.card import Card
 from emerald.core_finance.domain.models.value_objects.account_name import AccountName
+from emerald.core_finance.domain.models.value_objects.card_network import CardNetwork
 from emerald.core_finance.domain.models.value_objects.iban import IBAN
 from emerald.core_finance.domain.models.value_objects.permission_level import PermissionLevel
 from emerald.core_finance.domain.models.value_objects.user_reference import UserReference
@@ -61,6 +76,7 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         iban: IBAN | None = None,
         notes: str | None = None,
         shares: list[AccountShare] | None = None,
+        cards: list[Card] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -72,6 +88,7 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         self._iban = iban
         self.notes = notes
         self._shares: list[AccountShare] = shares if shares is not None else []
+        self._cards: list[Card] = cards if cards is not None else []
 
     # -- Immutable properties --------------------------------------------------
 
@@ -392,13 +409,16 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         retention: RetentionPeriod,
         reason: str | None = None,
     ) -> None:
-        """Soft-delete the account, cascading revocation to non-owner shares."""
-        # Cascade: revoke all non-owner active shares BEFORE soft-delete
+        """Soft-delete the account, cascading to cards and shares."""
+        # 1. Cascade soft-delete active cards (no individual CardSoftDeleted events)
+        for card in self._cards:
+            if not card.is_deleted():
+                card.soft_delete(deleted_by=deleted_by, retention=retention)
+        # 2. Cascade: revoke all non-owner active shares
         for share in self._shares:
             if share.is_active() and share.permission_level != PermissionLevel.OWNER:
                 share.revoke(deleted_by)
         # TODO(spec-009): Cascade soft-delete to Transactions
-        # TODO(spec-011): Cascade soft-delete to Cards
         super().soft_delete(deleted_by=deleted_by, retention=retention, reason=reason)
         self._touch()
         self._register_event(
@@ -410,9 +430,7 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         )
 
     def recover(self) -> None:
-        """Recover a soft-deleted account. Shares remain revoked."""
-        # TODO(spec-009/011): Children (transactions, cards) remain in trash
-        #   and must be recovered individually per Spec 006 patterns.
+        """Recover a soft-deleted account. Shares remain revoked, cards remain deleted."""
         recovered_by = self.deleted_by
         super().recover()
         self._touch()
@@ -423,7 +441,201 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
             )
         )
 
+    # -- Card lifecycle methods ------------------------------------------------
+
+    def add_card(self, card: Card) -> None:
+        """Add a card to this account."""
+        if self.is_deleted():
+            raise AccountNotActiveError()
+        if card.account_id != self.id:
+            from emerald.core_finance.domain.exceptions.card_exceptions import InvalidCardDataError
+
+            raise InvalidCardDataError(
+                f"Card account_id {card.account_id} does not match account {self.id}"
+            )
+        if self.active_card_count >= MAX_CARDS_PER_ACCOUNT:
+            raise MaxCardsReachedError()
+        if card.credit_limit is not None and card.credit_limit.currency != self._currency:
+            raise CardCurrencyMismatchError(
+                f"Credit limit currency {card.credit_limit.currency.code} "
+                f"does not match account currency {self._currency.code}"
+            )
+        self._cards.append(card)
+        self._register_event(
+            CardCreated(
+                aggregate_id=self.id,
+                card_id=card.id,
+                account_id=self.id,
+                card_type=card.card_type.value,
+                card_name=card.card_name,
+                card_number_masked=card.card_number.masked(),
+            )
+        )
+        self._touch()
+
+    def remove_card(
+        self,
+        card_id: uuid.UUID,
+        deleted_by: uuid.UUID,
+        retention: RetentionPeriod,
+        reason: str | None = None,
+    ) -> None:
+        """Soft-delete a card."""
+        card = self._find_card(card_id, include_deleted=True)
+        if card is None:
+            raise CardNotFoundError(f"Card {card_id} not found in account {self.id}")
+        card.soft_delete(deleted_by=deleted_by, retention=retention, reason=reason)
+        self._register_event(
+            CardSoftDeleted(
+                aggregate_id=self.id,
+                card_id=card_id,
+                account_id=self.id,
+                deleted_by=deleted_by,
+            )
+        )
+        self._touch()
+
+    def recover_card(self, card_id: uuid.UUID) -> None:
+        """Recover a soft-deleted card."""
+        if self.is_deleted():
+            raise AccountNotActiveError()
+        card = self._find_card(card_id, include_deleted=True)
+        if card is None:
+            raise CardNotFoundError(f"Card {card_id} not found in account {self.id}")
+        card.recover()
+        self._register_event(
+            CardRecovered(
+                aggregate_id=self.id,
+                card_id=card_id,
+                account_id=self.id,
+            )
+        )
+        self._touch()
+
+    # -- Card update methods ---------------------------------------------------
+
+    def update_card_name(self, card_id: uuid.UUID, name: str) -> None:
+        """Update a card's display name."""
+        card = self._get_active_card(card_id)
+        card.update_name(name)
+        self._register_event(
+            CardUpdated(
+                aggregate_id=self.id,
+                card_id=card_id,
+                account_id=self.id,
+                changed_fields=["card_name"],
+            )
+        )
+        self._touch()
+
+    def update_card_network(self, card_id: uuid.UUID, network: CardNetwork | None) -> None:
+        """Update a card's network."""
+        card = self._get_active_card(card_id)
+        card.update_network(network)
+        self._register_event(
+            CardUpdated(
+                aggregate_id=self.id,
+                card_id=card_id,
+                account_id=self.id,
+                changed_fields=["card_network"],
+            )
+        )
+        self._touch()
+
+    def update_card_expiry(self, card_id: uuid.UUID, month: int, year: int) -> None:
+        """Update a card's expiration date."""
+        card = self._get_active_card(card_id)
+        card.update_expiry(month, year)
+        self._register_event(
+            CardUpdated(
+                aggregate_id=self.id,
+                card_id=card_id,
+                account_id=self.id,
+                changed_fields=["expiry_month", "expiry_year"],
+            )
+        )
+        self._touch()
+
+    def update_card_credit_limit(self, card_id: uuid.UUID, credit_limit: Money | None) -> None:
+        """Update a card's credit limit. Validates currency match."""
+        card = self._get_active_card(card_id)
+        if credit_limit is not None and credit_limit.currency != self._currency:
+            raise CardCurrencyMismatchError(
+                f"Credit limit currency {credit_limit.currency.code} "
+                f"does not match account currency {self._currency.code}"
+            )
+        card.update_credit_limit(credit_limit)
+        self._register_event(
+            CardUpdated(
+                aggregate_id=self.id,
+                card_id=card_id,
+                account_id=self.id,
+                changed_fields=["credit_limit"],
+            )
+        )
+        self._touch()
+
+    def update_card_issuing_institution(self, card_id: uuid.UUID, institution: str | None) -> None:
+        """Update a card's issuing institution."""
+        card = self._get_active_card(card_id)
+        card.update_issuing_institution(institution)
+        self._register_event(
+            CardUpdated(
+                aggregate_id=self.id,
+                card_id=card_id,
+                account_id=self.id,
+                changed_fields=["issuing_institution"],
+            )
+        )
+        self._touch()
+
+    def update_card_notes(self, card_id: uuid.UUID, notes: str | None) -> None:
+        """Update a card's notes."""
+        card = self._get_active_card(card_id)
+        card.update_notes(notes)
+        self._register_event(
+            CardUpdated(
+                aggregate_id=self.id,
+                card_id=card_id,
+                account_id=self.id,
+                changed_fields=["notes"],
+            )
+        )
+        self._touch()
+
+    # -- Card query methods ----------------------------------------------------
+
+    def get_card(self, card_id: uuid.UUID, include_deleted: bool = False) -> Card | None:
+        """Find a card by ID, optionally including deleted."""
+        return self._find_card(card_id, include_deleted=include_deleted)
+
+    def get_cards(self, include_deleted: bool = False) -> list[Card]:
+        """Return all cards, optionally including deleted."""
+        if include_deleted:
+            return list(self._cards)
+        return [c for c in self._cards if not c.is_deleted()]
+
+    @property
+    def active_card_count(self) -> int:
+        """Return the count of non-deleted cards."""
+        return sum(1 for c in self._cards if not c.is_deleted())
+
     # -- Private helpers -------------------------------------------------------
+
+    def _find_card(self, card_id: uuid.UUID, include_deleted: bool = False) -> Card | None:
+        """Find a card by ID."""
+        for card in self._cards:
+            if card.id == card_id:
+                if include_deleted or not card.is_deleted():
+                    return card
+        return None
+
+    def _get_active_card(self, card_id: uuid.UUID) -> Card:
+        """Find an active card or raise CardNotFoundError."""
+        card = self._find_card(card_id, include_deleted=False)
+        if card is None:
+            raise CardNotFoundError(f"Card {card_id} not found in account {self.id}")
+        return card
 
     def _find_active_share(self, user_id: uuid.UUID) -> AccountShare | None:
         """Find an active share for a user."""

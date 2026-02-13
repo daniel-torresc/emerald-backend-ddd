@@ -13,6 +13,8 @@ from emerald.core_finance.domain.constants import (
     MIN_SPLITS_PER_TRANSACTION,
 )
 from emerald.core_finance.domain.events.transaction_events import (
+    TransactionCardLinked,
+    TransactionCardUnlinked,
     TransactionRecovered,
     TransactionReviewed,
     TransactionSoftDeleted,
@@ -265,6 +267,37 @@ class Transaction(SoftDeletableMixin, AuditableMixin, TimestampedMixin, Entity):
                 changed_fields=frozenset({"amount"}),
             )
         )
+
+    # -- Card linking methods --------------------------------------------------
+
+    def update_card_id(self, card_id: uuid.UUID | None) -> None:
+        """Link or unlink a card. Idempotent if value unchanged."""
+        if card_id is not None and card_id != self.card_id:
+            # Linking to a new card (or re-linking)
+            self.card_id = card_id
+            self._touch()
+            self._register_event(
+                TransactionCardLinked(
+                    aggregate_id=self.id,
+                    transaction_id=self.id,
+                    card_id=card_id,
+                    account_id=self._account_id,
+                )
+            )
+        elif card_id is None and self.card_id is not None:
+            # Unlinking
+            previous_card_id = self.card_id
+            self.card_id = None
+            self._touch()
+            self._register_event(
+                TransactionCardUnlinked(
+                    aggregate_id=self.id,
+                    transaction_id=self.id,
+                    previous_card_id=previous_card_id,
+                    account_id=self._account_id,
+                )
+            )
+        # Otherwise: no-op (idempotent)
 
     # -- Review methods --------------------------------------------------------
 
