@@ -88,7 +88,7 @@ class TestEffectiveDescription:
 class TestSplitStubs:
     def test_is_split_parent_returns_false(self) -> None:
         tx = _make_transaction()
-        assert tx.is_split_parent() is False
+        assert tx.is_split_parent is False
 
     def test_is_split_child_true_when_parent_set(self) -> None:
         parent_id = uuid.uuid4()

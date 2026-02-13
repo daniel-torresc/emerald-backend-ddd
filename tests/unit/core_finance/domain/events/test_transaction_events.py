@@ -11,6 +11,8 @@ from emerald.core_finance.domain.events.transaction_events import (
     TransactionRecovered,
     TransactionReviewed,
     TransactionSoftDeleted,
+    TransactionSplit,
+    TransactionSplitsJoined,
     TransactionUpdated,
 )
 from emerald.shared_kernel.domain.events.domain_event import DomainEvent
@@ -149,3 +151,75 @@ class TestTransactionRecovered:
         event = TransactionRecovered(aggregate_id=uuid.uuid4())
         with pytest.raises(dataclasses.FrozenInstanceError):
             event.account_id = uuid.uuid4()  # type: ignore[misc]
+
+
+class TestTransactionSplit:
+    def test_is_domain_event(self) -> None:
+        assert issubclass(TransactionSplit, DomainEvent)
+
+    def test_aggregate_type(self) -> None:
+        assert TransactionSplit.aggregate_type == "transaction"
+
+    def test_fields(self) -> None:
+        tid = uuid.uuid4()
+        pid = uuid.uuid4()
+        aid = uuid.uuid4()
+        c1, c2 = uuid.uuid4(), uuid.uuid4()
+        event = TransactionSplit(
+            aggregate_id=tid,
+            parent_transaction_id=pid,
+            account_id=aid,
+            child_count=2,
+            child_ids=(c1, c2),
+        )
+        assert event.aggregate_id == tid
+        assert event.parent_transaction_id == pid
+        assert event.account_id == aid
+        assert event.child_count == 2
+        assert event.child_ids == (c1, c2)
+
+    def test_defaults(self) -> None:
+        event = TransactionSplit(aggregate_id=uuid.uuid4())
+        assert event.parent_transaction_id == uuid.UUID(int=0)
+        assert event.account_id == uuid.UUID(int=0)
+        assert event.child_count == 0
+        assert event.child_ids == ()
+
+    def test_frozen(self) -> None:
+        event = TransactionSplit(aggregate_id=uuid.uuid4())
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            event.child_count = 5  # type: ignore[misc]
+
+
+class TestTransactionSplitsJoined:
+    def test_is_domain_event(self) -> None:
+        assert issubclass(TransactionSplitsJoined, DomainEvent)
+
+    def test_aggregate_type(self) -> None:
+        assert TransactionSplitsJoined.aggregate_type == "transaction"
+
+    def test_fields(self) -> None:
+        tid = uuid.uuid4()
+        pid = uuid.uuid4()
+        aid = uuid.uuid4()
+        event = TransactionSplitsJoined(
+            aggregate_id=tid,
+            parent_transaction_id=pid,
+            account_id=aid,
+            removed_child_count=3,
+        )
+        assert event.aggregate_id == tid
+        assert event.parent_transaction_id == pid
+        assert event.account_id == aid
+        assert event.removed_child_count == 3
+
+    def test_defaults(self) -> None:
+        event = TransactionSplitsJoined(aggregate_id=uuid.uuid4())
+        assert event.parent_transaction_id == uuid.UUID(int=0)
+        assert event.account_id == uuid.UUID(int=0)
+        assert event.removed_child_count == 0
+
+    def test_frozen(self) -> None:
+        event = TransactionSplitsJoined(aggregate_id=uuid.uuid4())
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            event.removed_child_count = 5  # type: ignore[misc]
