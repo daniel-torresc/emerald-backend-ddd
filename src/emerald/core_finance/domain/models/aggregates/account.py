@@ -3,15 +3,38 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
+from emerald.core_finance.domain.constants import MAX_SHARES_PER_ACCOUNT
 from emerald.core_finance.domain.events.account_events import (
     AccountCreated,
     AccountRecovered,
     AccountSoftDeleted,
     AccountUpdated,
 )
+from emerald.core_finance.domain.events.sharing_events import (
+    AccountOwnershipTransferred,
+    AccountShared,
+    AccountShareLeft,
+    AccountShareRevoked,
+    AccountShareUpdated,
+)
 from emerald.core_finance.domain.exceptions import InvalidAccountNotesError
+from emerald.core_finance.domain.exceptions.sharing_exceptions import (
+    AccountNotActiveError,
+    AlreadyOwnerError,
+    AlreadySharedError,
+    CannotGrantOwnerError,
+    CannotLeaveAsOwnerError,
+    CannotModifyOwnerShareError,
+    CannotRevokeOwnerError,
+    CannotShareWithSelfError,
+    InsufficientPermissionError,
+    MaxSharesReachedError,
+    ShareNotFoundError,
+)
+from emerald.core_finance.domain.models.entities.account_share import AccountShare
 from emerald.core_finance.domain.models.value_objects.account_name import AccountName
 from emerald.core_finance.domain.models.value_objects.iban import IBAN
+from emerald.core_finance.domain.models.value_objects.permission_level import PermissionLevel
 from emerald.core_finance.domain.models.value_objects.user_reference import UserReference
 from emerald.shared_kernel.domain.exceptions import CurrencyMismatchError
 from emerald.shared_kernel.domain.models.base.aggregate_root import AggregateRoot
@@ -25,13 +48,7 @@ _MAX_NOTES_LENGTH = 500
 
 
 class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
-    """Account aggregate root — the central consistency boundary for financial data.
-
-    Deferred invariants:
-      TODO(spec-008): Exactly ONE owner share per account
-      TODO(spec-008): One active share per user max
-      TODO(spec-009): All transactions must match account currency
-    """
+    """Account aggregate root — the central consistency boundary for financial data."""
 
     def __init__(
         self,
@@ -43,6 +60,7 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         opening_balance: Money,
         iban: IBAN | None = None,
         notes: str | None = None,
+        shares: list[AccountShare] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -53,6 +71,7 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         self._opening_balance = opening_balance
         self._iban = iban
         self.notes = notes
+        self._shares: list[AccountShare] = shares if shares is not None else []
 
     # -- Immutable properties --------------------------------------------------
 
@@ -106,8 +125,14 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
             created_by=owner.user_id,
             version=1,
         )
-        # TODO(spec-008): Create an OWNER AccountShare for the creator.
-        #   Until then, account.created_by identifies the owner.
+        # Create initial OWNER share for the creator
+        owner_share = AccountShare(
+            account_id=account.id,
+            user_id=owner.user_id,
+            permission_level=PermissionLevel.OWNER,
+            granted_by=owner.user_id,
+        )
+        account._shares.append(owner_share)
         account._register_event(
             AccountCreated(
                 aggregate_id=account.id,
@@ -193,6 +218,186 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         # TODO(spec-009): Return count of non-deleted transactions belonging to this account
         return 0
 
+    # -- Share management methods ----------------------------------------------
+
+    def share_with(
+        self,
+        user_id: uuid.UUID,
+        permission: PermissionLevel,
+        granted_by: uuid.UUID,
+    ) -> AccountShare:
+        """Grant access to a user at the specified permission level."""
+        if self.is_deleted():
+            raise AccountNotActiveError()
+        if not self.is_owner(granted_by):
+            raise InsufficientPermissionError(
+                f"User {granted_by} does not have OWNER permission on account {self.id}"
+            )
+        if permission == PermissionLevel.OWNER:
+            raise CannotGrantOwnerError()
+        if user_id == granted_by:
+            raise CannotShareWithSelfError()
+        if self._find_active_share(user_id) is not None:
+            raise AlreadySharedError()
+        if self.active_share_count >= MAX_SHARES_PER_ACCOUNT:
+            raise MaxSharesReachedError()
+
+        share = AccountShare(
+            account_id=self.id,
+            user_id=user_id,
+            permission_level=permission,
+            granted_by=granted_by,
+        )
+        self._shares.append(share)
+        self._register_event(
+            AccountShared(
+                aggregate_id=self.id,
+                user_id=user_id,
+                permission_level=permission.value,
+                granted_by=granted_by,
+            )
+        )
+        self._touch()
+        return share
+
+    def update_share_permission(
+        self,
+        user_id: uuid.UUID,
+        new_permission: PermissionLevel,
+        updated_by: uuid.UUID,
+    ) -> None:
+        """Update a share's permission level."""
+        if not self.is_owner(updated_by):
+            raise InsufficientPermissionError(
+                f"User {updated_by} does not have OWNER permission on account {self.id}"
+            )
+        share = self._find_active_share(user_id)
+        if share is None:
+            raise ShareNotFoundError(f"No active share for user {user_id} on account {self.id}")
+        if new_permission == PermissionLevel.OWNER:
+            raise CannotGrantOwnerError()
+        if share.permission_level == PermissionLevel.OWNER:
+            raise CannotModifyOwnerShareError()
+
+        old_permission = share.permission_level
+        share.update_permission(new_permission)
+        self._register_event(
+            AccountShareUpdated(
+                aggregate_id=self.id,
+                user_id=user_id,
+                old_permission=old_permission.value,
+                new_permission=new_permission.value,
+                updated_by=updated_by,
+            )
+        )
+        self._touch()
+
+    def revoke_share(self, user_id: uuid.UUID, revoked_by: uuid.UUID) -> None:
+        """Revoke a user's share (owner-initiated)."""
+        if not self.is_owner(revoked_by):
+            raise InsufficientPermissionError(
+                f"User {revoked_by} does not have OWNER permission on account {self.id}"
+            )
+        share = self._find_active_share(user_id)
+        if share is None:
+            raise ShareNotFoundError(f"No active share for user {user_id} on account {self.id}")
+        if share.permission_level == PermissionLevel.OWNER:
+            raise CannotRevokeOwnerError()
+
+        share.revoke(revoked_by)
+        self._register_event(
+            AccountShareRevoked(
+                aggregate_id=self.id,
+                user_id=user_id,
+                revoked_by=revoked_by,
+            )
+        )
+        self._touch()
+
+    def leave_share(self, user_id: uuid.UUID) -> None:
+        """Non-owner voluntarily removes their own share."""
+        share = self._find_active_share(user_id)
+        if share is None:
+            raise ShareNotFoundError(f"No active share for user {user_id} on account {self.id}")
+        if share.permission_level == PermissionLevel.OWNER:
+            raise CannotLeaveAsOwnerError()
+
+        share.revoke(user_id)
+        self._register_event(
+            AccountShareLeft(
+                aggregate_id=self.id,
+                user_id=user_id,
+            )
+        )
+        self._touch()
+
+    def transfer_ownership(self, new_owner_id: uuid.UUID, current_owner_id: uuid.UUID) -> None:
+        """Transfer ownership to another shared user."""
+        if not self.is_owner(current_owner_id):
+            raise InsufficientPermissionError(
+                f"User {current_owner_id} does not have OWNER permission on account {self.id}"
+            )
+        if new_owner_id == current_owner_id:
+            raise AlreadyOwnerError()
+        new_owner_share = self._find_active_share(new_owner_id)
+        if new_owner_share is None:
+            raise ShareNotFoundError(
+                f"No active share for user {new_owner_id} on account {self.id}"
+            )
+
+        current_owner_share = self._get_owner_share()
+        current_owner_share.update_permission(PermissionLevel.EDITOR)
+        new_owner_share.update_permission(PermissionLevel.OWNER)
+        self._register_event(
+            AccountOwnershipTransferred(
+                aggregate_id=self.id,
+                old_owner_id=current_owner_id,
+                new_owner_id=new_owner_id,
+            )
+        )
+        self._touch()
+
+    # -- Authorization check methods -------------------------------------------
+
+    def get_share_for_user(self, user_id: uuid.UUID) -> AccountShare | None:
+        """Return the active share for a user, or None."""
+        return self._find_active_share(user_id)
+
+    def get_permission_level(self, user_id: uuid.UUID) -> PermissionLevel | None:
+        """Return the permission level for a user, or None."""
+        share = self._find_active_share(user_id)
+        return share.permission_level if share is not None else None
+
+    def has_permission(self, user_id: uuid.UUID, required: PermissionLevel) -> bool:
+        """Check if user has at least the required permission level."""
+        share = self._find_active_share(user_id)
+        return share is not None and share.permission_level.has_at_least(required)
+
+    def is_owner(self, user_id: uuid.UUID) -> bool:
+        """Check if user is the account owner."""
+        return self.has_permission(user_id, PermissionLevel.OWNER)
+
+    def can_edit(self, user_id: uuid.UUID) -> bool:
+        """Check if user has at least EDITOR permission."""
+        return self.has_permission(user_id, PermissionLevel.EDITOR)
+
+    def can_view(self, user_id: uuid.UUID) -> bool:
+        """Check if user has at least VIEWER permission."""
+        return self.has_permission(user_id, PermissionLevel.VIEWER)
+
+    def get_active_shares(self) -> list[AccountShare]:
+        """Return all non-revoked shares."""
+        return [s for s in self._shares if s.is_active()]
+
+    def get_owner(self) -> AccountShare:
+        """Return the OWNER share (always exactly one active)."""
+        return self._get_owner_share()
+
+    @property
+    def active_share_count(self) -> int:
+        """Return the count of active (non-revoked) shares."""
+        return sum(1 for s in self._shares if s.is_active())
+
     # -- Lifecycle methods -----------------------------------------------------
 
     def soft_delete(
@@ -201,8 +406,11 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         retention: RetentionPeriod,
         reason: str | None = None,
     ) -> None:
-        """Soft-delete the account."""
-        # TODO(spec-008): Cascade soft-delete to AccountShares
+        """Soft-delete the account, cascading revocation to non-owner shares."""
+        # Cascade: revoke all non-owner active shares BEFORE soft-delete
+        for share in self._shares:
+            if share.is_active() and share.permission_level != PermissionLevel.OWNER:
+                share.revoke(deleted_by)
         # TODO(spec-009): Cascade soft-delete to Transactions
         # TODO(spec-011): Cascade soft-delete to Cards
         super().soft_delete(deleted_by=deleted_by, retention=retention, reason=reason)
@@ -216,10 +424,9 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         )
 
     def recover(self) -> None:
-        """Recover a soft-deleted account."""
-        # TODO(spec-008/009/011): Children (shares, transactions, cards) remain in trash
+        """Recover a soft-deleted account. Shares remain revoked."""
+        # TODO(spec-009/011): Children (transactions, cards) remain in trash
         #   and must be recovered individually per Spec 006 patterns.
-        # Capture deleted_by before recovery clears it, to use as recovered_by
         recovered_by = self.deleted_by
         super().recover()
         self._touch()
@@ -229,3 +436,20 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
                 recovered_by=recovered_by if recovered_by is not None else uuid.UUID(int=0),
             )
         )
+
+    # -- Private helpers -------------------------------------------------------
+
+    def _find_active_share(self, user_id: uuid.UUID) -> AccountShare | None:
+        """Find an active share for a user."""
+        for share in self._shares:
+            if share.is_active() and share.user_id == user_id:
+                return share
+        return None
+
+    def _get_owner_share(self) -> AccountShare:
+        """Return the active OWNER share."""
+        for share in self._shares:
+            if share.is_active() and share.permission_level == PermissionLevel.OWNER:
+                return share
+        msg = f"Account {self.id} has no active OWNER share — invariant violated"
+        raise AssertionError(msg)

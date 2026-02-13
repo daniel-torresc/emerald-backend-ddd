@@ -5,7 +5,20 @@ from emerald.core_finance.domain.exceptions.account_exceptions import (
     InvalidAccountNotesError,
     InvalidIBANError,
     InvalidUserReferenceError,
-    NotAccountOwnerError,
+)
+from emerald.core_finance.domain.exceptions.sharing_exceptions import (
+    AccountNotActiveError,
+    AlreadyOwnerError,
+    AlreadySharedError,
+    CannotGrantOwnerError,
+    CannotLeaveAsOwnerError,
+    CannotModifyOwnerShareError,
+    CannotRevokeOwnerError,
+    CannotShareWithSelfError,
+    InsufficientPermissionError,
+    MaxSharesReachedError,
+    ShareAlreadyRevokedError,
+    ShareNotFoundError,
 )
 
 __all__ = [
@@ -15,5 +28,16 @@ __all__ = [
     "InvalidAccountNotesError",
     "InvalidIBANError",
     "InvalidUserReferenceError",
-    "NotAccountOwnerError",
+    "AccountNotActiveError",
+    "AlreadyOwnerError",
+    "AlreadySharedError",
+    "CannotGrantOwnerError",
+    "CannotLeaveAsOwnerError",
+    "CannotModifyOwnerShareError",
+    "CannotRevokeOwnerError",
+    "CannotShareWithSelfError",
+    "InsufficientPermissionError",
+    "MaxSharesReachedError",
+    "ShareAlreadyRevokedError",
+    "ShareNotFoundError",
 ]

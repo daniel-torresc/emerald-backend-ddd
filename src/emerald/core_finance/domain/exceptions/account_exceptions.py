@@ -1,6 +1,5 @@
 from emerald.shared_kernel.domain.exceptions import (
     AlreadyExistsError,
-    AuthorizationError,
     InvalidValueError,
     NotFoundError,
 )
@@ -59,13 +58,4 @@ class AccountNotFoundError(NotFoundError):
     """Account not found in repository."""
 
     def __init__(self, message: str = "Account not found", code: str = "ACCOUNT_NOT_FOUND") -> None:
-        super().__init__(message, code)
-
-
-class NotAccountOwnerError(AuthorizationError):
-    """Non-owner attempts a mutation on an account."""
-
-    def __init__(
-        self, message: str = "Not the account owner", code: str = "NOT_ACCOUNT_OWNER"
-    ) -> None:
         super().__init__(message, code)

@@ -5,11 +5,9 @@ from emerald.core_finance.domain.exceptions import (
     InvalidAccountNotesError,
     InvalidIBANError,
     InvalidUserReferenceError,
-    NotAccountOwnerError,
 )
 from emerald.shared_kernel.domain.exceptions import (
     AlreadyExistsError,
-    AuthorizationError,
     InvalidValueError,
     NotFoundError,
 )
@@ -71,12 +69,3 @@ class TestAccountNotFoundError:
     def test_default_code(self) -> None:
         err = AccountNotFoundError()
         assert err.code == "ACCOUNT_NOT_FOUND"
-
-
-class TestNotAccountOwnerError:
-    def test_hierarchy(self) -> None:
-        assert issubclass(NotAccountOwnerError, AuthorizationError)
-
-    def test_default_code(self) -> None:
-        err = NotAccountOwnerError()
-        assert err.code == "NOT_ACCOUNT_OWNER"
