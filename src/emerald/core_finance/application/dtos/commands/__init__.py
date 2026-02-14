@@ -7,6 +7,12 @@ from emerald.core_finance.application.dtos.commands.account_commands import (
     UpdateAccountType,
     UpdateFinancialInstitution,
 )
+from emerald.core_finance.application.dtos.commands.bulk_transaction_commands import (
+    BulkCreateTransactions,
+    BulkDeleteTransactions,
+    BulkRecoverTransactions,
+    BulkUpdateTransactions,
+)
 from emerald.core_finance.application.dtos.commands.card_commands import (
     AddCard,
     LinkTransactionToCard,
@@ -43,6 +49,10 @@ from emerald.core_finance.application.dtos.commands.transaction_commands import 
 )
 
 __all__ = [
+    "BulkCreateTransactions",
+    "BulkDeleteTransactions",
+    "BulkRecoverTransactions",
+    "BulkUpdateTransactions",
     "AddCard",
     "LinkTransactionToCard",
     "RecoverCard",

@@ -1,5 +1,9 @@
 from emerald.core_finance.application.dtos.commands import (
     AddCard,
+    BulkCreateTransactions,
+    BulkDeleteTransactions,
+    BulkRecoverTransactions,
+    BulkUpdateTransactions,
     CreateAccount,
     CreateTransaction,
     JoinTransactionSplits,
@@ -37,6 +41,10 @@ from emerald.core_finance.application.dtos.commands import (
 )
 
 __all__ = [
+    "BulkCreateTransactions",
+    "BulkDeleteTransactions",
+    "BulkRecoverTransactions",
+    "BulkUpdateTransactions",
     "AddCard",
     "CreateAccount",
     "CreateTransaction",
