@@ -30,7 +30,7 @@ from emerald.core_finance.domain.exceptions import (
 from emerald.core_finance.domain.exceptions.sharing_exceptions import (
     InsufficientPermissionError,
 )
-from emerald.core_finance.domain.models.entities.transaction import Transaction
+from emerald.core_finance.domain.models.aggregates.transaction import Transaction
 from emerald.core_finance.domain.models.value_objects.import_source import ImportSource
 from emerald.core_finance.domain.models.value_objects.import_source_type import ImportSourceType
 from emerald.shared_kernel.domain.models.value_objects.currency import Currency

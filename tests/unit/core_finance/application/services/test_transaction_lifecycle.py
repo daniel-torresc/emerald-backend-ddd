@@ -26,7 +26,7 @@ from emerald.core_finance.domain.exceptions.transaction_exceptions import (
     ParentAccountDeletedError,
 )
 from emerald.core_finance.domain.models.aggregates.account import Account
-from emerald.core_finance.domain.models.entities.transaction import Transaction
+from emerald.core_finance.domain.models.aggregates.transaction import Transaction
 from emerald.core_finance.domain.models.value_objects.account_name import AccountName
 from emerald.core_finance.domain.models.value_objects.permission_level import (
     PermissionLevel,

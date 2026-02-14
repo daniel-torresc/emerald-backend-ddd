@@ -9,7 +9,7 @@ from emerald.core_finance.domain.events.transaction_events import (
     TransactionCardLinked,
     TransactionCardUnlinked,
 )
-from emerald.core_finance.domain.models.entities.transaction import Transaction
+from emerald.core_finance.domain.models.aggregates.transaction import Transaction
 from emerald.core_finance.domain.models.value_objects.import_source import ImportSource
 from emerald.core_finance.domain.models.value_objects.import_source_type import (
     ImportSourceType,
@@ -143,3 +143,11 @@ class TestTouchesUpdatedAt:
         old_updated_at = tx.updated_at
         tx.update_card_id(None)
         assert tx.updated_at >= old_updated_at
+
+
+class TestCardLinkVersionTracking:
+    def test_link_card_increments_version(self) -> None:
+        tx = _make_transaction()
+        assert tx.version == 0
+        tx.update_card_id(uuid.uuid4())
+        assert tx.version == 1

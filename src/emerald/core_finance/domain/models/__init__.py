@@ -1,5 +1,5 @@
-from emerald.core_finance.domain.models.aggregates import Account
-from emerald.core_finance.domain.models.entities import AccountShare, Card, Transaction
+from emerald.core_finance.domain.models.aggregates import Account, Transaction
+from emerald.core_finance.domain.models.entities import AccountShare, Card
 from emerald.core_finance.domain.models.value_objects import (
     _UNSET,
     IBAN,

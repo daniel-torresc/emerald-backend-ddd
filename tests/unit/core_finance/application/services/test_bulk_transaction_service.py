@@ -32,7 +32,7 @@ from emerald.core_finance.domain.exceptions.sharing_exceptions import (
     AccountNotActiveError,
     InsufficientPermissionError,
 )
-from emerald.core_finance.domain.models.entities.transaction import Transaction
+from emerald.core_finance.domain.models.aggregates.transaction import Transaction
 from emerald.core_finance.domain.models.value_objects.bulk_update_fields import (
     BulkUpdateFields,
 )

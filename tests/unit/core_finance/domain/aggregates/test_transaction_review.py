@@ -8,7 +8,7 @@ from typing import Any
 from emerald.core_finance.domain.events.transaction_events import (
     TransactionReviewed,
 )
-from emerald.core_finance.domain.models.entities.transaction import Transaction
+from emerald.core_finance.domain.models.aggregates.transaction import Transaction
 from emerald.core_finance.domain.models.value_objects.import_source import (
     ImportSource,
 )
@@ -105,3 +105,18 @@ class TestMarkForReview:
         actor = uuid.uuid4()
         tx.mark_for_review(actor)
         assert tx.updated_by == actor
+
+
+class TestReviewVersionTracking:
+    def test_mark_as_reviewed_increments_version(self) -> None:
+        tx = _make_transaction()
+        assert tx.version == 0
+        tx.mark_as_reviewed(uuid.uuid4())
+        assert tx.version == 1
+
+    def test_mark_as_reviewed_idempotent_no_version_increment(self) -> None:
+        tx = _make_transaction()
+        tx.mark_as_reviewed(uuid.uuid4())
+        assert tx.version == 1
+        tx.mark_as_reviewed(uuid.uuid4())
+        assert tx.version == 1
