@@ -34,7 +34,7 @@ from emerald.core_finance.domain.exceptions.transaction_exceptions import (
     TransactionNotFoundError,
 )
 from emerald.core_finance.domain.models.aggregates.account import Account
-from emerald.core_finance.domain.models.entities.transaction import Transaction
+from emerald.core_finance.domain.models.aggregates.transaction import Transaction
 from emerald.core_finance.domain.models.value_objects.bulk_result import (
     BulkFailure,
     BulkResult,

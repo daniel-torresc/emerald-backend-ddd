@@ -5,7 +5,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
-from emerald.core_finance.domain.models.entities.transaction import Transaction
+from emerald.core_finance.domain.models.aggregates.transaction import Transaction
 from emerald.core_finance.domain.models.value_objects.import_source import (
     ImportSource,
 )
@@ -98,3 +98,26 @@ class TestSplitStubs:
     def test_is_split_child_false_when_no_parent(self) -> None:
         tx = _make_transaction()
         assert tx.is_split_child() is False
+
+
+class TestTransactionVersionTracking:
+    def test_new_transaction_has_version_zero(self) -> None:
+        tx = _make_transaction()
+        assert tx.version == 0
+
+    def test_constructor_accepts_version_for_hydration(self) -> None:
+        tx = Transaction(
+            id=uuid.uuid4(),
+            account_id=uuid.uuid4(),
+            transaction_date=date(2024, 1, 15),
+            amount=Money(Decimal("100.00"), Currency.USD),
+            original_description="Test",
+            import_source=ImportSource(
+                source_type=ImportSourceType.MANUAL,
+                source_id=None,
+                imported_at=datetime.now(UTC),
+            ),
+            created_by=uuid.uuid4(),
+            version=5,
+        )
+        assert tx.version == 5

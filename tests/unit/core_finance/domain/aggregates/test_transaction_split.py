@@ -20,7 +20,7 @@ from emerald.core_finance.domain.exceptions.transaction_exceptions import (
     SplitAmountMismatchError,
     TransactionDeletedError,
 )
-from emerald.core_finance.domain.models.entities.transaction import Transaction
+from emerald.core_finance.domain.models.aggregates.transaction import Transaction
 from emerald.core_finance.domain.models.value_objects.import_source import ImportSource
 from emerald.core_finance.domain.models.value_objects.import_source_type import ImportSourceType
 from emerald.core_finance.domain.models.value_objects.review_status import ReviewStatus
@@ -377,3 +377,21 @@ class TestSplitProperties:
     def test_create_factory_always_sets_false(self) -> None:
         tx = _make_transaction()
         assert tx.is_split_parent is False
+
+
+class TestSplitVersionTracking:
+    def test_split_increments_version(self) -> None:
+        tx = _make_transaction()
+        tx.collect_events()
+        assert tx.version == 0
+        splits = _make_splits_for(tx.amount, [Decimal("-50.00"), Decimal("-35.00")])
+        tx.split(splits, uuid.uuid4())
+        assert tx.version == 1
+
+    def test_join_splits_increments_version(self) -> None:
+        tx = _make_transaction()
+        splits = _make_splits_for(tx.amount, [Decimal("-50.00"), Decimal("-35.00")])
+        tx.split(splits, uuid.uuid4())
+        assert tx.version == 1
+        tx.join_splits(child_count=2)
+        assert tx.version == 2

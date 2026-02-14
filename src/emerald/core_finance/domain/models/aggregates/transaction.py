@@ -37,18 +37,16 @@ from emerald.core_finance.domain.exceptions.transaction_exceptions import (
 from emerald.core_finance.domain.models.value_objects.import_source import ImportSource
 from emerald.core_finance.domain.models.value_objects.review_status import ReviewStatus
 from emerald.core_finance.domain.models.value_objects.split_request import SplitRequest
-from emerald.shared_kernel.domain.events.domain_event import DomainEvent
+from emerald.shared_kernel.domain.models.base.aggregate_root import AggregateRoot
 from emerald.shared_kernel.domain.models.base.auditable import AuditableMixin
-from emerald.shared_kernel.domain.models.base.entity import Entity
 from emerald.shared_kernel.domain.models.base.soft_deletable import SoftDeletableMixin
-from emerald.shared_kernel.domain.models.base.timestamped import TimestampedMixin
 from emerald.shared_kernel.domain.models.value_objects.money import Money
 from emerald.shared_kernel.domain.models.value_objects.retention_period import RetentionPeriod
 
 _SENTINEL = object()
 
 
-class Transaction(SoftDeletableMixin, AuditableMixin, TimestampedMixin, Entity):
+class Transaction(SoftDeletableMixin, AuditableMixin, AggregateRoot):
     """A single financial activity (debit or credit) recorded against an account."""
 
     def __init__(
@@ -85,7 +83,6 @@ class Transaction(SoftDeletableMixin, AuditableMixin, TimestampedMixin, Entity):
         self._parent_transaction_id = parent_transaction_id
         self._external_id = external_id
         self._is_split_parent = is_split_parent
-        self._events: list[DomainEvent] = []
 
     # -- Immutable properties --------------------------------------------------
 
@@ -431,7 +428,7 @@ class Transaction(SoftDeletableMixin, AuditableMixin, TimestampedMixin, Entity):
         return children
 
     def join_splits(self, child_count: int) -> None:
-        """Undo a split — mark this transaction as no longer split.
+        """Undo a split -- mark this transaction as no longer split.
 
         The service is responsible for hard-deleting the children.
         """
@@ -450,18 +447,6 @@ class Transaction(SoftDeletableMixin, AuditableMixin, TimestampedMixin, Entity):
                 removed_child_count=child_count,
             )
         )
-
-    # -- Event collection ------------------------------------------------------
-
-    def _register_event(self, event: DomainEvent) -> None:
-        """Add an event to the internal collection."""
-        self._events.append(event)
-
-    def collect_events(self) -> list[DomainEvent]:
-        """Return all accumulated events and clear the internal list."""
-        events = list(self._events)
-        self._events.clear()
-        return events
 
     # -- Private helpers -------------------------------------------------------
 

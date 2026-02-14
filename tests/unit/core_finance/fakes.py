@@ -8,7 +8,7 @@ from emerald.core_finance.application.ports.outbound.unit_of_work import (
     AbstractCoreFinanceUnitOfWork,
 )
 from emerald.core_finance.domain.models.aggregates.account import Account
-from emerald.core_finance.domain.models.entities.transaction import Transaction
+from emerald.core_finance.domain.models.aggregates.transaction import Transaction
 from emerald.core_finance.domain.models.value_objects.account_name import AccountName
 from emerald.core_finance.domain.models.value_objects.permission_level import PermissionLevel
 from emerald.shared_kernel.domain.events.domain_event import DomainEvent

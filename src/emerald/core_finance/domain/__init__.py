@@ -95,9 +95,9 @@ from emerald.core_finance.domain.models import (
 __all__ = [
     # Aggregates
     "Account",
+    "Transaction",
     # Entities
     "Card",
-    "Transaction",
     # Value Objects
     "AccountName",
     "BulkFailure",

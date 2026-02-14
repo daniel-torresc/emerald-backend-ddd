@@ -11,7 +11,7 @@ from emerald.core_finance.domain.events.transaction_events import (
     TransactionRecovered,
     TransactionSoftDeleted,
 )
-from emerald.core_finance.domain.models.entities.transaction import Transaction
+from emerald.core_finance.domain.models.aggregates.transaction import Transaction
 from emerald.core_finance.domain.models.value_objects.import_source import (
     ImportSource,
 )
@@ -135,3 +135,18 @@ class TestTransactionRecover:
         tx = _make_transaction()
         with pytest.raises(NotDeletedError):
             tx.recover()
+
+
+class TestLifecycleVersionTracking:
+    def test_soft_delete_does_not_increment_version(self) -> None:
+        tx = _make_transaction()
+        assert tx.version == 0
+        tx.soft_delete(uuid.uuid4(), _default_retention())
+        assert tx.version == 0
+
+    def test_recover_does_not_increment_version(self) -> None:
+        tx = _make_transaction()
+        tx.soft_delete(uuid.uuid4(), _default_retention())
+        tx.collect_events()
+        tx.recover()
+        assert tx.version == 0

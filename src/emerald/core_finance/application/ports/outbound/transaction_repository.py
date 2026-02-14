@@ -1,7 +1,7 @@
 import uuid
 from typing import Protocol
 
-from emerald.core_finance.domain.models.entities.transaction import Transaction
+from emerald.core_finance.domain.models.aggregates.transaction import Transaction
 from emerald.shared_kernel.domain.models.value_objects.date_range import DateRange
 from emerald.shared_kernel.domain.models.value_objects.money import Money
 from emerald.shared_kernel.domain.models.value_objects.paginated_result import PaginatedResult

@@ -140,10 +140,10 @@ from emerald.core_finance.domain.models import AccountName, AccountShare, Permis
 __all__ = [
     # Aggregates
     "Account",
+    "Transaction",
     # Entities
     "AccountShare",
     "Card",
-    "Transaction",
     # Value Objects
     "AccountName",
     "BulkFailure",
