@@ -1,5 +1,9 @@
 from emerald.core_finance.application.dtos import (
     AddCard,
+    BulkCreateTransactions,
+    BulkDeleteTransactions,
+    BulkRecoverTransactions,
+    BulkUpdateTransactions,
     CreateAccount,
     CreateTransaction,
     JoinTransactionSplits,
@@ -43,12 +47,17 @@ from emerald.core_finance.application.ports import (
 from emerald.core_finance.application.services import (
     AccountManagementService,
     AccountSharingService,
+    BulkTransactionService,
     CardManagementService,
     TransactionManagementService,
 )
 
 __all__ = [
     # Commands
+    "BulkCreateTransactions",
+    "BulkDeleteTransactions",
+    "BulkRecoverTransactions",
+    "BulkUpdateTransactions",
     "AddCard",
     "CreateAccount",
     "CreateTransaction",
@@ -91,6 +100,7 @@ __all__ = [
     # Services
     "AccountManagementService",
     "AccountSharingService",
+    "BulkTransactionService",
     "CardManagementService",
     "TransactionManagementService",
 ]

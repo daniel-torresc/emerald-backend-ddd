@@ -93,3 +93,52 @@ class TransactionCardUnlinked(DomainEvent):
     previous_card_id: uuid.UUID = uuid.UUID(int=0)
     account_id: uuid.UUID = uuid.UUID(int=0)
     aggregate_type: ClassVar[str] = "transaction"
+
+
+# -- Bulk aggregate events (Spec 012) ------------------------------------------
+
+
+@dataclass(frozen=True)
+class TransactionsBulkCreated(DomainEvent):
+    """Emitted once per bulk create operation with summary counts."""
+
+    account_id: uuid.UUID = uuid.UUID(int=0)
+    success_count: int = 0
+    failure_count: int = 0
+    import_source_type: str = ""
+    created_by: uuid.UUID = uuid.UUID(int=0)
+    aggregate_type: ClassVar[str] = "transaction"
+
+
+@dataclass(frozen=True)
+class TransactionsBulkUpdated(DomainEvent):
+    """Emitted once per bulk update operation with summary counts."""
+
+    account_id: uuid.UUID = uuid.UUID(int=0)
+    success_count: int = 0
+    failure_count: int = 0
+    updated_fields: frozenset[str] = frozenset()
+    updated_by: uuid.UUID = uuid.UUID(int=0)
+    aggregate_type: ClassVar[str] = "transaction"
+
+
+@dataclass(frozen=True)
+class TransactionsBulkDeleted(DomainEvent):
+    """Emitted once per bulk delete operation with summary counts."""
+
+    account_id: uuid.UUID = uuid.UUID(int=0)
+    success_count: int = 0
+    failure_count: int = 0
+    deleted_by: uuid.UUID = uuid.UUID(int=0)
+    aggregate_type: ClassVar[str] = "transaction"
+
+
+@dataclass(frozen=True)
+class TransactionsBulkRecovered(DomainEvent):
+    """Emitted once per bulk recover operation with summary counts."""
+
+    account_id: uuid.UUID = uuid.UUID(int=0)
+    success_count: int = 0
+    failure_count: int = 0
+    recovered_by: uuid.UUID = uuid.UUID(int=0)
+    aggregate_type: ClassVar[str] = "transaction"

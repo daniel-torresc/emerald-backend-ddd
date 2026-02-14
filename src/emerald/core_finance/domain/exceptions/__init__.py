@@ -6,6 +6,11 @@ from emerald.core_finance.domain.exceptions.account_exceptions import (
     InvalidIBANError,
     InvalidUserReferenceError,
 )
+from emerald.core_finance.domain.exceptions.bulk_exceptions import (
+    BulkLimitExceededError,
+    EmptyBulkRequestError,
+    EmptyBulkUpdateError,
+)
 from emerald.core_finance.domain.exceptions.card_exceptions import (
     CardNotFoundError,
     CurrencyMismatchError,
@@ -84,4 +89,7 @@ __all__ = [
     "SplitAmountMismatchError",
     "TransactionDeletedError",
     "TransactionNotFoundError",
+    "BulkLimitExceededError",
+    "EmptyBulkRequestError",
+    "EmptyBulkUpdateError",
 ]
