@@ -1,8 +1,13 @@
 from emerald.core_finance.domain.models.aggregates import Account
 from emerald.core_finance.domain.models.entities import AccountShare, Card, Transaction
 from emerald.core_finance.domain.models.value_objects import (
+    _UNSET,
     IBAN,
     AccountName,
+    BulkFailure,
+    BulkResult,
+    BulkSuccess,
+    BulkUpdateFields,
     CardNetwork,
     CardNumber,
     CardType,
@@ -11,13 +16,19 @@ from emerald.core_finance.domain.models.value_objects import (
     PermissionLevel,
     ReviewStatus,
     SplitRequest,
+    TransactionInput,
     UserReference,
+    _UnsetType,
 )
 
 __all__ = [
     "Account",
     "AccountName",
     "AccountShare",
+    "BulkFailure",
+    "BulkResult",
+    "BulkSuccess",
+    "BulkUpdateFields",
     "Card",
     "CardNetwork",
     "CardNumber",
@@ -29,5 +40,8 @@ __all__ = [
     "ReviewStatus",
     "SplitRequest",
     "Transaction",
+    "TransactionInput",
     "UserReference",
+    "_UNSET",
+    "_UnsetType",
 ]
