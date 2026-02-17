@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import ClassVar
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class DomainEvent:
     """Base domain event — immutable record of something that happened."""
 

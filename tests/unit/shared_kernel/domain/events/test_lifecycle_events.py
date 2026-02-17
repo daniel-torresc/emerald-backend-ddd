@@ -1,5 +1,6 @@
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 import pytest
 
@@ -17,6 +18,59 @@ from emerald.shared_kernel.domain.events.lifecycle_events import (
 from emerald.shared_kernel.domain.models.value_objects.deletable_entity_type import (
     DeletableEntityType,
 )
+
+
+def _soft_deleted_kwargs() -> dict[str, Any]:
+    return {
+        "aggregate_id": uuid.uuid4(),
+        "entity_type": DeletableEntityType.USER,
+        "entity_id": uuid.uuid4(),
+        "deleted_by": uuid.uuid4(),
+    }
+
+
+def _recovered_kwargs() -> dict[str, Any]:
+    return {
+        "aggregate_id": uuid.uuid4(),
+        "entity_type": DeletableEntityType.FINANCIAL_ACCOUNT,
+        "entity_id": uuid.uuid4(),
+        "recovered_by": uuid.uuid4(),
+    }
+
+
+def _hard_delete_scheduled_kwargs() -> dict[str, Any]:
+    return {
+        "aggregate_id": uuid.uuid4(),
+        "entity_type": DeletableEntityType.USER,
+        "entity_id": uuid.uuid4(),
+        "confirmed_by": uuid.uuid4(),
+    }
+
+
+def _hard_delete_cancelled_kwargs() -> dict[str, Any]:
+    return {
+        "aggregate_id": uuid.uuid4(),
+        "entity_type": DeletableEntityType.FINANCIAL_ACCOUNT,
+        "entity_id": uuid.uuid4(),
+        "cancelled_by": uuid.uuid4(),
+    }
+
+
+def _entity_hard_deleted_kwargs() -> dict[str, Any]:
+    return {
+        "aggregate_id": uuid.uuid4(),
+        "entity_type": DeletableEntityType.TRANSACTION,
+        "entity_id": uuid.uuid4(),
+    }
+
+
+def _retention_warning_kwargs() -> dict[str, Any]:
+    return {
+        "aggregate_id": uuid.uuid4(),
+        "entity_type": DeletableEntityType.CARD,
+        "entity_id": uuid.uuid4(),
+        "user_id": uuid.uuid4(),
+    }
 
 
 class TestHardDeleteTriggerEnum:
@@ -60,11 +114,11 @@ class TestEntitySoftDeleted:
         assert evt.hard_delete_scheduled_at == scheduled
 
     def test_aggregate_type(self) -> None:
-        evt = EntitySoftDeleted(aggregate_id=uuid.uuid4())
+        evt = EntitySoftDeleted(**_soft_deleted_kwargs())
         assert evt.aggregate_type == "data_lifecycle"
 
     def test_auto_generated_fields(self) -> None:
-        evt = EntitySoftDeleted(aggregate_id=uuid.uuid4())
+        evt = EntitySoftDeleted(**_soft_deleted_kwargs())
         assert isinstance(evt.event_id, uuid.UUID)
         assert isinstance(evt.occurred_at, datetime)
 
@@ -72,7 +126,7 @@ class TestEntitySoftDeleted:
         assert issubclass(EntitySoftDeleted, DomainEvent)
 
     def test_reason_defaults_to_none(self) -> None:
-        evt = EntitySoftDeleted(aggregate_id=uuid.uuid4())
+        evt = EntitySoftDeleted(**_soft_deleted_kwargs())
         assert evt.reason is None
 
 
@@ -92,7 +146,7 @@ class TestEntityRecovered:
         assert evt.recovered_by == recovered_by
 
     def test_aggregate_type(self) -> None:
-        evt = EntityRecovered(aggregate_id=uuid.uuid4())
+        evt = EntityRecovered(**_recovered_kwargs())
         assert evt.aggregate_type == "data_lifecycle"
 
 
@@ -111,7 +165,7 @@ class TestHardDeleteScheduled:
         assert evt.confirmed_by == confirmed_by
 
     def test_aggregate_type(self) -> None:
-        evt = HardDeleteScheduled(aggregate_id=uuid.uuid4())
+        evt = HardDeleteScheduled(**_hard_delete_scheduled_kwargs())
         assert evt.aggregate_type == "data_lifecycle"
 
 
@@ -127,7 +181,7 @@ class TestHardDeleteCancelled:
         assert evt.cancelled_by == cancelled_by
 
     def test_aggregate_type(self) -> None:
-        evt = HardDeleteCancelled(aggregate_id=uuid.uuid4())
+        evt = HardDeleteCancelled(**_hard_delete_cancelled_kwargs())
         assert evt.aggregate_type == "data_lifecycle"
 
 
@@ -142,11 +196,11 @@ class TestEntityHardDeleted:
         assert evt.trigger == HardDeleteTrigger.USER_INITIATED
 
     def test_aggregate_type(self) -> None:
-        evt = EntityHardDeleted(aggregate_id=uuid.uuid4())
+        evt = EntityHardDeleted(**_entity_hard_deleted_kwargs())
         assert evt.aggregate_type == "data_lifecycle"
 
     def test_default_trigger(self) -> None:
-        evt = EntityHardDeleted(aggregate_id=uuid.uuid4())
+        evt = EntityHardDeleted(**_entity_hard_deleted_kwargs())
         assert evt.trigger == HardDeleteTrigger.AUTOMATIC
 
 
@@ -165,41 +219,49 @@ class TestRetentionWarningDue:
         assert evt.warning_type == RetentionWarningType.FINAL_WARNING
 
     def test_aggregate_type(self) -> None:
-        evt = RetentionWarningDue(aggregate_id=uuid.uuid4())
+        evt = RetentionWarningDue(**_retention_warning_kwargs())
         assert evt.aggregate_type == "data_lifecycle"
 
 
 class TestAllEventsImmutable:
     @pytest.mark.parametrize(
-        "event_cls",
+        ("event_cls", "kwargs_fn"),
         [
-            EntitySoftDeleted,
-            EntityRecovered,
-            HardDeleteScheduled,
-            HardDeleteCancelled,
-            EntityHardDeleted,
-            RetentionWarningDue,
+            (EntitySoftDeleted, _soft_deleted_kwargs),
+            (EntityRecovered, _recovered_kwargs),
+            (HardDeleteScheduled, _hard_delete_scheduled_kwargs),
+            (HardDeleteCancelled, _hard_delete_cancelled_kwargs),
+            (EntityHardDeleted, _entity_hard_deleted_kwargs),
+            (RetentionWarningDue, _retention_warning_kwargs),
         ],
     )
-    def test_frozen(self, event_cls: type[DomainEvent]) -> None:
-        evt = event_cls(aggregate_id=uuid.uuid4())
+    def test_frozen(
+        self,
+        event_cls: type[DomainEvent],
+        kwargs_fn: object,  # noqa: ANN401
+    ) -> None:
+        evt = event_cls(**kwargs_fn())  # type: ignore[operator]
         with pytest.raises(AttributeError):
             evt.aggregate_id = uuid.uuid4()  # type: ignore[misc]
 
 
 class TestAllEventsUniqueIds:
     @pytest.mark.parametrize(
-        "event_cls",
+        ("event_cls", "kwargs_fn"),
         [
-            EntitySoftDeleted,
-            EntityRecovered,
-            HardDeleteScheduled,
-            HardDeleteCancelled,
-            EntityHardDeleted,
-            RetentionWarningDue,
+            (EntitySoftDeleted, _soft_deleted_kwargs),
+            (EntityRecovered, _recovered_kwargs),
+            (HardDeleteScheduled, _hard_delete_scheduled_kwargs),
+            (HardDeleteCancelled, _hard_delete_cancelled_kwargs),
+            (EntityHardDeleted, _entity_hard_deleted_kwargs),
+            (RetentionWarningDue, _retention_warning_kwargs),
         ],
     )
-    def test_unique_event_ids(self, event_cls: type[DomainEvent]) -> None:
-        a = event_cls(aggregate_id=uuid.uuid4())
-        b = event_cls(aggregate_id=uuid.uuid4())
+    def test_unique_event_ids(
+        self,
+        event_cls: type[DomainEvent],
+        kwargs_fn: object,  # noqa: ANN401
+    ) -> None:
+        a = event_cls(**kwargs_fn())  # type: ignore[operator]
+        b = event_cls(**kwargs_fn())  # type: ignore[operator]
         assert a.event_id != b.event_id
