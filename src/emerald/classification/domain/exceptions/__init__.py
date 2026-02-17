@@ -1,3 +1,7 @@
+from emerald.classification.domain.exceptions.categorization_exceptions import (
+    AssignmentNotFoundError,
+    TransactionNotActiveError,
+)
 from emerald.classification.domain.exceptions.taxonomy_exceptions import (
     CannotBeOwnParentError,
     CircularReferenceError,
@@ -17,6 +21,7 @@ from emerald.classification.domain.exceptions.taxonomy_exceptions import (
 )
 
 __all__ = [
+    "AssignmentNotFoundError",
     "CannotBeOwnParentError",
     "CircularReferenceError",
     "IncompleteReorderError",
@@ -32,4 +37,5 @@ __all__ = [
     "TermDescriptionTooLongError",
     "TermNameAlreadyExistsError",
     "TermNotFoundError",
+    "TransactionNotActiveError",
 ]

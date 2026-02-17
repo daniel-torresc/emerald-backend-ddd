@@ -11,8 +11,11 @@ from emerald.classification.domain.events import (
     TermRecovered,
     TermRenamed,
     TermsReordered,
+    TransactionCategorized,
+    TransactionUncategorized,
 )
 from emerald.classification.domain.exceptions import (
+    AssignmentNotFoundError,
     CannotBeOwnParentError,
     CircularReferenceError,
     IncompleteReorderError,
@@ -28,6 +31,7 @@ from emerald.classification.domain.exceptions import (
     TermDescriptionTooLongError,
     TermNameAlreadyExistsError,
     TermNotFoundError,
+    TransactionNotActiveError,
 )
 from emerald.classification.domain.models import (
     Taxonomy,
@@ -35,6 +39,8 @@ from emerald.classification.domain.models import (
     TaxonomyPath,
     TaxonomyTerm,
     TermName,
+    TransactionTermAssignment,
+    UncategorizationReason,
 )
 
 __all__ = [
@@ -42,10 +48,12 @@ __all__ = [
     "Taxonomy",
     # Entities
     "TaxonomyTerm",
+    "TransactionTermAssignment",
     # Value Objects
     "TaxonomyName",
     "TaxonomyPath",
     "TermName",
+    "UncategorizationReason",
     # Events
     "TaxonomyCreated",
     "TaxonomyDescriptionUpdated",
@@ -59,7 +67,10 @@ __all__ = [
     "TermRecovered",
     "TermRenamed",
     "TermsReordered",
+    "TransactionCategorized",
+    "TransactionUncategorized",
     # Exceptions
+    "AssignmentNotFoundError",
     "CannotBeOwnParentError",
     "CircularReferenceError",
     "IncompleteReorderError",
@@ -75,4 +86,5 @@ __all__ = [
     "TermDescriptionTooLongError",
     "TermNameAlreadyExistsError",
     "TermNotFoundError",
+    "TransactionNotActiveError",
 ]
