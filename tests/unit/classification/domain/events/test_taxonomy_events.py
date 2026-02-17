@@ -20,30 +20,25 @@ _ZERO = uuid.UUID(int=0)
 
 
 class TestTaxonomyEvents:
-    def test_taxonomy_created_defaults(self) -> None:
-        e = TaxonomyCreated(aggregate_id=_ZERO)
-        assert e.aggregate_type == "Taxonomy"
-        assert e.owner_id == _ZERO
-        assert e.name == ""
-        assert isinstance(e, DomainEvent)
-
-    def test_taxonomy_created_with_values(self) -> None:
+    def test_taxonomy_created(self) -> None:
         tid = uuid.uuid4()
         oid = uuid.uuid4()
         e = TaxonomyCreated(aggregate_id=tid, owner_id=oid, name="Budget")
+        assert e.aggregate_type == "taxonomy"
         assert e.aggregate_id == tid
         assert e.owner_id == oid
         assert e.name == "Budget"
+        assert isinstance(e, DomainEvent)
 
     def test_taxonomy_renamed(self) -> None:
         e = TaxonomyRenamed(aggregate_id=_ZERO, old_name="A", new_name="B")
-        assert e.aggregate_type == "Taxonomy"
+        assert e.aggregate_type == "taxonomy"
         assert e.old_name == "A"
         assert e.new_name == "B"
 
     def test_taxonomy_description_updated(self) -> None:
         e = TaxonomyDescriptionUpdated(aggregate_id=_ZERO)
-        assert e.aggregate_type == "Taxonomy"
+        assert e.aggregate_type == "taxonomy"
 
     def test_taxonomy_soft_deleted(self) -> None:
         uid = uuid.uuid4()
@@ -53,7 +48,7 @@ class TestTaxonomyEvents:
 
     def test_taxonomy_recovered(self) -> None:
         e = TaxonomyRecovered(aggregate_id=_ZERO)
-        assert e.aggregate_type == "Taxonomy"
+        assert e.aggregate_type == "taxonomy"
 
 
 class TestTermEvents:
@@ -66,11 +61,13 @@ class TestTermEvents:
         assert e.parent_term_id == pid
 
     def test_term_added_root(self) -> None:
-        e = TermAdded(aggregate_id=_ZERO, name="Food")
+        tid = uuid.uuid4()
+        e = TermAdded(aggregate_id=_ZERO, term_id=tid, name="Food")
         assert e.parent_term_id is None
 
     def test_term_renamed(self) -> None:
-        e = TermRenamed(aggregate_id=_ZERO, old_name="A", new_name="B")
+        tid = uuid.uuid4()
+        e = TermRenamed(aggregate_id=_ZERO, term_id=tid, old_name="A", new_name="B")
         assert e.old_name == "A"
         assert e.new_name == "B"
 
@@ -89,7 +86,9 @@ class TestTermEvents:
         assert e.new_parent_id == new_pid
 
     def test_term_deleted(self) -> None:
-        e = TermDeleted(aggregate_id=_ZERO, descendants_deleted=3)
+        tid = uuid.uuid4()
+        uid = uuid.uuid4()
+        e = TermDeleted(aggregate_id=_ZERO, term_id=tid, deleted_by=uid, descendants_deleted=3)
         assert e.descendants_deleted == 3
 
     def test_term_recovered(self) -> None:

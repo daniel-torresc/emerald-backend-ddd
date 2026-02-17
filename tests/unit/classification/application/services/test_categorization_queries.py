@@ -50,7 +50,6 @@ def _setup_and_assign(
     port.add_active_transaction(tx_id, _ACCOUNT_ID)
     port.grant_editor_permission(_ACCOUNT_ID, _USER_ID)
     service.assign_term(AssignTerm(transaction_id=tx_id, term_id=term_id, user_id=_USER_ID))
-    service.collect_events()
     return tx_id
 
 
@@ -68,7 +67,6 @@ class TestGetAssignments:
 
         service.assign_term(AssignTerm(transaction_id=tx_id, term_id=term_a, user_id=_USER_ID))
         service.assign_term(AssignTerm(transaction_id=tx_id, term_id=term_b, user_id=_USER_ID))
-        service.collect_events()
 
         assignments = service.get_assignments(tx_id)
         assert len(assignments) == 2

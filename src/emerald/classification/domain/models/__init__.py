@@ -4,7 +4,6 @@ from emerald.classification.domain.models.value_objects import (
     TaxonomyName,
     TaxonomyPath,
     TermName,
-    UncategorizationReason,
 )
 
 __all__ = [
@@ -14,5 +13,4 @@ __all__ = [
     "TaxonomyTerm",
     "TermName",
     "TransactionTermAssignment",
-    "UncategorizationReason",
 ]

@@ -11,7 +11,6 @@ from emerald.classification.application.dtos.commands.taxonomy_commands import (
 from emerald.classification.application.services.taxonomy_management import (
     TaxonomyManagementService,
 )
-from emerald.classification.domain.events.taxonomy_events import TermsReordered
 from emerald.classification.domain.exceptions import IncompleteReorderError
 from emerald.shared_kernel.domain.services.retention_policy_service import RetentionPolicyService
 from tests.unit.classification.fakes import FakeClassificationUnitOfWork
@@ -67,35 +66,6 @@ class TestReorderTerms:
         assert term_b.sort_order == 1
         assert term_a.sort_order == 2
         assert uow.committed is True
-
-    def test_reorder_emits_event(self) -> None:
-        service, uow = _make_service()
-        owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name="Categories"))
-
-        term_a = service.add_term(
-            _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="A")
-        )
-        term_b = service.add_term(
-            _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="B")
-        )
-        list(uow.collect_new_events())
-
-        service.reorder_terms(
-            ReorderTerms(
-                taxonomy_id=taxonomy.id,
-                owner_id=owner_id,
-                term_ids=[term_b.id, term_a.id],
-                parent_id=None,
-            )
-        )
-
-        events = list(uow.collect_new_events())
-        assert len(events) == 1
-        event = events[0]
-        assert isinstance(event, TermsReordered)
-        assert event.parent_id is None
-        assert event.ordered_term_ids == (term_b.id, term_a.id)
 
     def test_reorder_incomplete_raises(self) -> None:
         service, uow = _make_service()

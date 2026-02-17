@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Iterator
 
 from emerald.classification.application.ports.outbound.unit_of_work import (
     AbstractClassificationUnitOfWork,
@@ -14,7 +13,6 @@ from emerald.classification.domain.models.entities.transaction_term_assignment i
     TransactionTermAssignment,
 )
 from emerald.classification.domain.models.value_objects.taxonomy_name import TaxonomyName
-from emerald.shared_kernel.domain.events.domain_event import DomainEvent
 from emerald.shared_kernel.domain.exceptions import AuthorizationError
 
 
@@ -175,7 +173,3 @@ class FakeClassificationUnitOfWork(AbstractClassificationUnitOfWork):
 
     def rollback(self) -> None:
         pass
-
-    def collect_new_events(self) -> Iterator[DomainEvent]:
-        for taxonomy in self.taxonomies.seen:
-            yield from taxonomy.collect_events()

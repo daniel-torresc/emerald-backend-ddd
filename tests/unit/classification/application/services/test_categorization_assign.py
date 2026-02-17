@@ -7,7 +7,6 @@ from emerald.classification.application.dtos.commands.categorization_commands im
 from emerald.classification.application.services.transaction_categorization import (
     TransactionCategorizationService,
 )
-from emerald.classification.domain.events.categorization_events import TransactionCategorized
 from emerald.classification.domain.exceptions.categorization_exceptions import (
     TransactionNotActiveError,
 )
@@ -109,26 +108,6 @@ class TestAssignTermHappyPath:
         assert found is not None
         assert found.id == assignment.id
 
-    def test_assign_emits_transaction_categorized(self) -> None:
-        service, uow, port = _make_deps()
-        taxonomy = _create_taxonomy(uow)
-        term_id = _add_term(taxonomy)
-        tx_id = _setup_transaction(port)
-
-        cmd = _make_cmd(transaction_id=tx_id, term_id=term_id)
-        assignment = service.assign_term(cmd)
-
-        events = service.collect_events()
-        assert len(events) == 1
-        event = events[0]
-        assert isinstance(event, TransactionCategorized)
-        assert event.aggregate_id == tx_id
-        assert event.term_id == term_id
-        assert event.taxonomy_id == taxonomy.id
-        assert event.assignment_id == assignment.id
-        assert event.assigned_by == _USER_ID
-        assert event.is_reassignment is False
-
     def test_assign_commits_uow(self) -> None:
         service, uow, port = _make_deps()
         taxonomy = _create_taxonomy(uow)
@@ -150,7 +129,6 @@ class TestAssignTermReassignment:
         tx_id = _setup_transaction(port)
 
         service.assign_term(_make_cmd(transaction_id=tx_id, term_id=term_a_id))
-        service.collect_events()
 
         new_assignment = service.assign_term(_make_cmd(transaction_id=tx_id, term_id=term_b_id))
 
@@ -159,23 +137,6 @@ class TestAssignTermReassignment:
         assert len(assignments) == 1
         assert assignments[0].term_id == term_b_id
         assert assignments[0].id == new_assignment.id
-
-    def test_reassignment_emits_event_with_flag(self) -> None:
-        service, uow, port = _make_deps()
-        taxonomy = _create_taxonomy(uow)
-        term_a_id = _add_term(taxonomy, "Food")
-        term_b_id = _add_term(taxonomy, "Transport")
-        tx_id = _setup_transaction(port)
-
-        service.assign_term(_make_cmd(transaction_id=tx_id, term_id=term_a_id))
-        service.collect_events()
-
-        service.assign_term(_make_cmd(transaction_id=tx_id, term_id=term_b_id))
-
-        events = service.collect_events()
-        assert len(events) == 1
-        assert isinstance(events[0], TransactionCategorized)
-        assert events[0].is_reassignment is True
 
 
 class TestAssignTermMultiTaxonomy:

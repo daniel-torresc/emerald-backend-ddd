@@ -11,7 +11,6 @@ from emerald.classification.application.dtos.commands.taxonomy_commands import (
 from emerald.classification.application.services.taxonomy_management import (
     TaxonomyManagementService,
 )
-from emerald.classification.domain.events.taxonomy_events import TermMoved
 from emerald.classification.domain.exceptions import (
     CannotBeOwnParentError,
     CircularReferenceError,
@@ -72,44 +71,6 @@ class TestMoveTerm:
 
         assert child.parent_term_id == parent_b.id
         assert uow.committed is True
-
-    def test_move_emits_event(self) -> None:
-        service, uow = _make_service()
-        owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name="Categories"))
-
-        parent_a = service.add_term(
-            _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="A")
-        )
-        parent_b = service.add_term(
-            _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="B")
-        )
-        child = service.add_term(
-            _make_add_term_cmd(
-                taxonomy_id=taxonomy.id,
-                owner_id=owner_id,
-                name="Child",
-                parent_term_id=parent_a.id,
-            )
-        )
-        list(uow.collect_new_events())
-
-        service.move_term(
-            MoveTerm(
-                taxonomy_id=taxonomy.id,
-                owner_id=owner_id,
-                term_id=child.id,
-                new_parent_id=parent_b.id,
-            )
-        )
-
-        events = list(uow.collect_new_events())
-        assert len(events) == 1
-        event = events[0]
-        assert isinstance(event, TermMoved)
-        assert event.term_id == child.id
-        assert event.old_parent_id == parent_a.id
-        assert event.new_parent_id == parent_b.id
 
     def test_move_to_root(self) -> None:
         service, uow = _make_service()
@@ -210,7 +171,6 @@ class TestMoveTerm:
                 parent_term_id=parent.id,
             )
         )
-        list(uow.collect_new_events())
 
         service.move_term(
             MoveTerm(
@@ -221,6 +181,4 @@ class TestMoveTerm:
             )
         )
 
-        # No TermMoved event should have been emitted since parent didn't change
-        events = list(uow.collect_new_events())
-        assert len(events) == 0
+        assert child.parent_term_id == parent.id
