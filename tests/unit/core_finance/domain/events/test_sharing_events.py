@@ -26,11 +26,21 @@ class TestAccountShared:
         assert event.granted_by == gid
 
     def test_auto_event_id(self) -> None:
-        event = AccountShared(aggregate_id=uuid.uuid4())
+        event = AccountShared(
+            aggregate_id=uuid.uuid4(),
+            user_id=uuid.uuid4(),
+            permission_level="EDITOR",
+            granted_by=uuid.uuid4(),
+        )
         assert event.event_id is not None
 
     def test_auto_occurred_at(self) -> None:
-        event = AccountShared(aggregate_id=uuid.uuid4())
+        event = AccountShared(
+            aggregate_id=uuid.uuid4(),
+            user_id=uuid.uuid4(),
+            permission_level="EDITOR",
+            granted_by=uuid.uuid4(),
+        )
         assert event.occurred_at is not None
 
 

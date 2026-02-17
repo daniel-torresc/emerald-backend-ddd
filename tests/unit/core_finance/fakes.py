@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Iterator
 from decimal import Decimal
 
 from emerald.core_finance.application.ports.outbound.unit_of_work import (
@@ -11,7 +10,6 @@ from emerald.core_finance.domain.models.aggregates.account import Account
 from emerald.core_finance.domain.models.aggregates.transaction import Transaction
 from emerald.core_finance.domain.models.value_objects.account_name import AccountName
 from emerald.core_finance.domain.models.value_objects.permission_level import PermissionLevel
-from emerald.shared_kernel.domain.events.domain_event import DomainEvent
 from emerald.shared_kernel.domain.models.value_objects.date_range import DateRange
 from emerald.shared_kernel.domain.models.value_objects.money import Money
 from emerald.shared_kernel.domain.models.value_objects.paginated_result import PaginatedResult
@@ -226,9 +224,3 @@ class FakeCoreFinanceUnitOfWork(AbstractCoreFinanceUnitOfWork):
 
     def rollback(self) -> None:
         pass
-
-    def collect_new_events(self) -> Iterator[DomainEvent]:
-        for aggregate in self.accounts.seen:
-            yield from aggregate.collect_events()
-        for txn in self.transactions.seen:
-            yield from txn.collect_events()

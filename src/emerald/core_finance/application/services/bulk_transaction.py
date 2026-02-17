@@ -11,13 +11,6 @@ from emerald.core_finance.application.ports.outbound.unit_of_work import (
     AbstractCoreFinanceUnitOfWork,
 )
 from emerald.core_finance.domain.constants import MAX_BULK_ITEMS
-from emerald.core_finance.domain.events.transaction_events import (
-    TransactionCreated,
-    TransactionsBulkCreated,
-    TransactionsBulkDeleted,
-    TransactionsBulkRecovered,
-    TransactionsBulkUpdated,
-)
 from emerald.core_finance.domain.exceptions import AccountNotFoundError
 from emerald.core_finance.domain.exceptions.bulk_exceptions import (
     BulkLimitExceededError,
@@ -45,7 +38,6 @@ from emerald.core_finance.domain.models.value_objects.import_source import Impor
 from emerald.core_finance.domain.models.value_objects.import_source_type import ImportSourceType
 from emerald.core_finance.domain.models.value_objects.permission_level import PermissionLevel
 from emerald.core_finance.domain.models.value_objects.review_status import ReviewStatus
-from emerald.shared_kernel.domain.events.domain_event import DomainEvent
 from emerald.shared_kernel.domain.exceptions import DomainError
 from emerald.shared_kernel.domain.models.value_objects.deletable_entity_type import (
     DeletableEntityType,
@@ -64,13 +56,6 @@ class BulkTransactionService:
     ) -> None:
         self._uow = uow
         self._retention_policy_service = retention_policy_service
-        self._events: list[DomainEvent] = []
-
-    def collect_events(self) -> list[DomainEvent]:
-        """Return and clear accumulated service-level events."""
-        events = list(self._events)
-        self._events.clear()
-        return events
 
     # -- Bulk Create -----------------------------------------------------------
 
@@ -133,16 +118,6 @@ class BulkTransactionService:
                         transaction.review_status = txn_input.review_status
 
                     self._uow.transactions.save(transaction)
-                    transaction._register_event(
-                        TransactionCreated(
-                            aggregate_id=transaction.id,
-                            account_id=cmd.account_id,
-                            amount=amount.amount,
-                            currency_code=amount.currency.code,
-                            import_source_type=import_source.source_type.value,
-                            created_by=cmd.requesting_user_id,
-                        )
-                    )
                     successes.append(BulkSuccess(index=i, entity_id=transaction.id))
                 except DomainError as e:
                     failures.append(
@@ -154,19 +129,8 @@ class BulkTransactionService:
                         )
                     )
 
-            self._uow.commit()
-
             result = self._build_result(successes, failures)
-            self._events.append(
-                TransactionsBulkCreated(
-                    aggregate_id=uuid.uuid4(),
-                    account_id=cmd.account_id,
-                    success_count=result.success_count,
-                    failure_count=result.failure_count,
-                    import_source_type=cmd.import_source_type,
-                    created_by=cmd.requesting_user_id,
-                )
-            )
+            self._uow.commit()
             return result
 
     # -- Bulk Update -----------------------------------------------------------
@@ -224,8 +188,6 @@ class BulkTransactionService:
                         )
                     )
 
-            self._uow.commit()
-
             # Derive updated_fields from non-_UNSET field names
             updated_fields: set[str] = set()
             if updates is not None:
@@ -237,16 +199,7 @@ class BulkTransactionService:
                     updated_fields.add("merchant")
 
             result = self._build_result(successes, failures)
-            self._events.append(
-                TransactionsBulkUpdated(
-                    aggregate_id=uuid.uuid4(),
-                    account_id=cmd.account_id,
-                    success_count=result.success_count,
-                    failure_count=result.failure_count,
-                    updated_fields=frozenset(updated_fields),
-                    updated_by=cmd.requesting_user_id,
-                )
-            )
+            self._uow.commit()
             return result
 
     # -- Bulk Delete -----------------------------------------------------------
@@ -296,18 +249,8 @@ class BulkTransactionService:
                         )
                     )
 
-            self._uow.commit()
-
             result = self._build_result(successes, failures)
-            self._events.append(
-                TransactionsBulkDeleted(
-                    aggregate_id=uuid.uuid4(),
-                    account_id=cmd.account_id,
-                    success_count=result.success_count,
-                    failure_count=result.failure_count,
-                    deleted_by=cmd.requesting_user_id,
-                )
-            )
+            self._uow.commit()
             return result
 
     # -- Bulk Recover ----------------------------------------------------------
@@ -365,18 +308,8 @@ class BulkTransactionService:
                         )
                     )
 
-            self._uow.commit()
-
             result = self._build_result(successes, failures)
-            self._events.append(
-                TransactionsBulkRecovered(
-                    aggregate_id=uuid.uuid4(),
-                    account_id=cmd.account_id,
-                    success_count=result.success_count,
-                    failure_count=result.failure_count,
-                    recovered_by=cmd.requesting_user_id,
-                )
-            )
+            self._uow.commit()
             return result
 
     # -- Private helpers -------------------------------------------------------

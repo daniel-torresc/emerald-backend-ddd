@@ -18,7 +18,6 @@ from emerald.core_finance.application.dtos.commands.transaction_commands import 
 from emerald.core_finance.application.ports.outbound.unit_of_work import (
     AbstractCoreFinanceUnitOfWork,
 )
-from emerald.core_finance.domain.events.transaction_events import TransactionCreated
 from emerald.core_finance.domain.exceptions import AccountNotFoundError
 from emerald.core_finance.domain.exceptions.sharing_exceptions import (
     AccountNotActiveError,
@@ -106,16 +105,6 @@ class TransactionManagementService:
                 external_id=cmd.external_id,
             )
             self._uow.transactions.save(transaction)
-            transaction._register_event(
-                TransactionCreated(
-                    aggregate_id=transaction.id,
-                    account_id=cmd.account_id,
-                    amount=amount.amount,
-                    currency_code=amount.currency.code,
-                    import_source_type=import_source.source_type.value,
-                    created_by=cmd.requesting_user_id,
-                )
-            )
             self._uow.commit()
             return transaction
 

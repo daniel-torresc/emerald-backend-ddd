@@ -290,7 +290,7 @@ class TestUpdateCardMethods:
         assert len(events) == 1
         event = events[0]
         assert isinstance(event, CardUpdated)
-        assert event.changed_fields == ["card_name"]
+        assert event.changed_fields == frozenset({"card_name"})
 
     def test_update_card_network(self) -> None:
         account = _make_account()
@@ -304,7 +304,7 @@ class TestUpdateCardMethods:
         assert len(events) == 1
         event = events[0]
         assert isinstance(event, CardUpdated)
-        assert event.changed_fields == ["card_network"]
+        assert event.changed_fields == frozenset({"card_network"})
 
     def test_update_card_expiry(self) -> None:
         account = _make_account()
@@ -319,7 +319,7 @@ class TestUpdateCardMethods:
         assert len(events) == 1
         event = events[0]
         assert isinstance(event, CardUpdated)
-        assert event.changed_fields == ["expiry_month", "expiry_year"]
+        assert event.changed_fields == frozenset({"expiry_month", "expiry_year"})
 
     def test_update_card_credit_limit(self) -> None:
         account = _make_account()
@@ -334,7 +334,7 @@ class TestUpdateCardMethods:
         assert len(events) == 1
         event = events[0]
         assert isinstance(event, CardUpdated)
-        assert event.changed_fields == ["credit_limit"]
+        assert event.changed_fields == frozenset({"credit_limit"})
 
     def test_update_card_credit_limit_currency_mismatch(self) -> None:
         account = _make_account()  # USD account
@@ -358,7 +358,7 @@ class TestUpdateCardMethods:
         assert len(events) == 1
         event = events[0]
         assert isinstance(event, CardUpdated)
-        assert event.changed_fields == ["issuing_institution"]
+        assert event.changed_fields == frozenset({"issuing_institution"})
 
     def test_update_card_notes(self) -> None:
         account = _make_account()
@@ -372,7 +372,7 @@ class TestUpdateCardMethods:
         assert len(events) == 1
         event = events[0]
         assert isinstance(event, CardUpdated)
-        assert event.changed_fields == ["notes"]
+        assert event.changed_fields == frozenset({"notes"})
 
     def test_update_deleted_card_raises(self) -> None:
         owner_id = uuid.uuid4()
