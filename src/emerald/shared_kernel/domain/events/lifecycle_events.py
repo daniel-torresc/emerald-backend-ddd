@@ -25,66 +25,67 @@ class RetentionWarningType(Enum):
     FINAL_WARNING = "FINAL_WARNING"
 
 
-@dataclass(frozen=True)
-class EntitySoftDeleted(DomainEvent):
-    """Emitted when an entity is soft deleted."""
+@dataclass(frozen=True, kw_only=True)
+class LifecycleEvent(DomainEvent):
+    """Base event for data lifecycle operations."""
 
     aggregate_type: ClassVar[str] = "data_lifecycle"
-    entity_type: DeletableEntityType = DeletableEntityType.USER  # placeholder default
-    entity_id: uuid.UUID = uuid.UUID(int=0)  # placeholder default
-    deleted_by: uuid.UUID = uuid.UUID(int=0)  # placeholder default
+
+
+@dataclass(frozen=True)
+class EntitySoftDeleted(LifecycleEvent):
+    """Emitted when an entity is soft deleted."""
+
+    entity_type: DeletableEntityType
+    entity_id: uuid.UUID
+    deleted_by: uuid.UUID
     reason: str | None = None
     hard_delete_scheduled_at: datetime | None = None
 
 
 @dataclass(frozen=True)
-class EntityRecovered(DomainEvent):
+class EntityRecovered(LifecycleEvent):
     """Emitted when an entity is recovered from trash."""
 
-    aggregate_type: ClassVar[str] = "data_lifecycle"
-    entity_type: DeletableEntityType = DeletableEntityType.USER
-    entity_id: uuid.UUID = uuid.UUID(int=0)
-    recovered_by: uuid.UUID = uuid.UUID(int=0)
+    entity_type: DeletableEntityType
+    entity_id: uuid.UUID
+    recovered_by: uuid.UUID
 
 
 @dataclass(frozen=True)
-class HardDeleteScheduled(DomainEvent):
+class HardDeleteScheduled(LifecycleEvent):
     """Emitted when a user confirms hard delete and cooling-off starts."""
 
-    aggregate_type: ClassVar[str] = "data_lifecycle"
-    entity_type: DeletableEntityType = DeletableEntityType.USER
-    entity_id: uuid.UUID = uuid.UUID(int=0)
+    entity_type: DeletableEntityType
+    entity_id: uuid.UUID
+    confirmed_by: uuid.UUID
     scheduled_at: datetime | None = None
-    confirmed_by: uuid.UUID = uuid.UUID(int=0)
 
 
 @dataclass(frozen=True)
-class HardDeleteCancelled(DomainEvent):
+class HardDeleteCancelled(LifecycleEvent):
     """Emitted when a user cancels during cooling-off period."""
 
-    aggregate_type: ClassVar[str] = "data_lifecycle"
-    entity_type: DeletableEntityType = DeletableEntityType.USER
-    entity_id: uuid.UUID = uuid.UUID(int=0)
-    cancelled_by: uuid.UUID = uuid.UUID(int=0)
+    entity_type: DeletableEntityType
+    entity_id: uuid.UUID
+    cancelled_by: uuid.UUID
 
 
 @dataclass(frozen=True)
-class EntityHardDeleted(DomainEvent):
+class EntityHardDeleted(LifecycleEvent):
     """Emitted when an entity is permanently removed."""
 
-    aggregate_type: ClassVar[str] = "data_lifecycle"
-    entity_type: DeletableEntityType = DeletableEntityType.USER
-    entity_id: uuid.UUID = uuid.UUID(int=0)
+    entity_type: DeletableEntityType
+    entity_id: uuid.UUID
     trigger: HardDeleteTrigger = HardDeleteTrigger.AUTOMATIC
 
 
 @dataclass(frozen=True)
-class RetentionWarningDue(DomainEvent):
+class RetentionWarningDue(LifecycleEvent):
     """Emitted when approaching automatic hard delete."""
 
-    aggregate_type: ClassVar[str] = "data_lifecycle"
-    entity_type: DeletableEntityType = DeletableEntityType.USER
-    entity_id: uuid.UUID = uuid.UUID(int=0)
-    user_id: uuid.UUID = uuid.UUID(int=0)
-    hard_delete_at: datetime | None = None
+    entity_type: DeletableEntityType
+    entity_id: uuid.UUID
+    user_id: uuid.UUID
     warning_type: RetentionWarningType = RetentionWarningType.FIRST_WARNING
+    hard_delete_at: datetime | None = None

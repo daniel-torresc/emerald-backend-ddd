@@ -7,7 +7,6 @@ from emerald.classification.application.dtos.commands.taxonomy_commands import C
 from emerald.classification.application.services.taxonomy_management import (
     TaxonomyManagementService,
 )
-from emerald.classification.domain.events.taxonomy_events import TaxonomyCreated
 from emerald.classification.domain.exceptions import TaxonomyNameAlreadyExistsError
 from emerald.classification.domain.models.aggregates.taxonomy import Taxonomy
 from emerald.classification.domain.models.value_objects.taxonomy_name import TaxonomyName
@@ -59,19 +58,6 @@ class TestCreateTaxonomy:
         service.create_taxonomy(cmd)
 
         assert uow.committed is True
-
-    def test_emits_taxonomy_created_event(self) -> None:
-        service, uow = _make_service()
-        cmd = _make_cmd()
-        taxonomy = service.create_taxonomy(cmd)
-
-        events = list(uow.collect_new_events())
-        assert len(events) == 1
-        event = events[0]
-        assert isinstance(event, TaxonomyCreated)
-        assert event.aggregate_id == taxonomy.id
-        assert event.owner_id == cmd.owner_id
-        assert event.name == "My Taxonomy"
 
     def test_with_description(self) -> None:
         service, uow = _make_service()

@@ -1,7 +1,4 @@
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
-
-from emerald.shared_kernel.domain.events.domain_event import DomainEvent
 
 
 class AbstractUnitOfWork(ABC):
@@ -26,7 +23,3 @@ class AbstractUnitOfWork(ABC):
 
     @abstractmethod
     def rollback(self) -> None: ...
-
-    def collect_new_events(self) -> Iterator[DomainEvent]:
-        """Harvest domain events from tracked aggregates. Override in subclasses."""
-        return iter([])

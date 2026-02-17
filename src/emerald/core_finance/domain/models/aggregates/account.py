@@ -523,7 +523,7 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
                 aggregate_id=self.id,
                 card_id=card_id,
                 account_id=self.id,
-                changed_fields=["card_name"],
+                changed_fields=frozenset({"card_name"}),
             )
         )
         self._touch()
@@ -537,7 +537,7 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
                 aggregate_id=self.id,
                 card_id=card_id,
                 account_id=self.id,
-                changed_fields=["card_network"],
+                changed_fields=frozenset({"card_network"}),
             )
         )
         self._touch()
@@ -551,7 +551,7 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
                 aggregate_id=self.id,
                 card_id=card_id,
                 account_id=self.id,
-                changed_fields=["expiry_month", "expiry_year"],
+                changed_fields=frozenset({"expiry_month", "expiry_year"}),
             )
         )
         self._touch()
@@ -570,7 +570,7 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
                 aggregate_id=self.id,
                 card_id=card_id,
                 account_id=self.id,
-                changed_fields=["credit_limit"],
+                changed_fields=frozenset({"credit_limit"}),
             )
         )
         self._touch()
@@ -584,7 +584,7 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
                 aggregate_id=self.id,
                 card_id=card_id,
                 account_id=self.id,
-                changed_fields=["issuing_institution"],
+                changed_fields=frozenset({"issuing_institution"}),
             )
         )
         self._touch()
@@ -598,7 +598,7 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
                 aggregate_id=self.id,
                 card_id=card_id,
                 account_id=self.id,
-                changed_fields=["notes"],
+                changed_fields=frozenset({"notes"}),
             )
         )
         self._touch()

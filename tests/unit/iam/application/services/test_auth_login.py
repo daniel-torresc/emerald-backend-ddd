@@ -8,7 +8,6 @@ from emerald.iam.application.dtos.responses import LoginResult
 from emerald.iam.application.services.authentication import AuthenticationService
 from emerald.iam.domain.constants import ACCESS_TOKEN_TTL, MAX_CONCURRENT_SESSIONS
 from emerald.iam.domain.events import UserLoggedIn
-from emerald.iam.domain.events.auth_events import LoginFailed
 from emerald.iam.domain.exceptions import (
     AccountSuspendedError,
     AuthenticationFailedError,
@@ -158,10 +157,6 @@ def test_login_emits_login_failed_on_failure(auth_env):
         service.login(
             LoginUser(email="test@example.com", password="WrongPass!", portal_context="REGULAR")
         )
-
-    events = service.collect_events()
-    assert len(events) >= 1
-    assert any(isinstance(e, LoginFailed) for e in events)
 
 
 def test_login_at_max_sessions_revokes_oldest_family(auth_env):

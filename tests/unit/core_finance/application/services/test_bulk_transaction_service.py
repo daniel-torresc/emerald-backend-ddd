@@ -385,30 +385,6 @@ class TestBulkCreate:
         assert result.failure_count == 2
         assert result.is_complete_failure is True
 
-    def test_bulk_created_event_emitted(self) -> None:
-        svc, acct_svc, _, _ = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
-
-        cmd = BulkCreateTransactions(
-            account_id=acct_id,
-            requesting_user_id=user_id,
-            transactions=(_make_input(), _make_input()),
-            import_source_type="BULK_IMPORT",
-        )
-        svc.bulk_create_transactions(cmd)
-
-        events = svc.collect_events()
-        assert len(events) == 1
-        event = events[0]
-        from emerald.core_finance.domain.events.transaction_events import TransactionsBulkCreated
-
-        assert isinstance(event, TransactionsBulkCreated)
-        assert event.account_id == acct_id
-        assert event.success_count == 2
-        assert event.failure_count == 0
-        assert event.import_source_type == "BULK_IMPORT"
-        assert event.created_by == user_id
-
     def test_individual_events_emitted(self) -> None:
         svc, acct_svc, _, uow = _make_services()
         acct_id, user_id = _create_account(acct_svc)
@@ -574,31 +550,6 @@ class TestBulkUpdate:
         assert result.failure_count == 1
         assert result.failures[0].error_code == "TRANSACTION_DELETED"
 
-    def test_bulk_updated_event_with_fields(self) -> None:
-        svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
-        txn = _create_transaction(uow, acct_id, user_id)
-
-        cmd = BulkUpdateTransactions(
-            account_id=acct_id,
-            requesting_user_id=user_id,
-            transaction_ids=(txn.id,),
-            updates=BulkUpdateFields(
-                review_status=ReviewStatus.REVIEWED,
-                merchant="M",
-            ),
-        )
-        svc.bulk_update_transactions(cmd)
-
-        events = svc.collect_events()
-        assert len(events) == 1
-        from emerald.core_finance.domain.events.transaction_events import TransactionsBulkUpdated
-
-        event = events[0]
-        assert isinstance(event, TransactionsBulkUpdated)
-        assert event.updated_fields == frozenset({"review_status", "merchant"})
-        assert event.updated_by == user_id
-
 
 # ==============================================================================
 # Bulk Delete Tests
@@ -694,26 +645,6 @@ class TestBulkDelete:
             c = uow.transactions.find_by_id(child.id, include_deleted=True)
             assert c is not None
             assert c.is_deleted()
-
-    def test_bulk_deleted_event_emitted(self) -> None:
-        svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
-        txn = _create_transaction(uow, acct_id, user_id)
-
-        cmd = BulkDeleteTransactions(
-            account_id=acct_id,
-            requesting_user_id=user_id,
-            transaction_ids=(txn.id,),
-        )
-        svc.bulk_delete_transactions(cmd)
-
-        events = svc.collect_events()
-        assert len(events) == 1
-        from emerald.core_finance.domain.events.transaction_events import TransactionsBulkDeleted
-
-        assert isinstance(events[0], TransactionsBulkDeleted)
-        assert events[0].success_count == 1
-        assert events[0].deleted_by == user_id
 
 
 # ==============================================================================
@@ -868,30 +799,6 @@ class TestBulkRecover:
             c = uow.transactions.find_by_id(child.id)
             assert c is not None
             assert not c.is_deleted()
-
-    def test_bulk_recovered_event_emitted(self) -> None:
-        svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
-        txn = _create_transaction(uow, acct_id, user_id)
-        txn.soft_delete(user_id, _retention())
-        uow.transactions.save(txn)
-
-        cmd = BulkRecoverTransactions(
-            account_id=acct_id,
-            requesting_user_id=user_id,
-            transaction_ids=(txn.id,),
-        )
-        svc.bulk_recover_transactions(cmd)
-
-        events = svc.collect_events()
-        assert len(events) == 1
-        from emerald.core_finance.domain.events.transaction_events import (
-            TransactionsBulkRecovered,
-        )
-
-        assert isinstance(events[0], TransactionsBulkRecovered)
-        assert events[0].success_count == 1
-        assert events[0].recovered_by == user_id
 
     def test_not_found_fails(self) -> None:
         svc, acct_svc, _, _ = _make_services()

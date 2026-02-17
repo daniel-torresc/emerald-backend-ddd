@@ -23,6 +23,7 @@ from emerald.shared_kernel.domain.events import (
     HardDeleteCancelled,
     HardDeleteScheduled,
     HardDeleteTrigger,
+    LifecycleEvent,
     RetentionWarningDue,
     RetentionWarningType,
 )
@@ -106,6 +107,7 @@ __all__ = [
     "EntityHardDeleted",
     "EntityRecovered",
     "EntitySoftDeleted",
+    "LifecycleEvent",
     "HardDeleteCancelled",
     "HardDeleteScheduled",
     "HardDeleteTrigger",

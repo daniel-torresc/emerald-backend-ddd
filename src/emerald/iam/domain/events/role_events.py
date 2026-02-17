@@ -1,47 +1,40 @@
 import uuid
 from dataclasses import dataclass
-from typing import ClassVar
 
-from emerald.shared_kernel.domain.events.domain_event import DomainEvent
+from emerald.iam.domain.events.base import UserEvent
 
 
 @dataclass(frozen=True)
-class UserPromotedToAdmin(DomainEvent):
+class UserPromotedToAdmin(UserEvent):
     """Emitted when a user is promoted from USER to ADMIN."""
 
-    permissions: frozenset[str] = frozenset()
-    promoted_by_id: uuid.UUID | None = None
-    aggregate_type: ClassVar[str] = "User"
+    permissions: frozenset[str]
+    promoted_by_id: uuid.UUID
 
 
 @dataclass(frozen=True)
-class UserDemotedToUser(DomainEvent):
+class UserDemotedToUser(UserEvent):
     """Emitted when an admin is demoted back to USER."""
 
-    demoted_by_id: uuid.UUID | None = None
-    aggregate_type: ClassVar[str] = "User"
+    demoted_by_id: uuid.UUID
 
 
 @dataclass(frozen=True)
-class AdminPermissionGranted(DomainEvent):
+class AdminPermissionGranted(UserEvent):
     """Emitted when an admin permission is granted."""
 
-    permission: str = ""
-    granted_by_id: uuid.UUID | None = None
-    aggregate_type: ClassVar[str] = "User"
+    permission: str
+    granted_by_id: uuid.UUID
 
 
 @dataclass(frozen=True)
-class AdminPermissionRevoked(DomainEvent):
+class AdminPermissionRevoked(UserEvent):
     """Emitted when an admin permission is revoked."""
 
-    permission: str = ""
-    revoked_by_id: uuid.UUID | None = None
-    aggregate_type: ClassVar[str] = "User"
+    permission: str
+    revoked_by_id: uuid.UUID
 
 
 @dataclass(frozen=True)
-class SuperadminProvisioned(DomainEvent):
+class SuperadminProvisioned(UserEvent):
     """Emitted when the SUPERADMIN account is provisioned."""
-
-    aggregate_type: ClassVar[str] = "User"

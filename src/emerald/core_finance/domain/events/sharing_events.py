@@ -1,52 +1,46 @@
 import uuid
 from dataclasses import dataclass
-from typing import ClassVar
 
-from emerald.shared_kernel.domain.events.domain_event import DomainEvent
+from emerald.core_finance.domain.events.base import AccountEvent
 
 
 @dataclass(frozen=True)
-class AccountShared(DomainEvent):
+class AccountShared(AccountEvent):
     """Emitted when an account is shared with a user."""
 
-    user_id: uuid.UUID = uuid.UUID(int=0)
-    permission_level: str = ""
-    granted_by: uuid.UUID = uuid.UUID(int=0)
-    aggregate_type: ClassVar[str] = "account"
+    user_id: uuid.UUID
+    permission_level: str
+    granted_by: uuid.UUID
 
 
 @dataclass(frozen=True)
-class AccountShareUpdated(DomainEvent):
+class AccountShareUpdated(AccountEvent):
     """Emitted when a share's permission level is changed."""
 
-    user_id: uuid.UUID = uuid.UUID(int=0)
-    old_permission: str = ""
-    new_permission: str = ""
-    updated_by: uuid.UUID = uuid.UUID(int=0)
-    aggregate_type: ClassVar[str] = "account"
+    user_id: uuid.UUID
+    old_permission: str
+    new_permission: str
+    updated_by: uuid.UUID
 
 
 @dataclass(frozen=True)
-class AccountShareRevoked(DomainEvent):
+class AccountShareRevoked(AccountEvent):
     """Emitted when an owner revokes a share."""
 
-    user_id: uuid.UUID = uuid.UUID(int=0)
-    revoked_by: uuid.UUID = uuid.UUID(int=0)
-    aggregate_type: ClassVar[str] = "account"
+    user_id: uuid.UUID
+    revoked_by: uuid.UUID
 
 
 @dataclass(frozen=True)
-class AccountShareLeft(DomainEvent):
+class AccountShareLeft(AccountEvent):
     """Emitted when a non-owner leaves an account."""
 
-    user_id: uuid.UUID = uuid.UUID(int=0)
-    aggregate_type: ClassVar[str] = "account"
+    user_id: uuid.UUID
 
 
 @dataclass(frozen=True)
-class AccountOwnershipTransferred(DomainEvent):
+class AccountOwnershipTransferred(AccountEvent):
     """Emitted when ownership is transferred to another user."""
 
-    old_owner_id: uuid.UUID = uuid.UUID(int=0)
-    new_owner_id: uuid.UUID = uuid.UUID(int=0)
-    aggregate_type: ClassVar[str] = "account"
+    old_owner_id: uuid.UUID
+    new_owner_id: uuid.UUID

@@ -45,7 +45,14 @@ class TestTransactionCreated:
         assert event.created_by == uid
 
     def test_frozen(self) -> None:
-        event = TransactionCreated(aggregate_id=uuid.uuid4())
+        event = TransactionCreated(
+            aggregate_id=uuid.uuid4(),
+            account_id=uuid.uuid4(),
+            amount=Decimal("10.00"),
+            currency_code="USD",
+            import_source_type="MANUAL",
+            created_by=uuid.uuid4(),
+        )
         with pytest.raises(dataclasses.FrozenInstanceError):
             event.account_id = uuid.uuid4()  # type: ignore[misc]
 
@@ -73,7 +80,12 @@ class TestTransactionUpdated:
         assert event.changed_fields == frozenset({"merchant", "comments"})
 
     def test_frozen(self) -> None:
-        event = TransactionUpdated(aggregate_id=uuid.uuid4())
+        event = TransactionUpdated(
+            aggregate_id=uuid.uuid4(),
+            account_id=uuid.uuid4(),
+            updated_by=uuid.uuid4(),
+            changed_fields=frozenset({"amount"}),
+        )
         with pytest.raises(dataclasses.FrozenInstanceError):
             event.updated_by = uuid.uuid4()  # type: ignore[misc]
 
@@ -99,7 +111,11 @@ class TestTransactionReviewed:
         assert event.reviewed_by == uid
 
     def test_frozen(self) -> None:
-        event = TransactionReviewed(aggregate_id=uuid.uuid4())
+        event = TransactionReviewed(
+            aggregate_id=uuid.uuid4(),
+            account_id=uuid.uuid4(),
+            reviewed_by=uuid.uuid4(),
+        )
         with pytest.raises(dataclasses.FrozenInstanceError):
             event.reviewed_by = uuid.uuid4()  # type: ignore[misc]
 
@@ -125,7 +141,11 @@ class TestTransactionSoftDeleted:
         assert event.deleted_by == uid
 
     def test_frozen(self) -> None:
-        event = TransactionSoftDeleted(aggregate_id=uuid.uuid4())
+        event = TransactionSoftDeleted(
+            aggregate_id=uuid.uuid4(),
+            account_id=uuid.uuid4(),
+            deleted_by=uuid.uuid4(),
+        )
         with pytest.raises(dataclasses.FrozenInstanceError):
             event.deleted_by = uuid.uuid4()  # type: ignore[misc]
 
@@ -148,7 +168,10 @@ class TestTransactionRecovered:
         assert event.account_id == aid
 
     def test_frozen(self) -> None:
-        event = TransactionRecovered(aggregate_id=uuid.uuid4())
+        event = TransactionRecovered(
+            aggregate_id=uuid.uuid4(),
+            account_id=uuid.uuid4(),
+        )
         with pytest.raises(dataclasses.FrozenInstanceError):
             event.account_id = uuid.uuid4()  # type: ignore[misc]
 
@@ -178,15 +201,14 @@ class TestTransactionSplit:
         assert event.child_count == 2
         assert event.child_ids == (c1, c2)
 
-    def test_defaults(self) -> None:
-        event = TransactionSplit(aggregate_id=uuid.uuid4())
-        assert event.parent_transaction_id == uuid.UUID(int=0)
-        assert event.account_id == uuid.UUID(int=0)
-        assert event.child_count == 0
-        assert event.child_ids == ()
-
     def test_frozen(self) -> None:
-        event = TransactionSplit(aggregate_id=uuid.uuid4())
+        event = TransactionSplit(
+            aggregate_id=uuid.uuid4(),
+            parent_transaction_id=uuid.uuid4(),
+            account_id=uuid.uuid4(),
+            child_count=2,
+            child_ids=(uuid.uuid4(), uuid.uuid4()),
+        )
         with pytest.raises(dataclasses.FrozenInstanceError):
             event.child_count = 5  # type: ignore[misc]
 
@@ -213,13 +235,12 @@ class TestTransactionSplitsJoined:
         assert event.account_id == aid
         assert event.removed_child_count == 3
 
-    def test_defaults(self) -> None:
-        event = TransactionSplitsJoined(aggregate_id=uuid.uuid4())
-        assert event.parent_transaction_id == uuid.UUID(int=0)
-        assert event.account_id == uuid.UUID(int=0)
-        assert event.removed_child_count == 0
-
     def test_frozen(self) -> None:
-        event = TransactionSplitsJoined(aggregate_id=uuid.uuid4())
+        event = TransactionSplitsJoined(
+            aggregate_id=uuid.uuid4(),
+            parent_transaction_id=uuid.uuid4(),
+            account_id=uuid.uuid4(),
+            removed_child_count=3,
+        )
         with pytest.raises(dataclasses.FrozenInstanceError):
             event.removed_child_count = 5  # type: ignore[misc]

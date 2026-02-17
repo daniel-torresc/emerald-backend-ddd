@@ -1,6 +1,7 @@
 from emerald.classification.domain.events import (
     TaxonomyCreated,
     TaxonomyDescriptionUpdated,
+    TaxonomyEvent,
     TaxonomyRecovered,
     TaxonomyRenamed,
     TaxonomySoftDeleted,
@@ -11,8 +12,6 @@ from emerald.classification.domain.events import (
     TermRecovered,
     TermRenamed,
     TermsReordered,
-    TransactionCategorized,
-    TransactionUncategorized,
 )
 from emerald.classification.domain.exceptions import (
     AssignmentNotFoundError,
@@ -40,7 +39,6 @@ from emerald.classification.domain.models import (
     TaxonomyTerm,
     TermName,
     TransactionTermAssignment,
-    UncategorizationReason,
 )
 
 __all__ = [
@@ -53,8 +51,8 @@ __all__ = [
     "TaxonomyName",
     "TaxonomyPath",
     "TermName",
-    "UncategorizationReason",
     # Events
+    "TaxonomyEvent",
     "TaxonomyCreated",
     "TaxonomyDescriptionUpdated",
     "TaxonomyRecovered",
@@ -67,8 +65,6 @@ __all__ = [
     "TermRecovered",
     "TermRenamed",
     "TermsReordered",
-    "TransactionCategorized",
-    "TransactionUncategorized",
     # Exceptions
     "AssignmentNotFoundError",
     "CannotBeOwnParentError",

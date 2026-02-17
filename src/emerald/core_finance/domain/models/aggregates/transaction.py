@@ -15,6 +15,7 @@ from emerald.core_finance.domain.constants import (
 from emerald.core_finance.domain.events.transaction_events import (
     TransactionCardLinked,
     TransactionCardUnlinked,
+    TransactionCreated,
     TransactionRecovered,
     TransactionReviewed,
     TransactionSoftDeleted,
@@ -148,7 +149,7 @@ class Transaction(SoftDeletableMixin, AuditableMixin, AggregateRoot):
                 comments, "comments", MAX_COMMENTS_LENGTH, InvalidCommentsError
             )
 
-        return cls(
+        txn = cls(
             id=uuid.uuid4(),
             account_id=account_id,
             transaction_date=transaction_date,
@@ -165,6 +166,17 @@ class Transaction(SoftDeletableMixin, AuditableMixin, AggregateRoot):
             external_id=external_id,
             created_by=created_by,
         )
+        txn._register_event(
+            TransactionCreated(
+                aggregate_id=txn.id,
+                account_id=account_id,
+                amount=amount.amount,
+                currency_code=amount.currency.code,
+                import_source_type=import_source.source_type.value,
+                created_by=created_by,
+            )
+        )
+        return txn
 
     # -- Update methods --------------------------------------------------------
 

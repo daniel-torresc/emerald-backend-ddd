@@ -11,10 +11,6 @@ from emerald.classification.application.dtos.commands.taxonomy_commands import (
 from emerald.classification.application.services.taxonomy_management import (
     TaxonomyManagementService,
 )
-from emerald.classification.domain.events.taxonomy_events import (
-    TaxonomyDescriptionUpdated,
-    TaxonomyRenamed,
-)
 from emerald.classification.domain.exceptions import (
     TaxonomyNameAlreadyExistsError,
     TaxonomyNotFoundError,
@@ -55,24 +51,6 @@ class TestRenameTaxonomy:
 
         assert taxonomy.name == TaxonomyName("New Name")
         assert uow.committed is True
-
-    def test_rename_emits_event(self) -> None:
-        service, uow = _make_service()
-        owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(_make_create_cmd(owner_id=owner_id, name="Old Name"))
-        # Drain create event
-        list(uow.collect_new_events())
-
-        service.rename_taxonomy(
-            RenameTaxonomy(taxonomy_id=taxonomy.id, owner_id=owner_id, new_name="New Name")
-        )
-
-        events = list(uow.collect_new_events())
-        assert len(events) == 1
-        event = events[0]
-        assert isinstance(event, TaxonomyRenamed)
-        assert event.old_name == "Old Name"
-        assert event.new_name == "New Name"
 
     def test_rename_uniqueness_excludes_self(self) -> None:
         service, uow = _make_service()
@@ -130,22 +108,6 @@ class TestUpdateTaxonomyDescription:
 
         assert taxonomy.description == "New description"
         assert uow.committed is True
-
-    def test_update_description_emits_event(self) -> None:
-        service, uow = _make_service()
-        owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(_make_create_cmd(owner_id=owner_id))
-        list(uow.collect_new_events())
-
-        service.update_taxonomy_description(
-            UpdateTaxonomyDescription(
-                taxonomy_id=taxonomy.id, owner_id=owner_id, description="Updated"
-            )
-        )
-
-        events = list(uow.collect_new_events())
-        assert len(events) == 1
-        assert isinstance(events[0], TaxonomyDescriptionUpdated)
 
     def test_update_description_to_none(self) -> None:
         service, uow = _make_service()

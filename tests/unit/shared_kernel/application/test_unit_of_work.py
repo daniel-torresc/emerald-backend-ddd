@@ -1,7 +1,4 @@
-from collections.abc import Iterator
-
 from emerald.shared_kernel.application.ports.outbound.unit_of_work import AbstractUnitOfWork
-from emerald.shared_kernel.domain.events.domain_event import DomainEvent
 
 
 class _ConcreteUnitOfWork(AbstractUnitOfWork):
@@ -38,11 +35,6 @@ class TestAbstractUnitOfWork:
         assert uow.committed is True
         # rollback still called on __exit__ — safe by default
         assert uow.rolled_back is True
-
-    def test_collect_new_events_returns_empty_by_default(self):
-        uow = _ConcreteUnitOfWork()
-        events: Iterator[DomainEvent] = uow.collect_new_events()
-        assert list(events) == []
 
     def test_rollback_called_on_exception(self):
         uow = _ConcreteUnitOfWork()

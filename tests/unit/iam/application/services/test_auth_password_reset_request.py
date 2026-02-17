@@ -5,7 +5,6 @@ import pytest
 from emerald.iam.application.dtos.commands import RequestPasswordReset
 from emerald.iam.application.services.authentication import AuthenticationService
 from emerald.iam.domain.constants import PASSWORD_RESET_TOKEN_TTL
-from emerald.iam.domain.events.auth_events import PasswordResetRequested
 from emerald.iam.domain.models.aggregates.user import User
 from emerald.iam.domain.models.value_objects.email_address import EmailAddress
 from emerald.iam.domain.models.value_objects.hashed_password import HashedPassword
@@ -94,17 +93,6 @@ def test_request_invalidates_previous_tokens(auth_env):
     token_2 = uow.password_reset_tokens.find_by_hash(hash_2)
     assert token_2 is not None
     assert not token_2.is_used()
-
-
-def test_request_emits_password_reset_requested(auth_env):
-    service, uow, _, _ = auth_env
-    _create_active_user(uow)
-    service.collect_events()  # Clear any previous events
-
-    service.request_password_reset(RequestPasswordReset(email="test@example.com"))
-
-    events = service.collect_events()
-    assert any(isinstance(e, PasswordResetRequested) for e in events)
 
 
 def test_request_reset_token_expires_in_one_hour(auth_env):

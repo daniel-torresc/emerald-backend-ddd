@@ -10,10 +10,6 @@ from emerald.classification.application.ports.outbound.transaction_access_port i
 from emerald.classification.application.ports.outbound.unit_of_work import (
     AbstractClassificationUnitOfWork,
 )
-from emerald.classification.domain.events.categorization_events import (
-    TransactionCategorized,
-    TransactionUncategorized,
-)
 from emerald.classification.domain.exceptions.categorization_exceptions import (
     AssignmentNotFoundError,
 )
@@ -23,9 +19,6 @@ from emerald.classification.domain.exceptions.taxonomy_exceptions import (
 )
 from emerald.classification.domain.models.entities.transaction_term_assignment import (
     TransactionTermAssignment,
-)
-from emerald.classification.domain.models.value_objects.uncategorization_reason import (
-    UncategorizationReason,
 )
 
 
@@ -42,13 +35,6 @@ class TransactionCategorizationService:
     ) -> None:
         self._uow = uow
         self._transaction_access_port = transaction_access_port
-        self._events: list[object] = []
-
-    def collect_events(self) -> list[object]:
-        """Return accumulated events and clear the internal list."""
-        events = list(self._events)
-        self._events.clear()
-        return events
 
     # -- Categorization operations ---------------------------------------------
 
@@ -72,13 +58,11 @@ class TransactionCategorizationService:
                 raise TermNotFoundError()
 
             # 5. Check for existing assignment (reassignment)
-            is_reassignment = False
             existing = self._uow.assignments.find_by_transaction_and_taxonomy(
                 cmd.transaction_id, taxonomy.id
             )
             if existing is not None:
                 self._uow.assignments.delete(existing.id)
-                is_reassignment = True
 
             # 6-7. Create and persist new assignment
             assignment = TransactionTermAssignment.create(
@@ -88,19 +72,8 @@ class TransactionCategorizationService:
                 assigned_by=cmd.user_id,
             )
             self._uow.assignments.save(assignment)
-            self._uow.commit()
 
-            # 8. Emit event
-            self._events.append(
-                TransactionCategorized(
-                    aggregate_id=cmd.transaction_id,
-                    term_id=cmd.term_id,
-                    taxonomy_id=taxonomy.id,
-                    assignment_id=assignment.id,
-                    assigned_by=cmd.user_id,
-                    is_reassignment=is_reassignment,
-                )
-            )
+            self._uow.commit()
             return assignment
 
     def remove_assignment(self, cmd: RemoveAssignment) -> None:
@@ -121,17 +94,8 @@ class TransactionCategorizationService:
 
             # 4. Hard delete
             self._uow.assignments.delete(assignment.id)
-            self._uow.commit()
 
-            # 5. Emit event
-            self._events.append(
-                TransactionUncategorized(
-                    aggregate_id=cmd.transaction_id,
-                    taxonomy_id=cmd.taxonomy_id,
-                    term_id=assignment.term_id,
-                    reason=UncategorizationReason.MANUAL,
-                )
-            )
+            self._uow.commit()
 
     # -- Query methods ---------------------------------------------------------
 
@@ -189,15 +153,6 @@ class TransactionCategorizationService:
         with self._uow:
             deleted = self._uow.assignments.delete_by_term(term_id)
             self._uow.commit()
-        for assignment in deleted:
-            self._events.append(
-                TransactionUncategorized(
-                    aggregate_id=assignment.transaction_id,
-                    taxonomy_id=assignment.taxonomy_id,
-                    term_id=assignment.term_id,
-                    reason=UncategorizationReason.TERM_DELETED,
-                )
-            )
         return len(deleted)
 
     def handle_taxonomy_soft_deleted(self, taxonomy_id: uuid.UUID) -> int:
@@ -205,15 +160,6 @@ class TransactionCategorizationService:
         with self._uow:
             deleted = self._uow.assignments.delete_by_taxonomy(taxonomy_id)
             self._uow.commit()
-        for assignment in deleted:
-            self._events.append(
-                TransactionUncategorized(
-                    aggregate_id=assignment.transaction_id,
-                    taxonomy_id=assignment.taxonomy_id,
-                    term_id=assignment.term_id,
-                    reason=UncategorizationReason.TAXONOMY_DELETED,
-                )
-            )
         return len(deleted)
 
     def handle_transaction_soft_deleted(self, transaction_id: uuid.UUID) -> int:
@@ -221,13 +167,4 @@ class TransactionCategorizationService:
         with self._uow:
             deleted = self._uow.assignments.delete_by_transaction(transaction_id)
             self._uow.commit()
-        for assignment in deleted:
-            self._events.append(
-                TransactionUncategorized(
-                    aggregate_id=assignment.transaction_id,
-                    taxonomy_id=assignment.taxonomy_id,
-                    term_id=assignment.term_id,
-                    reason=UncategorizationReason.TRANSACTION_DELETED,
-                )
-            )
         return len(deleted)

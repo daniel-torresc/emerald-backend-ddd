@@ -10,7 +10,6 @@ from emerald.classification.application.dtos.commands.taxonomy_commands import (
 from emerald.classification.application.services.taxonomy_management import (
     TaxonomyManagementService,
 )
-from emerald.classification.domain.events.taxonomy_events import TermAdded
 from emerald.classification.domain.exceptions import (
     TaxonomyNotFoundError,
     TermNameAlreadyExistsError,
@@ -64,24 +63,6 @@ class TestAddRootTerm:
         assert term.taxonomy_id == taxonomy_id
         assert uow.committed is True
 
-    def test_add_root_term_emits_event(self) -> None:
-        service, uow = _make_service()
-        owner_id = uuid.uuid4()
-        taxonomy_id = _create_taxonomy(service, owner_id)
-        list(uow.collect_new_events())
-
-        term = service.add_term(
-            _make_add_term_cmd(taxonomy_id=taxonomy_id, owner_id=owner_id, name="Food")
-        )
-
-        events = list(uow.collect_new_events())
-        assert len(events) == 1
-        event = events[0]
-        assert isinstance(event, TermAdded)
-        assert event.term_id == term.id
-        assert event.name == "Food"
-        assert event.parent_term_id is None
-
 
 class TestAddChildTerm:
     def test_add_child_with_parent(self) -> None:
@@ -103,30 +84,6 @@ class TestAddChildTerm:
 
         assert child.parent_term_id == parent.id
         assert child.name == TermName("Fruits")
-
-    def test_add_child_emits_event_with_parent_id(self) -> None:
-        service, uow = _make_service()
-        owner_id = uuid.uuid4()
-        taxonomy_id = _create_taxonomy(service, owner_id)
-        parent = service.add_term(
-            _make_add_term_cmd(taxonomy_id=taxonomy_id, owner_id=owner_id, name="Food")
-        )
-        list(uow.collect_new_events())
-
-        service.add_term(
-            _make_add_term_cmd(
-                taxonomy_id=taxonomy_id,
-                owner_id=owner_id,
-                name="Fruits",
-                parent_term_id=parent.id,
-            )
-        )
-
-        events = list(uow.collect_new_events())
-        assert len(events) == 1
-        event = events[0]
-        assert isinstance(event, TermAdded)
-        assert event.parent_term_id == parent.id
 
 
 class TestAddTermWithDescription:

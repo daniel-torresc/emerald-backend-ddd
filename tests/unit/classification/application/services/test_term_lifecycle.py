@@ -12,7 +12,6 @@ from emerald.classification.application.dtos.commands.taxonomy_commands import (
 from emerald.classification.application.services.taxonomy_management import (
     TaxonomyManagementService,
 )
-from emerald.classification.domain.events.taxonomy_events import TermDeleted, TermRecovered
 from emerald.classification.domain.exceptions import ParentTermDeletedError
 from emerald.shared_kernel.domain.services.retention_policy_service import RetentionPolicyService
 from tests.unit.classification.fakes import FakeClassificationUnitOfWork
@@ -52,24 +51,6 @@ class TestDeleteTerm:
         assert term.is_deleted()
         assert uow.committed is True
 
-    def test_delete_term_emits_event(self) -> None:
-        service, uow = _make_service()
-        owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name="Categories"))
-        term = service.add_term(
-            _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="Food")
-        )
-        list(uow.collect_new_events())
-
-        service.delete_term(DeleteTerm(taxonomy_id=taxonomy.id, owner_id=owner_id, term_id=term.id))
-
-        events = list(uow.collect_new_events())
-        assert len(events) == 1
-        event = events[0]
-        assert isinstance(event, TermDeleted)
-        assert event.term_id == term.id
-        assert event.deleted_by == owner_id
-
     def test_delete_term_cascade_descendants(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
@@ -94,7 +75,6 @@ class TestDeleteTerm:
                 parent_term_id=child.id,
             )
         )
-        list(uow.collect_new_events())
 
         service.delete_term(
             DeleteTerm(taxonomy_id=taxonomy.id, owner_id=owner_id, term_id=parent.id)
@@ -103,12 +83,6 @@ class TestDeleteTerm:
         assert parent.is_deleted()
         assert child.is_deleted()
         assert grandchild.is_deleted()
-
-        events = list(uow.collect_new_events())
-        assert len(events) == 1
-        event = events[0]
-        assert isinstance(event, TermDeleted)
-        assert event.descendants_deleted == 2
 
 
 class TestRecoverTerm:
@@ -128,25 +102,6 @@ class TestRecoverTerm:
 
         assert term.is_active()
         assert uow.committed is True
-
-    def test_recover_term_emits_event(self) -> None:
-        service, uow = _make_service()
-        owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name="Categories"))
-        term = service.add_term(
-            _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="Food")
-        )
-        service.delete_term(DeleteTerm(taxonomy_id=taxonomy.id, owner_id=owner_id, term_id=term.id))
-        list(uow.collect_new_events())
-
-        service.recover_term(
-            RecoverTerm(taxonomy_id=taxonomy.id, owner_id=owner_id, term_id=term.id)
-        )
-
-        events = list(uow.collect_new_events())
-        assert len(events) == 1
-        assert isinstance(events[0], TermRecovered)
-        assert events[0].term_id == term.id
 
     def test_recover_term_parent_deleted_raises(self) -> None:
         service, uow = _make_service()

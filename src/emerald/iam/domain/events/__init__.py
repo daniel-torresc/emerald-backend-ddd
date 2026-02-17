@@ -1,11 +1,4 @@
-from emerald.iam.domain.events.auth_events import (
-    AllSessionsRevoked,
-    LoginFailed,
-    PasswordResetRequested,
-    TokenFamilyCompromised,
-    TokenRefreshed,
-    TokenRevoked,
-)
+from emerald.iam.domain.events.base import UserEvent
 from emerald.iam.domain.events.role_events import (
     AdminPermissionGranted,
     AdminPermissionRevoked,
@@ -14,7 +7,6 @@ from emerald.iam.domain.events.role_events import (
     UserPromotedToAdmin,
 )
 from emerald.iam.domain.events.social_events import (
-    SocialLoginCompleted,
     UserRegisteredViaSocialProvider,
 )
 from emerald.iam.domain.events.user_events import (
@@ -35,20 +27,14 @@ from emerald.iam.domain.events.user_events import (
 __all__ = [
     "AdminPermissionGranted",
     "AdminPermissionRevoked",
-    "AllSessionsRevoked",
     "AuthProviderLinked",
     "AuthProviderUnlinked",
     "EmailVerified",
-    "LoginFailed",
     "PasswordChanged",
-    "PasswordResetRequested",
-    "SocialLoginCompleted",
     "SuperadminProvisioned",
-    "TokenFamilyCompromised",
-    "TokenRefreshed",
-    "TokenRevoked",
     "UserDemotedToUser",
     "UserEmailChanged",
+    "UserEvent",
     "UserLoggedIn",
     "UserPromotedToAdmin",
     "UserRecovered",

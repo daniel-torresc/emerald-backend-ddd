@@ -9,7 +9,6 @@ from emerald.classification.application.dtos.commands.categorization_commands im
 from emerald.classification.application.services.transaction_categorization import (
     TransactionCategorizationService,
 )
-from emerald.classification.domain.events.categorization_events import TransactionUncategorized
 from emerald.classification.domain.exceptions.categorization_exceptions import (
     AssignmentNotFoundError,
     TransactionNotActiveError,
@@ -17,9 +16,6 @@ from emerald.classification.domain.exceptions.categorization_exceptions import (
 from emerald.classification.domain.models.aggregates.taxonomy import Taxonomy
 from emerald.classification.domain.models.value_objects.taxonomy_name import TaxonomyName
 from emerald.classification.domain.models.value_objects.term_name import TermName
-from emerald.classification.domain.models.value_objects.uncategorization_reason import (
-    UncategorizationReason,
-)
 from emerald.shared_kernel.domain.exceptions import AuthorizationError
 from tests.unit.classification.fakes import (
     FakeClassificationUnitOfWork,
@@ -66,7 +62,6 @@ class TestRemoveAssignment:
 
         # First assign
         service.assign_term(AssignTerm(transaction_id=tx_id, term_id=term_id, user_id=_USER_ID))
-        service.collect_events()
 
         # Then remove
         service.remove_assignment(
@@ -75,26 +70,6 @@ class TestRemoveAssignment:
 
         # Verify deleted
         assert uow.assignments.find_by_transaction(tx_id) == []
-
-    def test_remove_emits_uncategorized_event(self) -> None:
-        service, uow, port = _make_deps()
-        tx_id, term_id, taxonomy_id = _setup(uow, port)
-
-        service.assign_term(AssignTerm(transaction_id=tx_id, term_id=term_id, user_id=_USER_ID))
-        service.collect_events()
-
-        service.remove_assignment(
-            RemoveAssignment(transaction_id=tx_id, taxonomy_id=taxonomy_id, user_id=_USER_ID)
-        )
-
-        events = service.collect_events()
-        assert len(events) == 1
-        event = events[0]
-        assert isinstance(event, TransactionUncategorized)
-        assert event.aggregate_id == tx_id
-        assert event.taxonomy_id == taxonomy_id
-        assert event.term_id == term_id
-        assert event.reason == UncategorizationReason.MANUAL
 
     def test_remove_nonexistent_raises(self) -> None:
         service, uow, port = _make_deps()

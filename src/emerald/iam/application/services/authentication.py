@@ -24,19 +24,8 @@ from emerald.iam.domain.constants import (
     MAX_CONCURRENT_SESSIONS,
     REFRESH_TOKEN_TTL_SUPERADMIN,
 )
-from emerald.iam.domain.events.auth_events import (
-    AllSessionsRevoked,
-    LoginFailed,
-    PasswordResetRequested,
-    TokenFamilyCompromised,
-    TokenRefreshed,
-    TokenRevoked,
-)
-from emerald.iam.domain.events.social_events import SocialLoginCompleted
 from emerald.iam.domain.exceptions import (
-    AccountSuspendedError,
     AuthenticationFailedError,
-    EmailNotVerifiedError,
     InvalidTokenError,
     ProviderEmailMismatchError,
     ProviderEmailNotVerifiedError,
@@ -67,8 +56,6 @@ from emerald.iam.domain.services.password_validation import (
 if TYPE_CHECKING:
     from emerald.iam.application.ports.outbound.oidc_provider import OidcProvider
 
-_NIL_UUID = uuid.UUID(int=0)
-
 
 class AuthenticationService:
     """Application service handling all authentication flows."""
@@ -84,7 +71,6 @@ class AuthenticationService:
         self._hasher = hasher
         self._token_service = token_service
         self._oidc_provider = oidc_provider
-        self._events: list[object] = []
 
     # -- Private Helpers -------------------------------------------------------
 
@@ -160,25 +146,15 @@ class AuthenticationService:
             # 2. Find user by email
             user = self._uow.users.find_by_email(EmailAddress(cmd.email))
             if user is None:
-                self._events.append(LoginFailed(aggregate_id=_NIL_UUID, email=cmd.email))
                 raise AuthenticationFailedError()
 
             # 3. Check user status
-            try:
-                user.validate_can_authenticate()
-            except AuthenticationFailedError:
-                # DELETED users get NIL UUID for privacy (same as non-existent)
-                self._events.append(LoginFailed(aggregate_id=_NIL_UUID, email=cmd.email))
-                raise
-            except (EmailNotVerifiedError, AccountSuspendedError):
-                self._events.append(LoginFailed(aggregate_id=user.id, email=cmd.email))
-                raise
+            user.validate_can_authenticate()
 
             # 4. Verify password
             if user.password is None or not self._hasher.verify(
                 cmd.password, user.password.hashed_value
             ):
-                self._events.append(LoginFailed(aggregate_id=user.id, email=cmd.email))
                 raise AuthenticationFailedError()
 
             # 5. Record login on user
@@ -240,15 +216,6 @@ class AuthenticationService:
 
         # Record login
         user.record_login()
-
-        # Emit social login event
-        self._events.append(
-            SocialLoginCompleted(
-                aggregate_id=user.id,
-                user_id=user.id,
-                provider_type=claims.provider_type.value,
-            )
-        )
 
         # Issue tokens
         portal_context = PortalContext("REGULAR")
@@ -356,13 +323,6 @@ class AuthenticationService:
             # 4. Check revoked -> THEFT DETECTED
             if token.is_revoked():
                 self._uow.refresh_tokens.revoke_family(token.family_id)
-                self._events.append(
-                    TokenFamilyCompromised(
-                        aggregate_id=token.user_id,
-                        user_id=token.user_id,
-                        family_id=token.family_id,
-                    )
-                )
                 self._uow.commit()
                 raise InvalidTokenError()
 
@@ -411,15 +371,6 @@ class AuthenticationService:
             # 10. Persist new refresh token
             self._uow.refresh_tokens.add(new_refresh_token)
 
-            # 11. Emit event
-            self._events.append(
-                TokenRefreshed(
-                    aggregate_id=token.user_id,
-                    user_id=token.user_id,
-                    family_id=token.family_id,
-                )
-            )
-
             self._uow.commit()
 
             return LoginResult(
@@ -438,13 +389,6 @@ class AuthenticationService:
 
             if token is not None and token.is_active():
                 token.revoke()
-                self._events.append(
-                    TokenRevoked(
-                        aggregate_id=token.user_id,
-                        user_id=token.user_id,
-                        token_id=token.id,
-                    )
-                )
 
             self._uow.commit()
 
@@ -453,7 +397,6 @@ class AuthenticationService:
         with self._uow:
             user_id = uuid.UUID(cmd.user_id)
             self._uow.refresh_tokens.revoke_all_for_user(user_id)
-            self._events.append(AllSessionsRevoked(aggregate_id=user_id, user_id=user_id))
             self._uow.commit()
 
     # -- Password Reset --------------------------------------------------------
@@ -482,9 +425,6 @@ class AuthenticationService:
 
             # Persist
             self._uow.password_reset_tokens.add(reset_token)
-
-            # Emit event
-            self._events.append(PasswordResetRequested(aggregate_id=user.id, user_id=user.id))
 
             self._uow.commit()
             return raw_token
@@ -528,7 +468,6 @@ class AuthenticationService:
 
             # 8. Revoke all refresh tokens
             self._uow.refresh_tokens.revoke_all_for_user(user.id)
-            self._events.append(AllSessionsRevoked(aggregate_id=user.id, user_id=user.id))
 
             self._uow.commit()
 
@@ -558,11 +497,3 @@ class AuthenticationService:
                 display_name=display_name,
                 system_role=user.system_role,
             )
-
-    # -- Event Collection ------------------------------------------------------
-
-    def collect_events(self) -> list[object]:
-        """Collect and clear service-level events."""
-        events = list(self._events)
-        self._events.clear()
-        return events
