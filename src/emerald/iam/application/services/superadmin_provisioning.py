@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from emerald.iam.application.dtos.commands import ProvisionSuperadmin
 from emerald.iam.application.ports.outbound.unit_of_work import AbstractIamUnitOfWork
-from emerald.iam.domain.events.role_events import SuperadminProvisioned
 from emerald.iam.domain.exceptions import (
     EmailAlreadyExistsError,
     SuperadminAlreadyExistsError,
@@ -12,7 +11,6 @@ from emerald.iam.domain.models.aggregates.user import User
 from emerald.iam.domain.models.value_objects.email_address import EmailAddress
 from emerald.iam.domain.models.value_objects.hashed_password import HashedPassword
 from emerald.iam.domain.models.value_objects.system_role import SystemRole
-from emerald.iam.domain.models.value_objects.user_status import UserStatus
 from emerald.iam.domain.models.value_objects.username import Username
 from emerald.iam.domain.ports.password_hasher import PasswordHasher
 from emerald.iam.domain.services.password_validation import validate_password_strength
@@ -50,18 +48,10 @@ class SuperadminProvisioningService:
             # 4. Hash password
             hashed = self._hasher.hash(cmd.password)
 
-            # 5. Create user via normal registration
-            user = User.register(email, username, HashedPassword(hashed))
+            # 5. Create user via superadmin factory
+            user = User.provision_as_superadmin(email, username, HashedPassword(hashed))
 
-            # 6. Override to SUPERADMIN state (privileged bootstrap operation)
-            user.system_role = SystemRole.SUPERADMIN
-            user.status = UserStatus.ACTIVE
-            user.email_verified = True
-
-            # 7. Record event
-            user._register_event(SuperadminProvisioned(aggregate_id=user.id))
-
-            # 8. Persist
+            # 6. Persist
             self._uow.users.add(user)
             self._uow.commit()
 

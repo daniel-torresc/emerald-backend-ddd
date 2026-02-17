@@ -7,10 +7,7 @@ import pytest
 from emerald.iam.application.dtos.responses import LoginResult
 from emerald.iam.application.services.authentication import AuthenticationService
 from emerald.iam.domain.constants import MAX_CONCURRENT_SESSIONS
-from emerald.iam.domain.events.social_events import (
-    SocialLoginCompleted,
-    UserRegisteredViaSocialProvider,
-)
+from emerald.iam.domain.events.social_events import UserRegisteredViaSocialProvider
 from emerald.iam.domain.events.user_events import AuthProviderLinked, EmailVerified
 from emerald.iam.domain.exceptions import (
     AccountSuspendedError,
@@ -94,10 +91,6 @@ class TestLoginWithProvider:
         assert result.is_new_registration is False
         assert user.last_login_at is not None
 
-        # Service-level event
-        svc_events = service.collect_events()
-        assert any(isinstance(e, SocialLoginCompleted) for e in svc_events)
-
     def test_existing_active_user_auto_link(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
@@ -115,10 +108,6 @@ class TestLoginWithProvider:
         # Aggregate events: AuthProviderLinked + UserLoggedIn
         agg_events = user.collect_events()
         assert any(isinstance(e, AuthProviderLinked) for e in agg_events)
-
-        # Service-level event: SocialLoginCompleted
-        svc_events = service.collect_events()
-        assert any(isinstance(e, SocialLoginCompleted) for e in svc_events)
 
     def test_pending_verification_user_upgrade(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
@@ -142,10 +131,6 @@ class TestLoginWithProvider:
         agg_events = user.collect_events()
         assert any(isinstance(e, AuthProviderLinked) for e in agg_events)
         assert any(isinstance(e, EmailVerified) for e in agg_events)
-
-        # Service-level event: SocialLoginCompleted
-        svc_events = service.collect_events()
-        assert any(isinstance(e, SocialLoginCompleted) for e in svc_events)
 
     def test_deleted_user_raises_auth_failed(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService

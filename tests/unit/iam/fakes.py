@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Iterator
 from datetime import UTC, datetime
 
 from emerald.iam.application.ports.outbound.unit_of_work import AbstractIamUnitOfWork
@@ -15,7 +14,6 @@ from emerald.iam.domain.models.value_objects.email_address import EmailAddress
 from emerald.iam.domain.models.value_objects.oidc_claims import OidcClaims
 from emerald.iam.domain.models.value_objects.system_role import SystemRole
 from emerald.iam.domain.models.value_objects.username import Username
-from emerald.shared_kernel.domain.events.domain_event import DomainEvent
 
 
 class FakeUserRepository:
@@ -213,7 +211,3 @@ class FakeIamUnitOfWork(AbstractIamUnitOfWork):
 
     def rollback(self) -> None:
         pass
-
-    def collect_new_events(self) -> Iterator[DomainEvent]:
-        for aggregate in self.users.seen:
-            yield from aggregate.collect_events()

@@ -7,6 +7,7 @@ from typing import Any
 from emerald.iam.domain.events.role_events import (
     AdminPermissionGranted,
     AdminPermissionRevoked,
+    SuperadminProvisioned,
     UserDemotedToUser,
     UserPromotedToAdmin,
 )
@@ -165,6 +166,33 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
                 full_name=full_name,
             )
         )
+        return user
+
+    @classmethod
+    def provision_as_superadmin(
+        cls,
+        email: EmailAddress,
+        username: Username,
+        hashed_password: HashedPassword,
+    ) -> User:
+        """Create the SUPERADMIN user during platform installation."""
+        user_id = uuid.uuid4()
+        now = datetime.now(UTC)
+        provider = AuthProvider(ProviderType.PASSWORD, None, now)
+        user = cls(
+            email=email,
+            username=username,
+            password=hashed_password,
+            auth_providers={provider},
+            status=UserStatus.ACTIVE,
+            email_verified=True,
+            password_history=[],
+            preferences=UserPreferences(),
+            system_role=SystemRole.SUPERADMIN,
+            id=user_id,
+            created_by=user_id,
+        )
+        user._register_event(SuperadminProvisioned(aggregate_id=user.id))
         return user
 
     # -- Email Verification ----------------------------------------------------

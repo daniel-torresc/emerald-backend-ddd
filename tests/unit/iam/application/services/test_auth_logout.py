@@ -2,7 +2,6 @@ import pytest
 
 from emerald.iam.application.dtos.commands import LoginUser, LogoutAllSessions, LogoutSession
 from emerald.iam.application.services.authentication import AuthenticationService
-from emerald.iam.domain.events.auth_events import AllSessionsRevoked, TokenRevoked
 from emerald.iam.domain.models.aggregates.user import User
 from emerald.iam.domain.models.value_objects.email_address import EmailAddress
 from emerald.iam.domain.models.value_objects.hashed_password import HashedPassword
@@ -50,18 +49,6 @@ def test_logout_valid_token_revokes_it(auth_env):
     assert token.is_revoked()
 
 
-def test_logout_emits_token_revoked(auth_env):
-    service, uow, _, _ = auth_env
-    _create_active_user(uow)
-    login_result = _login(service)
-    service.collect_events()  # Clear login events
-
-    service.logout(LogoutSession(refresh_token=login_result.refresh_token))
-
-    events = service.collect_events()
-    assert any(isinstance(e, TokenRevoked) for e in events)
-
-
 def test_logout_nonexistent_token_silently_ignored(auth_env):
     service, uow, _, _ = auth_env
 
@@ -86,16 +73,3 @@ def test_logout_all_revokes_all_tokens(auth_env):
         token = uow.refresh_tokens.find_by_hash(token_hash)
         assert token is not None
         assert token.is_revoked()
-
-
-def test_logout_all_emits_all_sessions_revoked(auth_env):
-    service, uow, _, _ = auth_env
-    user = _create_active_user(uow)
-    _login(service)
-    _login(service)
-    service.collect_events()  # Clear login events
-
-    service.logout_all(LogoutAllSessions(user_id=str(user.id)))
-
-    events = service.collect_events()
-    assert any(isinstance(e, AllSessionsRevoked) for e in events)

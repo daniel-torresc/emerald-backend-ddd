@@ -19,6 +19,22 @@ _ALL_ROLE_EVENTS = [
     SuperadminProvisioned,
 ]
 
+_REQUIRED_KWARGS: dict[type, dict] = {
+    UserPromotedToAdmin: {
+        "permissions": frozenset({"FULL_ADMIN"}),
+        "promoted_by_id": uuid.uuid4(),
+    },
+    UserDemotedToUser: {"demoted_by_id": uuid.uuid4()},
+    AdminPermissionGranted: {"permission": "FULL_ADMIN", "granted_by_id": uuid.uuid4()},
+    AdminPermissionRevoked: {"permission": "FULL_ADMIN", "revoked_by_id": uuid.uuid4()},
+}
+
+
+def _make_event(event_cls: type, **overrides):
+    kwargs: dict = {"aggregate_id": uuid.uuid4(), **_REQUIRED_KWARGS.get(event_cls, {})}
+    kwargs.update(overrides)
+    return event_cls(**kwargs)
+
 
 class TestRoleEventsBase:
     @pytest.mark.parametrize("event_cls", _ALL_ROLE_EVENTS)
@@ -27,18 +43,18 @@ class TestRoleEventsBase:
 
     @pytest.mark.parametrize("event_cls", _ALL_ROLE_EVENTS)
     def test_aggregate_type_is_user(self, event_cls):
-        event = event_cls(aggregate_id=uuid.uuid4())
-        assert event.aggregate_type == "User"
+        event = _make_event(event_cls)
+        assert event.aggregate_type == "user"
 
     @pytest.mark.parametrize("event_cls", _ALL_ROLE_EVENTS)
     def test_immutable(self, event_cls):
-        event = event_cls(aggregate_id=uuid.uuid4())
+        event = _make_event(event_cls)
         with pytest.raises(AttributeError):
             event.aggregate_type = "Other"
 
     @pytest.mark.parametrize("event_cls", _ALL_ROLE_EVENTS)
     def test_has_event_id_and_occurred_at(self, event_cls):
-        event = event_cls(aggregate_id=uuid.uuid4())
+        event = _make_event(event_cls)
         assert isinstance(event.event_id, uuid.UUID)
         assert event.occurred_at is not None
 

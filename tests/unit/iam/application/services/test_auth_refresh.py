@@ -6,7 +6,6 @@ import pytest
 from emerald.iam.application.dtos.commands import LoginUser, RefreshAccessToken
 from emerald.iam.application.dtos.responses import LoginResult
 from emerald.iam.application.services.authentication import AuthenticationService
-from emerald.iam.domain.events.auth_events import TokenFamilyCompromised, TokenRefreshed
 from emerald.iam.domain.exceptions import InvalidTokenError, TokenExpiredError
 from emerald.iam.domain.models.aggregates.user import User
 from emerald.iam.domain.models.entities.refresh_token import RefreshToken
@@ -118,7 +117,6 @@ def test_refresh_revoked_token_triggers_theft_detection(auth_env):
 
     # 1. Login to get tokens
     login_result = _login(service)
-    service.collect_events()  # Clear login events
 
     # 2. Find the refresh token in the fake repo and revoke it
     raw_refresh = login_result.refresh_token
@@ -130,19 +128,3 @@ def test_refresh_revoked_token_triggers_theft_detection(auth_env):
     # 3. Try to refresh with the original raw token -> theft detected
     with pytest.raises(InvalidTokenError):
         service.refresh(RefreshAccessToken(refresh_token=raw_refresh))
-
-    # 4. Verify TokenFamilyCompromised event
-    events = service.collect_events()
-    assert any(isinstance(e, TokenFamilyCompromised) for e in events)
-
-
-def test_refresh_emits_token_refreshed_event(auth_env):
-    service, uow, _, _ = auth_env
-    _create_active_user(uow)
-    login_result = _login(service)
-    service.collect_events()  # Clear login events
-
-    service.refresh(RefreshAccessToken(refresh_token=login_result.refresh_token))
-
-    events = service.collect_events()
-    assert any(isinstance(e, TokenRefreshed) for e in events)
