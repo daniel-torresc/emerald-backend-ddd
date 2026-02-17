@@ -1,21 +1,28 @@
 from emerald.classification.application import (
     AbstractClassificationUnitOfWork,
     AddTerm,
+    AssignTerm,
+    CategorizationEventHandler,
     CreateTaxonomy,
     DeleteTerm,
     MoveTerm,
     RecoverTaxonomy,
     RecoverTerm,
+    RemoveAssignment,
     RenameTaxonomy,
     RenameTerm,
     ReorderTerms,
     SoftDeleteTaxonomy,
     TaxonomyManagementService,
     TaxonomyRepository,
+    TransactionAccessPort,
+    TransactionCategorizationService,
+    TransactionTermAssignmentRepository,
     UpdateTaxonomyDescription,
     UpdateTermDescription,
 )
 from emerald.classification.domain import (
+    AssignmentNotFoundError,
     CannotBeOwnParentError,
     CircularReferenceError,
     IncompleteReorderError,
@@ -48,6 +55,11 @@ from emerald.classification.domain import (
     TermRecovered,
     TermRenamed,
     TermsReordered,
+    TransactionCategorized,
+    TransactionNotActiveError,
+    TransactionTermAssignment,
+    TransactionUncategorized,
+    UncategorizationReason,
 )
 
 __all__ = [
@@ -55,10 +67,12 @@ __all__ = [
     "Taxonomy",
     # Entities
     "TaxonomyTerm",
+    "TransactionTermAssignment",
     # Value Objects
     "TaxonomyName",
     "TaxonomyPath",
     "TermName",
+    "UncategorizationReason",
     # Events
     "TaxonomyCreated",
     "TaxonomyDescriptionUpdated",
@@ -72,7 +86,10 @@ __all__ = [
     "TermRecovered",
     "TermRenamed",
     "TermsReordered",
+    "TransactionCategorized",
+    "TransactionUncategorized",
     # Exceptions
+    "AssignmentNotFoundError",
     "CannotBeOwnParentError",
     "CircularReferenceError",
     "IncompleteReorderError",
@@ -88,13 +105,16 @@ __all__ = [
     "TermDescriptionTooLongError",
     "TermNameAlreadyExistsError",
     "TermNotFoundError",
+    "TransactionNotActiveError",
     # Commands
     "AddTerm",
+    "AssignTerm",
     "CreateTaxonomy",
     "DeleteTerm",
     "MoveTerm",
     "RecoverTaxonomy",
     "RecoverTerm",
+    "RemoveAssignment",
     "RenameTaxonomy",
     "RenameTerm",
     "ReorderTerms",
@@ -103,7 +123,11 @@ __all__ = [
     "UpdateTermDescription",
     # Ports
     "AbstractClassificationUnitOfWork",
+    "CategorizationEventHandler",
     "TaxonomyRepository",
+    "TransactionAccessPort",
+    "TransactionTermAssignmentRepository",
     # Services
     "TaxonomyManagementService",
+    "TransactionCategorizationService",
 ]

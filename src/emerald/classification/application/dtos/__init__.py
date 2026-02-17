@@ -1,10 +1,12 @@
 from emerald.classification.application.dtos.commands import (
     AddTerm,
+    AssignTerm,
     CreateTaxonomy,
     DeleteTerm,
     MoveTerm,
     RecoverTaxonomy,
     RecoverTerm,
+    RemoveAssignment,
     RenameTaxonomy,
     RenameTerm,
     ReorderTerms,
@@ -15,11 +17,13 @@ from emerald.classification.application.dtos.commands import (
 
 __all__ = [
     "AddTerm",
+    "AssignTerm",
     "CreateTaxonomy",
     "DeleteTerm",
     "MoveTerm",
     "RecoverTaxonomy",
     "RecoverTerm",
+    "RemoveAssignment",
     "RenameTaxonomy",
     "RenameTerm",
     "ReorderTerms",
