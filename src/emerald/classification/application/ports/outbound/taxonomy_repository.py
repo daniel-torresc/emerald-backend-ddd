@@ -24,3 +24,7 @@ class TaxonomyRepository(Protocol):
         owner_id: uuid.UUID,
         exclude_taxonomy_id: uuid.UUID | None = None,
     ) -> bool: ...
+
+    def find_by_term_id(self, term_id: uuid.UUID) -> Taxonomy | None:
+        """Find the taxonomy that contains a given term (active taxonomies only)."""
+        ...

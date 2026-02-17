@@ -1,3 +1,7 @@
+from emerald.classification.domain.events.categorization_events import (
+    TransactionCategorized,
+    TransactionUncategorized,
+)
 from emerald.classification.domain.events.taxonomy_events import (
     TaxonomyCreated,
     TaxonomyDescriptionUpdated,
@@ -26,4 +30,6 @@ __all__ = [
     "TermRecovered",
     "TermRenamed",
     "TermsReordered",
+    "TransactionCategorized",
+    "TransactionUncategorized",
 ]

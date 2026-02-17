@@ -1,6 +1,11 @@
 from emerald.classification.domain.models.aggregates import Taxonomy
-from emerald.classification.domain.models.entities import TaxonomyTerm
-from emerald.classification.domain.models.value_objects import TaxonomyName, TaxonomyPath, TermName
+from emerald.classification.domain.models.entities import TaxonomyTerm, TransactionTermAssignment
+from emerald.classification.domain.models.value_objects import (
+    TaxonomyName,
+    TaxonomyPath,
+    TermName,
+    UncategorizationReason,
+)
 
 __all__ = [
     "Taxonomy",
@@ -8,4 +13,6 @@ __all__ = [
     "TaxonomyPath",
     "TaxonomyTerm",
     "TermName",
+    "TransactionTermAssignment",
+    "UncategorizationReason",
 ]
