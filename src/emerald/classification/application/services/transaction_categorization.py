@@ -38,9 +38,9 @@ class TransactionCategorizationService:
 
     # -- Categorization operations ---------------------------------------------
 
-    def assign_term(self, cmd: AssignTerm) -> TransactionTermAssignment:
+    async def assign_term(self, cmd: AssignTerm) -> TransactionTermAssignment:
         """Assign a term to a transaction. Handles reassignment transparently."""
-        with self._uow:
+        async with self._uow:
             # 1. Verify transaction is active
             account_id = self._transaction_access_port.verify_transaction_active(cmd.transaction_id)
 
@@ -73,12 +73,12 @@ class TransactionCategorizationService:
             )
             self._uow.assignments.save(assignment)
 
-            self._uow.commit()
+            await self._uow.commit()
             return assignment
 
-    def remove_assignment(self, cmd: RemoveAssignment) -> None:
+    async def remove_assignment(self, cmd: RemoveAssignment) -> None:
         """Remove a term assignment from a transaction by taxonomy."""
-        with self._uow:
+        async with self._uow:
             # 1. Verify transaction is active
             account_id = self._transaction_access_port.verify_transaction_active(cmd.transaction_id)
 
@@ -95,29 +95,29 @@ class TransactionCategorizationService:
             # 4. Hard delete
             self._uow.assignments.delete(assignment.id)
 
-            self._uow.commit()
+            await self._uow.commit()
 
     # -- Query methods ---------------------------------------------------------
 
-    def get_assignments(self, transaction_id: uuid.UUID) -> list[TransactionTermAssignment]:
+    async def get_assignments(self, transaction_id: uuid.UUID) -> list[TransactionTermAssignment]:
         """Return all active assignments for a transaction."""
-        with self._uow:
+        async with self._uow:
             return self._uow.assignments.find_by_transaction(transaction_id)
 
-    def get_assignment_for_taxonomy(
+    async def get_assignment_for_taxonomy(
         self, transaction_id: uuid.UUID, taxonomy_id: uuid.UUID
     ) -> TransactionTermAssignment | None:
         """Return assignment for a specific transaction + taxonomy, or None."""
-        with self._uow:
+        async with self._uow:
             return self._uow.assignments.find_by_transaction_and_taxonomy(
                 transaction_id, taxonomy_id
             )
 
-    def get_transactions_by_term(
+    async def get_transactions_by_term(
         self, term_id: uuid.UUID, include_descendants: bool = False
     ) -> list[uuid.UUID]:
         """Return transaction IDs with the given term (and optionally descendants)."""
-        with self._uow:
+        async with self._uow:
             if not include_descendants:
                 return self._uow.assignments.find_transaction_ids_by_term(term_id)
 
@@ -139,32 +139,32 @@ class TransactionCategorizationService:
                         result.append(tx_id)
             return result
 
-    def get_uncategorized_transactions(
+    async def get_uncategorized_transactions(
         self, account_id: uuid.UUID, taxonomy_id: uuid.UUID
     ) -> list[uuid.UUID]:
         """Return transaction IDs in the account without an assignment in the taxonomy."""
-        with self._uow:
+        async with self._uow:
             return self._uow.assignments.find_uncategorized_transaction_ids(account_id, taxonomy_id)
 
     # -- CategorizationEventHandler protocol implementation --------------------
 
-    def handle_term_deleted(self, term_id: uuid.UUID) -> int:
+    async def handle_term_deleted(self, term_id: uuid.UUID) -> int:
         """Remove all assignments for the deleted term."""
-        with self._uow:
+        async with self._uow:
             deleted = self._uow.assignments.delete_by_term(term_id)
-            self._uow.commit()
+            await self._uow.commit()
         return len(deleted)
 
-    def handle_taxonomy_soft_deleted(self, taxonomy_id: uuid.UUID) -> int:
+    async def handle_taxonomy_soft_deleted(self, taxonomy_id: uuid.UUID) -> int:
         """Remove all assignments for the deleted taxonomy."""
-        with self._uow:
+        async with self._uow:
             deleted = self._uow.assignments.delete_by_taxonomy(taxonomy_id)
-            self._uow.commit()
+            await self._uow.commit()
         return len(deleted)
 
-    def handle_transaction_soft_deleted(self, transaction_id: uuid.UUID) -> int:
+    async def handle_transaction_soft_deleted(self, transaction_id: uuid.UUID) -> int:
         """Remove all assignments for the deleted transaction."""
-        with self._uow:
+        async with self._uow:
             deleted = self._uow.assignments.delete_by_transaction(transaction_id)
-            self._uow.commit()
+            await self._uow.commit()
         return len(deleted)

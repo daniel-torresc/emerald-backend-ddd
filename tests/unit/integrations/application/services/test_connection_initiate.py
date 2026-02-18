@@ -58,7 +58,7 @@ def _make_cmd(
 
 
 class TestInitiateConnection:
-    def test_creates_pending_connection_and_commits(
+    async def test_creates_pending_connection_and_commits(
         self,
         service: BankConnectionService,
         uow: FakeIntegrationsUnitOfWork,
@@ -67,14 +67,14 @@ class TestInitiateConnection:
     ) -> None:
         cmd = _make_cmd(user_id, account_id)
 
-        connection = service.initiate_connection(cmd)
+        connection = await service.initiate_connection(cmd)
 
         assert connection.status == ConnectionStatus.PENDING
         assert uow.committed is True
         stored = uow.bank_connections.find_by_id(connection.id)
         assert stored is not None
 
-    def test_returns_connection_with_correct_attributes(
+    async def test_returns_connection_with_correct_attributes(
         self,
         service: BankConnectionService,
         user_id: uuid.UUID,
@@ -82,7 +82,7 @@ class TestInitiateConnection:
     ) -> None:
         cmd = _make_cmd(user_id, account_id, provider_name="plaid")
 
-        connection = service.initiate_connection(cmd)
+        connection = await service.initiate_connection(cmd)
 
         assert connection.user_id == user_id
         assert connection.account_id == account_id
@@ -91,14 +91,14 @@ class TestInitiateConnection:
         assert connection.external_account_id == "ext_acc_123"
         assert connection.status == ConnectionStatus.PENDING
 
-    def test_raises_duplicate_connection_error_if_same_account_and_provider(
+    async def test_raises_duplicate_connection_error_if_same_account_and_provider(
         self,
         service: BankConnectionService,
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
         cmd = _make_cmd(user_id, account_id, provider_name="plaid")
-        service.initiate_connection(cmd)
+        await service.initiate_connection(cmd)
 
         with pytest.raises(DuplicateConnectionError):
-            service.initiate_connection(cmd)
+            await service.initiate_connection(cmd)

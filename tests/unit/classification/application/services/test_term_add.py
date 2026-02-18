@@ -29,10 +29,10 @@ def _make_service() -> tuple[TaxonomyManagementService, FakeClassificationUnitOf
     return service, uow
 
 
-def _create_taxonomy(
+async def _create_taxonomy(
     service: TaxonomyManagementService, owner_id: uuid.UUID, name: str = "My Taxonomy"
 ) -> uuid.UUID:
-    taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name=name))
+    taxonomy = await service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name=name))
     return taxonomy.id
 
 
@@ -47,13 +47,13 @@ def _make_add_term_cmd(**overrides: Any) -> AddTerm:
 
 
 class TestAddRootTerm:
-    def test_add_root_term_success(self) -> None:
+    async def test_add_root_term_success(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy_id = _create_taxonomy(service, owner_id)
+        taxonomy_id = await _create_taxonomy(service, owner_id)
         uow.committed = False
 
-        term = service.add_term(
+        term = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy_id, owner_id=owner_id, name="Food")
         )
 
@@ -65,15 +65,15 @@ class TestAddRootTerm:
 
 
 class TestAddChildTerm:
-    def test_add_child_with_parent(self) -> None:
+    async def test_add_child_with_parent(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy_id = _create_taxonomy(service, owner_id)
+        taxonomy_id = await _create_taxonomy(service, owner_id)
 
-        parent = service.add_term(
+        parent = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy_id, owner_id=owner_id, name="Food")
         )
-        child = service.add_term(
+        child = await service.add_term(
             _make_add_term_cmd(
                 taxonomy_id=taxonomy_id,
                 owner_id=owner_id,
@@ -87,12 +87,12 @@ class TestAddChildTerm:
 
 
 class TestAddTermWithDescription:
-    def test_add_term_with_description(self) -> None:
+    async def test_add_term_with_description(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy_id = _create_taxonomy(service, owner_id)
+        taxonomy_id = await _create_taxonomy(service, owner_id)
 
-        term = service.add_term(
+        term = await service.add_term(
             _make_add_term_cmd(
                 taxonomy_id=taxonomy_id,
                 owner_id=owner_id,
@@ -105,37 +105,37 @@ class TestAddTermWithDescription:
 
 
 class TestAddTermUniqueness:
-    def test_duplicate_name_raises(self) -> None:
+    async def test_duplicate_name_raises(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy_id = _create_taxonomy(service, owner_id)
+        taxonomy_id = await _create_taxonomy(service, owner_id)
 
-        service.add_term(
+        await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy_id, owner_id=owner_id, name="Food")
         )
 
         with pytest.raises(TermNameAlreadyExistsError):
-            service.add_term(
+            await service.add_term(
                 _make_add_term_cmd(taxonomy_id=taxonomy_id, owner_id=owner_id, name="Food")
             )
 
 
 class TestAddTermNotFound:
-    def test_taxonomy_not_found_raises(self) -> None:
+    async def test_taxonomy_not_found_raises(self) -> None:
         service, uow = _make_service()
 
         with pytest.raises(TaxonomyNotFoundError):
-            service.add_term(
+            await service.add_term(
                 _make_add_term_cmd(taxonomy_id=uuid.uuid4(), owner_id=uuid.uuid4(), name="Food")
             )
 
-    def test_wrong_owner_raises_not_found(self) -> None:
+    async def test_wrong_owner_raises_not_found(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy_id = _create_taxonomy(service, owner_id)
+        taxonomy_id = await _create_taxonomy(service, owner_id)
 
         other_user = uuid.uuid4()
         with pytest.raises(TaxonomyNotFoundError):
-            service.add_term(
+            await service.add_term(
                 _make_add_term_cmd(taxonomy_id=taxonomy_id, owner_id=other_user, name="Food")
             )

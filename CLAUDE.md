@@ -14,6 +14,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - Python 3.13+
 - Python package and project management: `uv` (MANDATORY - never use pip/poetry)
+  - Add project dependencies using `uv add <package-name>`
+  - Add development dependencies using `uv add --dev <package-name>`
 - Code linting: ``ruff`` 
   - Format code ``uv run ruff format .``
   - Lint and auto-fix: ``uv run ruff check --fix .``

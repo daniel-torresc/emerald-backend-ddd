@@ -22,9 +22,9 @@ class AccountSharingService:
     def __init__(self, uow: AbstractCoreFinanceUnitOfWork) -> None:
         self._uow = uow
 
-    def share_account(self, cmd: ShareAccountWith) -> AccountShare:
+    async def share_account(self, cmd: ShareAccountWith) -> AccountShare:
         """Grant share access to a user."""
-        with self._uow:
+        async with self._uow:
             account = self._load_account(cmd.account_id)
             permission = PermissionLevel[cmd.permission_level]
             share = account.share_with(
@@ -32,12 +32,12 @@ class AccountSharingService:
                 permission=permission,
                 granted_by=cmd.requesting_user_id,
             )
-            self._uow.commit()
+            await self._uow.commit()
             return share
 
-    def update_share_permission(self, cmd: UpdateSharePermission) -> None:
+    async def update_share_permission(self, cmd: UpdateSharePermission) -> None:
         """Update a share's permission level."""
-        with self._uow:
+        async with self._uow:
             account = self._load_account(cmd.account_id)
             permission = PermissionLevel[cmd.new_permission_level]
             account.update_share_permission(
@@ -45,34 +45,34 @@ class AccountSharingService:
                 new_permission=permission,
                 updated_by=cmd.requesting_user_id,
             )
-            self._uow.commit()
+            await self._uow.commit()
 
-    def revoke_share(self, cmd: RevokeAccountShare) -> None:
+    async def revoke_share(self, cmd: RevokeAccountShare) -> None:
         """Owner revokes a share."""
-        with self._uow:
+        async with self._uow:
             account = self._load_account(cmd.account_id)
             account.revoke_share(
                 user_id=cmd.target_user_id,
                 revoked_by=cmd.requesting_user_id,
             )
-            self._uow.commit()
+            await self._uow.commit()
 
-    def leave_share(self, cmd: LeaveAccountShare) -> None:
+    async def leave_share(self, cmd: LeaveAccountShare) -> None:
         """Non-owner removes own share."""
-        with self._uow:
+        async with self._uow:
             account = self._load_account(cmd.account_id)
             account.leave_share(user_id=cmd.requesting_user_id)
-            self._uow.commit()
+            await self._uow.commit()
 
-    def transfer_ownership(self, cmd: TransferAccountOwnership) -> None:
+    async def transfer_ownership(self, cmd: TransferAccountOwnership) -> None:
         """Transfer ownership to another shared user."""
-        with self._uow:
+        async with self._uow:
             account = self._load_account(cmd.account_id)
             account.transfer_ownership(
                 new_owner_id=cmd.new_owner_id,
                 current_owner_id=cmd.requesting_user_id,
             )
-            self._uow.commit()
+            await self._uow.commit()
 
     def _load_account(self, account_id: uuid.UUID) -> Account:
         """Load an account or raise AccountNotFoundError."""

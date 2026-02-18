@@ -37,18 +37,20 @@ def auth_env():
     return service, uow, hasher, token_service
 
 
-def _login(service: AuthenticationService) -> LoginResult:
-    return service.login(
+async def _login(service: AuthenticationService) -> LoginResult:
+    return await service.login(
         LoginUser(email="test@example.com", password="Password123!", portal_context="REGULAR")
     )
 
 
-def test_refresh_valid_token_returns_new_pair(auth_env):
+async def test_refresh_valid_token_returns_new_pair(auth_env):
     service, uow, _, _ = auth_env
     _create_active_user(uow)
-    login_result = _login(service)
+    login_result = await _login(service)
 
-    refresh_result = service.refresh(RefreshAccessToken(refresh_token=login_result.refresh_token))
+    refresh_result = await service.refresh(
+        RefreshAccessToken(refresh_token=login_result.refresh_token)
+    )
 
     assert isinstance(refresh_result, LoginResult)
     assert refresh_result.access_token is not None
@@ -56,29 +58,31 @@ def test_refresh_valid_token_returns_new_pair(auth_env):
     assert refresh_result.refresh_token != login_result.refresh_token
 
 
-def test_refresh_old_token_is_revoked(auth_env):
+async def test_refresh_old_token_is_revoked(auth_env):
     service, uow, _, token_service = auth_env
     _create_active_user(uow)
-    login_result = _login(service)
+    login_result = await _login(service)
     old_hash = token_service.hash_token(login_result.refresh_token)
 
-    service.refresh(RefreshAccessToken(refresh_token=login_result.refresh_token))
+    await service.refresh(RefreshAccessToken(refresh_token=login_result.refresh_token))
 
     old_token = uow.refresh_tokens.find_by_hash(old_hash)
     assert old_token is not None
     assert old_token.is_revoked()
 
 
-def test_refresh_new_token_in_same_family(auth_env):
+async def test_refresh_new_token_in_same_family(auth_env):
     service, uow, _, token_service = auth_env
     _create_active_user(uow)
-    login_result = _login(service)
+    login_result = await _login(service)
     old_hash = token_service.hash_token(login_result.refresh_token)
     old_token = uow.refresh_tokens.find_by_hash(old_hash)
     assert old_token is not None
     old_family_id = old_token.family_id
 
-    refresh_result = service.refresh(RefreshAccessToken(refresh_token=login_result.refresh_token))
+    refresh_result = await service.refresh(
+        RefreshAccessToken(refresh_token=login_result.refresh_token)
+    )
 
     new_hash = token_service.hash_token(refresh_result.refresh_token)
     new_token = uow.refresh_tokens.find_by_hash(new_hash)
@@ -86,7 +90,7 @@ def test_refresh_new_token_in_same_family(auth_env):
     assert new_token.family_id == old_family_id
 
 
-def test_refresh_expired_token_raises_token_expired(auth_env):
+async def test_refresh_expired_token_raises_token_expired(auth_env):
     service, uow, _, _ = auth_env
     user = _create_active_user(uow)
 
@@ -101,22 +105,22 @@ def test_refresh_expired_token_raises_token_expired(auth_env):
     uow.refresh_tokens.add(expired_token)
 
     with pytest.raises(TokenExpiredError):
-        service.refresh(RefreshAccessToken(refresh_token="expired_raw"))
+        await service.refresh(RefreshAccessToken(refresh_token="expired_raw"))
 
 
-def test_refresh_not_found_token_raises_invalid_token(auth_env):
+async def test_refresh_not_found_token_raises_invalid_token(auth_env):
     service, uow, _, _ = auth_env
 
     with pytest.raises(InvalidTokenError):
-        service.refresh(RefreshAccessToken(refresh_token="unknown_token"))
+        await service.refresh(RefreshAccessToken(refresh_token="unknown_token"))
 
 
-def test_refresh_revoked_token_triggers_theft_detection(auth_env):
+async def test_refresh_revoked_token_triggers_theft_detection(auth_env):
     service, uow, _, token_service = auth_env
     _create_active_user(uow)
 
     # 1. Login to get tokens
-    login_result = _login(service)
+    login_result = await _login(service)
 
     # 2. Find the refresh token in the fake repo and revoke it
     raw_refresh = login_result.refresh_token
@@ -127,4 +131,4 @@ def test_refresh_revoked_token_triggers_theft_detection(auth_env):
 
     # 3. Try to refresh with the original raw token -> theft detected
     with pytest.raises(InvalidTokenError):
-        service.refresh(RefreshAccessToken(refresh_token=raw_refresh))
+        await service.refresh(RefreshAccessToken(refresh_token=raw_refresh))

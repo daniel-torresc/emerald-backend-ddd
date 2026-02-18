@@ -44,24 +44,24 @@ def _make_create_cmd(**overrides: Any) -> CreateAccount:
 
 
 class TestSoftDeleteAccount:
-    def test_soft_deletes_account(self) -> None:
+    async def test_soft_deletes_account(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        account = service.create_account(_make_create_cmd(owner_user_id=uid))
+        account = await service.create_account(_make_create_cmd(owner_user_id=uid))
         uow.committed = False
 
-        service.soft_delete_account(
+        await service.soft_delete_account(
             SoftDeleteAccount(account_id=account.id, requesting_user_id=uid)
         )
         assert account.is_deleted()
         assert uow.committed
 
-    def test_sets_deletion_reason(self) -> None:
+    async def test_sets_deletion_reason(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        account = service.create_account(_make_create_cmd(owner_user_id=uid))
+        account = await service.create_account(_make_create_cmd(owner_user_id=uid))
 
-        service.soft_delete_account(
+        await service.soft_delete_account(
             SoftDeleteAccount(
                 account_id=account.id,
                 requesting_user_id=uid,
@@ -70,66 +70,66 @@ class TestSoftDeleteAccount:
         )
         assert account.deletion_reason == "Closed"
 
-    def test_hard_delete_scheduled(self) -> None:
+    async def test_hard_delete_scheduled(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        account = service.create_account(_make_create_cmd(owner_user_id=uid))
+        account = await service.create_account(_make_create_cmd(owner_user_id=uid))
 
-        service.soft_delete_account(
+        await service.soft_delete_account(
             SoftDeleteAccount(account_id=account.id, requesting_user_id=uid)
         )
         assert account.hard_delete_scheduled_at is not None
 
-    def test_raises_not_found(self) -> None:
+    async def test_raises_not_found(self) -> None:
         service, uow = _make_service()
         with pytest.raises(AccountNotFoundError):
-            service.soft_delete_account(
+            await service.soft_delete_account(
                 SoftDeleteAccount(
                     account_id=uuid.uuid4(),
                     requesting_user_id=uuid.uuid4(),
                 )
             )
 
-    def test_raises_insufficient_permission(self) -> None:
+    async def test_raises_insufficient_permission(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        account = service.create_account(_make_create_cmd(owner_user_id=uid))
+        account = await service.create_account(_make_create_cmd(owner_user_id=uid))
 
         with pytest.raises(InsufficientPermissionError):
-            service.soft_delete_account(
+            await service.soft_delete_account(
                 SoftDeleteAccount(
                     account_id=account.id,
                     requesting_user_id=uuid.uuid4(),
                 )
             )
 
-    def test_double_delete_raises(self) -> None:
+    async def test_double_delete_raises(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        account = service.create_account(_make_create_cmd(owner_user_id=uid))
-        service.soft_delete_account(
+        account = await service.create_account(_make_create_cmd(owner_user_id=uid))
+        await service.soft_delete_account(
             SoftDeleteAccount(account_id=account.id, requesting_user_id=uid)
         )
 
         with pytest.raises(AlreadyDeletedError):
-            service.soft_delete_account(
+            await service.soft_delete_account(
                 SoftDeleteAccount(account_id=account.id, requesting_user_id=uid)
             )
 
-    def test_soft_deleted_account_not_found_by_default(self) -> None:
+    async def test_soft_deleted_account_not_found_by_default(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        account = service.create_account(_make_create_cmd(owner_user_id=uid))
-        service.soft_delete_account(
+        account = await service.create_account(_make_create_cmd(owner_user_id=uid))
+        await service.soft_delete_account(
             SoftDeleteAccount(account_id=account.id, requesting_user_id=uid)
         )
         assert uow.accounts.find_by_id(account.id) is None
 
-    def test_soft_deleted_account_found_with_include_deleted(self) -> None:
+    async def test_soft_deleted_account_found_with_include_deleted(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        account = service.create_account(_make_create_cmd(owner_user_id=uid))
-        service.soft_delete_account(
+        account = await service.create_account(_make_create_cmd(owner_user_id=uid))
+        await service.soft_delete_account(
             SoftDeleteAccount(account_id=account.id, requesting_user_id=uid)
         )
         found = uow.accounts.find_by_id(account.id, include_deleted=True)

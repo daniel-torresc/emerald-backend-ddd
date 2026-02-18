@@ -78,7 +78,7 @@ def _make_account(
     return account, owner_id
 
 
-def _create_transaction(
+async def _create_transaction(
     service: TransactionManagementService,
     account: Account,
     owner_id: uuid.UUID,
@@ -95,16 +95,16 @@ def _create_transaction(
     }
     defaults.update(overrides)
     cmd = CreateTransaction(**defaults)
-    txn = service.create_transaction(cmd)
+    txn = await service.create_transaction(cmd)
     txn.collect_events()
     return txn
 
 
 class TestSoftDeleteTransaction:
-    def test_soft_delete_success(self) -> None:
+    async def test_soft_delete_success(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
         uow.committed = False
 
         cmd = SoftDeleteTransaction(
@@ -112,32 +112,32 @@ class TestSoftDeleteTransaction:
             requesting_user_id=owner_id,
             transaction_id=txn.id,
         )
-        service.soft_delete_transaction(cmd)
+        await service.soft_delete_transaction(cmd)
         assert txn.is_deleted()
         assert txn.deleted_at is not None
         assert uow.committed is True
 
-    def test_soft_delete_emits_event(self) -> None:
+    async def test_soft_delete_emits_event(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
 
         cmd = SoftDeleteTransaction(
             account_id=account.id,
             requesting_user_id=owner_id,
             transaction_id=txn.id,
         )
-        service.soft_delete_transaction(cmd)
+        await service.soft_delete_transaction(cmd)
         events = txn.collect_events()
         deleted_events = [e for e in events if isinstance(e, TransactionSoftDeleted)]
         assert len(deleted_events) == 1
         assert deleted_events[0].deleted_by == owner_id
         assert deleted_events[0].account_id == account.id
 
-    def test_soft_delete_viewer_denied(self) -> None:
+    async def test_soft_delete_viewer_denied(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
         viewer_id = uuid.uuid4()
         account.share_with(
             user_id=viewer_id,
@@ -152,28 +152,28 @@ class TestSoftDeleteTransaction:
             transaction_id=txn.id,
         )
         with pytest.raises(InsufficientPermissionError):
-            service.soft_delete_transaction(cmd)
+            await service.soft_delete_transaction(cmd)
 
-    def test_already_deleted_raises(self) -> None:
+    async def test_already_deleted_raises(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
 
         cmd = SoftDeleteTransaction(
             account_id=account.id,
             requesting_user_id=owner_id,
             transaction_id=txn.id,
         )
-        service.soft_delete_transaction(cmd)
+        await service.soft_delete_transaction(cmd)
         txn.collect_events()
 
         with pytest.raises(AlreadyDeletedError):
-            service.soft_delete_transaction(cmd)
+            await service.soft_delete_transaction(cmd)
 
-    def test_soft_delete_with_reason(self) -> None:
+    async def test_soft_delete_with_reason(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
 
         cmd = SoftDeleteTransaction(
             account_id=account.id,
@@ -181,22 +181,22 @@ class TestSoftDeleteTransaction:
             transaction_id=txn.id,
             reason="Duplicate entry",
         )
-        service.soft_delete_transaction(cmd)
+        await service.soft_delete_transaction(cmd)
         assert txn.deletion_reason == "Duplicate entry"
 
 
 class TestRecoverTransaction:
-    def test_recover_success(self) -> None:
+    async def test_recover_success(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
 
         delete_cmd = SoftDeleteTransaction(
             account_id=account.id,
             requesting_user_id=owner_id,
             transaction_id=txn.id,
         )
-        service.soft_delete_transaction(delete_cmd)
+        await service.soft_delete_transaction(delete_cmd)
         txn.collect_events()
         uow.committed = False
 
@@ -205,22 +205,22 @@ class TestRecoverTransaction:
             requesting_user_id=owner_id,
             transaction_id=txn.id,
         )
-        service.recover_transaction(recover_cmd)
+        await service.recover_transaction(recover_cmd)
         assert not txn.is_deleted()
         assert txn.deleted_at is None
         assert uow.committed is True
 
-    def test_recover_emits_event(self) -> None:
+    async def test_recover_emits_event(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
 
         delete_cmd = SoftDeleteTransaction(
             account_id=account.id,
             requesting_user_id=owner_id,
             transaction_id=txn.id,
         )
-        service.soft_delete_transaction(delete_cmd)
+        await service.soft_delete_transaction(delete_cmd)
         txn.collect_events()
 
         recover_cmd = RecoverTransaction(
@@ -228,13 +228,13 @@ class TestRecoverTransaction:
             requesting_user_id=owner_id,
             transaction_id=txn.id,
         )
-        service.recover_transaction(recover_cmd)
+        await service.recover_transaction(recover_cmd)
         events = txn.collect_events()
         recovered_events = [e for e in events if isinstance(e, TransactionRecovered)]
         assert len(recovered_events) == 1
         assert recovered_events[0].account_id == account.id
 
-    def test_recover_non_owner_denied(self) -> None:
+    async def test_recover_non_owner_denied(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
         editor_id = uuid.uuid4()
@@ -245,14 +245,14 @@ class TestRecoverTransaction:
         )
         account.collect_events()
 
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
 
         delete_cmd = SoftDeleteTransaction(
             account_id=account.id,
             requesting_user_id=owner_id,
             transaction_id=txn.id,
         )
-        service.soft_delete_transaction(delete_cmd)
+        await service.soft_delete_transaction(delete_cmd)
         txn.collect_events()
 
         recover_cmd = RecoverTransaction(
@@ -261,12 +261,12 @@ class TestRecoverTransaction:
             transaction_id=txn.id,
         )
         with pytest.raises(InsufficientPermissionError):
-            service.recover_transaction(recover_cmd)
+            await service.recover_transaction(recover_cmd)
 
-    def test_recover_parent_account_deleted_raises(self) -> None:
+    async def test_recover_parent_account_deleted_raises(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
 
         # Soft-delete the transaction first
         delete_cmd = SoftDeleteTransaction(
@@ -274,7 +274,7 @@ class TestRecoverTransaction:
             requesting_user_id=owner_id,
             transaction_id=txn.id,
         )
-        service.soft_delete_transaction(delete_cmd)
+        await service.soft_delete_transaction(delete_cmd)
         txn.collect_events()
 
         # Soft-delete the parent account
@@ -289,12 +289,12 @@ class TestRecoverTransaction:
             transaction_id=txn.id,
         )
         with pytest.raises(ParentAccountDeletedError):
-            service.recover_transaction(recover_cmd)
+            await service.recover_transaction(recover_cmd)
 
-    def test_recover_not_deleted_raises(self) -> None:
+    async def test_recover_not_deleted_raises(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
 
         recover_cmd = RecoverTransaction(
             account_id=account.id,
@@ -302,4 +302,4 @@ class TestRecoverTransaction:
             transaction_id=txn.id,
         )
         with pytest.raises(NotDeletedError):
-            service.recover_transaction(recover_cmd)
+            await service.recover_transaction(recover_cmd)

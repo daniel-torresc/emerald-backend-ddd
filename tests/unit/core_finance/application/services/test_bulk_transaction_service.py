@@ -73,7 +73,7 @@ def _make_services() -> tuple[
     return bulk_service, acct_service, txn_service, uow
 
 
-def _create_account(
+async def _create_account(
     acct_service: AccountManagementService,
     owner_id: uuid.UUID | None = None,
 ) -> tuple[uuid.UUID, uuid.UUID]:
@@ -86,7 +86,7 @@ def _create_account(
         currency_code="USD",
         opening_balance=Decimal("0"),
     )
-    account = acct_service.create_account(cmd)
+    account = await acct_service.create_account(cmd)
     return account.id, user_id
 
 
@@ -131,7 +131,7 @@ def _create_transaction(
 
 
 class TestRequestValidation:
-    def test_account_not_found_raises(self) -> None:
+    async def test_account_not_found_raises(self) -> None:
         svc, _, _, _ = _make_services()
         cmd = BulkCreateTransactions(
             account_id=uuid.uuid4(),
@@ -140,11 +140,11 @@ class TestRequestValidation:
             import_source_type="BULK_IMPORT",
         )
         with pytest.raises(AccountNotFoundError):
-            svc.bulk_create_transactions(cmd)
+            await svc.bulk_create_transactions(cmd)
 
-    def test_deleted_account_raises(self) -> None:
+    async def test_deleted_account_raises(self) -> None:
         svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
         # soft-delete the account
         account = uow.accounts.find_by_id(acct_id, include_deleted=True)
         assert account is not None
@@ -159,11 +159,11 @@ class TestRequestValidation:
             import_source_type="BULK_IMPORT",
         )
         with pytest.raises(AccountNotActiveError):
-            svc.bulk_create_transactions(cmd)
+            await svc.bulk_create_transactions(cmd)
 
-    def test_insufficient_permission_raises(self) -> None:
+    async def test_insufficient_permission_raises(self) -> None:
         svc, acct_svc, _, _ = _make_services()
-        acct_id, _ = _create_account(acct_svc)
+        acct_id, _ = await _create_account(acct_svc)
         other_user = uuid.uuid4()  # No permission
 
         cmd = BulkCreateTransactions(
@@ -173,11 +173,11 @@ class TestRequestValidation:
             import_source_type="BULK_IMPORT",
         )
         with pytest.raises(InsufficientPermissionError):
-            svc.bulk_create_transactions(cmd)
+            await svc.bulk_create_transactions(cmd)
 
-    def test_empty_items_raises(self) -> None:
+    async def test_empty_items_raises(self) -> None:
         svc, acct_svc, _, _ = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
 
         cmd = BulkCreateTransactions(
             account_id=acct_id,
@@ -186,11 +186,11 @@ class TestRequestValidation:
             import_source_type="BULK_IMPORT",
         )
         with pytest.raises(EmptyBulkRequestError):
-            svc.bulk_create_transactions(cmd)
+            await svc.bulk_create_transactions(cmd)
 
-    def test_over_1000_items_raises(self) -> None:
+    async def test_over_1000_items_raises(self) -> None:
         svc, acct_svc, _, _ = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
 
         inputs = tuple(_make_input() for _ in range(1001))
         cmd = BulkCreateTransactions(
@@ -200,11 +200,11 @@ class TestRequestValidation:
             import_source_type="BULK_IMPORT",
         )
         with pytest.raises(BulkLimitExceededError):
-            svc.bulk_create_transactions(cmd)
+            await svc.bulk_create_transactions(cmd)
 
-    def test_exactly_one_item_succeeds(self) -> None:
+    async def test_exactly_one_item_succeeds(self) -> None:
         svc, acct_svc, _, _ = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
 
         cmd = BulkCreateTransactions(
             account_id=acct_id,
@@ -212,12 +212,12 @@ class TestRequestValidation:
             transactions=(_make_input(),),
             import_source_type="BULK_IMPORT",
         )
-        result = svc.bulk_create_transactions(cmd)
+        result = await svc.bulk_create_transactions(cmd)
         assert result.success_count == 1
 
-    def test_empty_delete_raises(self) -> None:
+    async def test_empty_delete_raises(self) -> None:
         svc, acct_svc, _, _ = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
 
         cmd = BulkDeleteTransactions(
             account_id=acct_id,
@@ -225,11 +225,11 @@ class TestRequestValidation:
             transaction_ids=(),
         )
         with pytest.raises(EmptyBulkRequestError):
-            svc.bulk_delete_transactions(cmd)
+            await svc.bulk_delete_transactions(cmd)
 
-    def test_empty_update_raises(self) -> None:
+    async def test_empty_update_raises(self) -> None:
         svc, acct_svc, _, _ = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
 
         cmd = BulkUpdateTransactions(
             account_id=acct_id,
@@ -238,11 +238,11 @@ class TestRequestValidation:
             updates=BulkUpdateFields(review_status=ReviewStatus.REVIEWED),
         )
         with pytest.raises(EmptyBulkRequestError):
-            svc.bulk_update_transactions(cmd)
+            await svc.bulk_update_transactions(cmd)
 
-    def test_empty_recover_raises(self) -> None:
+    async def test_empty_recover_raises(self) -> None:
         svc, acct_svc, _, _ = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
 
         cmd = BulkRecoverTransactions(
             account_id=acct_id,
@@ -250,7 +250,7 @@ class TestRequestValidation:
             transaction_ids=(),
         )
         with pytest.raises(EmptyBulkRequestError):
-            svc.bulk_recover_transactions(cmd)
+            await svc.bulk_recover_transactions(cmd)
 
 
 # ==============================================================================
@@ -259,9 +259,9 @@ class TestRequestValidation:
 
 
 class TestBulkCreate:
-    def test_successful_create_returns_correct_counts(self) -> None:
+    async def test_successful_create_returns_correct_counts(self) -> None:
         svc, acct_svc, _, _ = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
 
         inputs = tuple(_make_input(original_description=f"Txn {i}") for i in range(3))
         cmd = BulkCreateTransactions(
@@ -270,7 +270,7 @@ class TestBulkCreate:
             transactions=inputs,
             import_source_type="BULK_IMPORT",
         )
-        result = svc.bulk_create_transactions(cmd)
+        result = await svc.bulk_create_transactions(cmd)
 
         assert result.success_count == 3
         assert result.failure_count == 0
@@ -280,9 +280,9 @@ class TestBulkCreate:
         # Verify indices
         assert [s.index for s in result.successes] == [0, 1, 2]
 
-    def test_created_transaction_has_correct_data(self) -> None:
+    async def test_created_transaction_has_correct_data(self) -> None:
         svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
 
         ti = _make_input(
             amount=Decimal("-50.00"),
@@ -296,7 +296,7 @@ class TestBulkCreate:
             import_source_type="BULK_IMPORT",
             source_id="file-001",
         )
-        result = svc.bulk_create_transactions(cmd)
+        result = await svc.bulk_create_transactions(cmd)
         txn = uow.transactions.find_by_id(result.successes[0].entity_id)
         assert txn is not None
         assert txn.account_id == acct_id
@@ -306,9 +306,9 @@ class TestBulkCreate:
         assert txn.import_source.source_type == ImportSourceType.BULK_IMPORT
         assert txn.import_source.source_id == "file-001"
 
-    def test_mixed_valid_invalid(self) -> None:
+    async def test_mixed_valid_invalid(self) -> None:
         svc, acct_svc, _, _ = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
 
         # Use duplicate external_id to create a mixed valid/invalid batch
         valid = _make_input(external_id="ext-1")
@@ -320,16 +320,16 @@ class TestBulkCreate:
             transactions=(valid, duplicate),
             import_source_type="BULK_IMPORT",
         )
-        result = svc.bulk_create_transactions(cmd)
+        result = await svc.bulk_create_transactions(cmd)
         assert result.success_count == 1
         assert result.failure_count == 1
         assert result.successes[0].index == 0
         assert result.failures[0].index == 1
         assert result.failures[0].error_code == "DUPLICATE_EXTERNAL_ID"
 
-    def test_within_batch_external_id_dedup(self) -> None:
+    async def test_within_batch_external_id_dedup(self) -> None:
         svc, acct_svc, _, _ = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
 
         inputs = (
             _make_input(external_id="dup", original_description="First"),
@@ -342,14 +342,14 @@ class TestBulkCreate:
             transactions=inputs,
             import_source_type="BULK_IMPORT",
         )
-        result = svc.bulk_create_transactions(cmd)
+        result = await svc.bulk_create_transactions(cmd)
         assert result.success_count == 1
         assert result.failure_count == 2
         assert result.successes[0].index == 0
 
-    def test_against_existing_external_id_dedup(self) -> None:
+    async def test_against_existing_external_id_dedup(self) -> None:
         svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
 
         # Create existing transaction with external_id
         _create_transaction(uow, acct_id, user_id, external_id="existing-ext")
@@ -360,14 +360,14 @@ class TestBulkCreate:
             transactions=(_make_input(external_id="existing-ext"),),
             import_source_type="BULK_IMPORT",
         )
-        result = svc.bulk_create_transactions(cmd)
+        result = await svc.bulk_create_transactions(cmd)
         assert result.success_count == 0
         assert result.failure_count == 1
         assert result.failures[0].error_code == "DUPLICATE_EXTERNAL_ID"
 
-    def test_all_items_invalid(self) -> None:
+    async def test_all_items_invalid(self) -> None:
         svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
         _create_transaction(uow, acct_id, user_id, external_id="dup1")
         _create_transaction(uow, acct_id, user_id, external_id="dup2")
 
@@ -380,14 +380,14 @@ class TestBulkCreate:
             ),
             import_source_type="BULK_IMPORT",
         )
-        result = svc.bulk_create_transactions(cmd)
+        result = await svc.bulk_create_transactions(cmd)
         assert result.success_count == 0
         assert result.failure_count == 2
         assert result.is_complete_failure is True
 
-    def test_individual_events_emitted(self) -> None:
+    async def test_individual_events_emitted(self) -> None:
         svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
 
         cmd = BulkCreateTransactions(
             account_id=acct_id,
@@ -395,7 +395,7 @@ class TestBulkCreate:
             transactions=(_make_input(),),
             import_source_type="BULK_IMPORT",
         )
-        result = svc.bulk_create_transactions(cmd)
+        result = await svc.bulk_create_transactions(cmd)
         txn = uow.transactions.find_by_id(result.successes[0].entity_id)
         assert txn is not None
         entity_events = txn.collect_events()
@@ -403,9 +403,9 @@ class TestBulkCreate:
 
         assert any(isinstance(e, TransactionCreated) for e in entity_events)
 
-    def test_review_status_override(self) -> None:
+    async def test_review_status_override(self) -> None:
         svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
 
         ti = _make_input(review_status=ReviewStatus.REVIEWED)
         cmd = BulkCreateTransactions(
@@ -414,14 +414,14 @@ class TestBulkCreate:
             transactions=(ti,),
             import_source_type="BULK_IMPORT",
         )
-        result = svc.bulk_create_transactions(cmd)
+        result = await svc.bulk_create_transactions(cmd)
         txn = uow.transactions.find_by_id(result.successes[0].entity_id)
         assert txn is not None
         assert txn.review_status == ReviewStatus.REVIEWED
 
-    def test_created_by_set_to_requesting_user(self) -> None:
+    async def test_created_by_set_to_requesting_user(self) -> None:
         svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
 
         cmd = BulkCreateTransactions(
             account_id=acct_id,
@@ -429,7 +429,7 @@ class TestBulkCreate:
             transactions=(_make_input(),),
             import_source_type="BULK_IMPORT",
         )
-        result = svc.bulk_create_transactions(cmd)
+        result = await svc.bulk_create_transactions(cmd)
         txn = uow.transactions.find_by_id(result.successes[0].entity_id)
         assert txn is not None
         assert txn.created_by == user_id
@@ -441,9 +441,9 @@ class TestBulkCreate:
 
 
 class TestBulkUpdate:
-    def test_successful_review_status_update(self) -> None:
+    async def test_successful_review_status_update(self) -> None:
         svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
         txn = _create_transaction(uow, acct_id, user_id)
 
         cmd = BulkUpdateTransactions(
@@ -452,16 +452,16 @@ class TestBulkUpdate:
             transaction_ids=(txn.id,),
             updates=BulkUpdateFields(review_status=ReviewStatus.REVIEWED),
         )
-        result = svc.bulk_update_transactions(cmd)
+        result = await svc.bulk_update_transactions(cmd)
 
         assert result.success_count == 1
         updated = uow.transactions.find_by_id(txn.id)
         assert updated is not None
         assert updated.review_status == ReviewStatus.REVIEWED
 
-    def test_successful_user_description_update(self) -> None:
+    async def test_successful_user_description_update(self) -> None:
         svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
         txn = _create_transaction(uow, acct_id, user_id)
 
         cmd = BulkUpdateTransactions(
@@ -470,16 +470,16 @@ class TestBulkUpdate:
             transaction_ids=(txn.id,),
             updates=BulkUpdateFields(user_description="New desc"),
         )
-        result = svc.bulk_update_transactions(cmd)
+        result = await svc.bulk_update_transactions(cmd)
 
         assert result.success_count == 1
         updated = uow.transactions.find_by_id(txn.id)
         assert updated is not None
         assert updated.user_description == "New desc"
 
-    def test_successful_merchant_update(self) -> None:
+    async def test_successful_merchant_update(self) -> None:
         svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
         txn = _create_transaction(uow, acct_id, user_id)
 
         cmd = BulkUpdateTransactions(
@@ -488,16 +488,16 @@ class TestBulkUpdate:
             transaction_ids=(txn.id,),
             updates=BulkUpdateFields(merchant="New Merchant"),
         )
-        result = svc.bulk_update_transactions(cmd)
+        result = await svc.bulk_update_transactions(cmd)
 
         assert result.success_count == 1
         updated = uow.transactions.find_by_id(txn.id)
         assert updated is not None
         assert updated.merchant == "New Merchant"
 
-    def test_clear_merchant_with_none(self) -> None:
+    async def test_clear_merchant_with_none(self) -> None:
         svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
         txn = _create_transaction(uow, acct_id, user_id, merchant="Old Merchant")
 
         cmd = BulkUpdateTransactions(
@@ -506,16 +506,16 @@ class TestBulkUpdate:
             transaction_ids=(txn.id,),
             updates=BulkUpdateFields(merchant=None),
         )
-        result = svc.bulk_update_transactions(cmd)
+        result = await svc.bulk_update_transactions(cmd)
 
         assert result.success_count == 1
         updated = uow.transactions.find_by_id(txn.id)
         assert updated is not None
         assert updated.merchant is None
 
-    def test_mixed_found_and_not_found(self) -> None:
+    async def test_mixed_found_and_not_found(self) -> None:
         svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
         txn = _create_transaction(uow, acct_id, user_id)
         missing_id = uuid.uuid4()
 
@@ -525,16 +525,16 @@ class TestBulkUpdate:
             transaction_ids=(txn.id, missing_id),
             updates=BulkUpdateFields(review_status=ReviewStatus.REVIEWED),
         )
-        result = svc.bulk_update_transactions(cmd)
+        result = await svc.bulk_update_transactions(cmd)
 
         assert result.success_count == 1
         assert result.failure_count == 1
         assert result.failures[0].error_code == "TRANSACTION_NOT_FOUND"
         assert result.failures[0].entity_id == missing_id
 
-    def test_deleted_transaction_fails(self) -> None:
+    async def test_deleted_transaction_fails(self) -> None:
         svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
         txn = _create_transaction(uow, acct_id, user_id)
         txn.soft_delete(user_id, _retention())
         uow.transactions.save(txn)
@@ -545,7 +545,7 @@ class TestBulkUpdate:
             transaction_ids=(txn.id,),
             updates=BulkUpdateFields(review_status=ReviewStatus.REVIEWED),
         )
-        result = svc.bulk_update_transactions(cmd)
+        result = await svc.bulk_update_transactions(cmd)
 
         assert result.failure_count == 1
         assert result.failures[0].error_code == "TRANSACTION_DELETED"
@@ -557,9 +557,9 @@ class TestBulkUpdate:
 
 
 class TestBulkDelete:
-    def test_successful_bulk_delete(self) -> None:
+    async def test_successful_bulk_delete(self) -> None:
         svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
         txn1 = _create_transaction(uow, acct_id, user_id)
         txn2 = _create_transaction(uow, acct_id, user_id)
 
@@ -568,16 +568,16 @@ class TestBulkDelete:
             requesting_user_id=user_id,
             transaction_ids=(txn1.id, txn2.id),
         )
-        result = svc.bulk_delete_transactions(cmd)
+        result = await svc.bulk_delete_transactions(cmd)
 
         assert result.success_count == 2
         assert result.failure_count == 0
         assert uow.transactions.find_by_id(txn1.id) is None  # deleted (not found without flag)
         assert uow.transactions.find_by_id(txn1.id, include_deleted=True) is not None
 
-    def test_already_deleted_fails(self) -> None:
+    async def test_already_deleted_fails(self) -> None:
         svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
         txn = _create_transaction(uow, acct_id, user_id)
         txn.soft_delete(user_id, _retention())
         uow.transactions.save(txn)
@@ -587,28 +587,28 @@ class TestBulkDelete:
             requesting_user_id=user_id,
             transaction_ids=(txn.id,),
         )
-        result = svc.bulk_delete_transactions(cmd)
+        result = await svc.bulk_delete_transactions(cmd)
 
         assert result.failure_count == 1
         assert result.failures[0].error_code == "ALREADY_DELETED"
 
-    def test_not_found_fails(self) -> None:
+    async def test_not_found_fails(self) -> None:
         svc, acct_svc, _, _ = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
 
         cmd = BulkDeleteTransactions(
             account_id=acct_id,
             requesting_user_id=user_id,
             transaction_ids=(uuid.uuid4(),),
         )
-        result = svc.bulk_delete_transactions(cmd)
+        result = await svc.bulk_delete_transactions(cmd)
 
         assert result.failure_count == 1
         assert result.failures[0].error_code == "TRANSACTION_NOT_FOUND"
 
-    def test_split_parent_cascade_deletes_children(self) -> None:
+    async def test_split_parent_cascade_deletes_children(self) -> None:
         svc, acct_svc, txn_svc, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
 
         # Create parent and split it
         parent = _create_transaction(
@@ -635,7 +635,7 @@ class TestBulkDelete:
             requesting_user_id=user_id,
             transaction_ids=(parent.id,),
         )
-        result = svc.bulk_delete_transactions(cmd)
+        result = await svc.bulk_delete_transactions(cmd)
 
         # Only parent in result
         assert result.success_count == 1
@@ -653,9 +653,9 @@ class TestBulkDelete:
 
 
 class TestBulkRecover:
-    def test_successful_bulk_recover(self) -> None:
+    async def test_successful_bulk_recover(self) -> None:
         svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
         txn = _create_transaction(uow, acct_id, user_id)
         txn.soft_delete(user_id, _retention())
         uow.transactions.save(txn)
@@ -665,16 +665,16 @@ class TestBulkRecover:
             requesting_user_id=user_id,
             transaction_ids=(txn.id,),
         )
-        result = svc.bulk_recover_transactions(cmd)
+        result = await svc.bulk_recover_transactions(cmd)
 
         assert result.success_count == 1
         recovered = uow.transactions.find_by_id(txn.id)
         assert recovered is not None
         assert not recovered.is_deleted()
 
-    def test_requires_owner_permission(self) -> None:
+    async def test_requires_owner_permission(self) -> None:
         svc, acct_svc, _, uow = _make_services()
-        acct_id, owner_id = _create_account(acct_svc)
+        acct_id, owner_id = await _create_account(acct_svc)
         txn = _create_transaction(uow, acct_id, owner_id)
         txn.soft_delete(owner_id, _retention())
         uow.transactions.save(txn)
@@ -692,11 +692,11 @@ class TestBulkRecover:
             transaction_ids=(txn.id,),
         )
         with pytest.raises(InsufficientPermissionError):
-            svc.bulk_recover_transactions(cmd)
+            await svc.bulk_recover_transactions(cmd)
 
-    def test_non_deleted_fails(self) -> None:
+    async def test_non_deleted_fails(self) -> None:
         svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
         txn = _create_transaction(uow, acct_id, user_id)
 
         cmd = BulkRecoverTransactions(
@@ -704,14 +704,14 @@ class TestBulkRecover:
             requesting_user_id=user_id,
             transaction_ids=(txn.id,),
         )
-        result = svc.bulk_recover_transactions(cmd)
+        result = await svc.bulk_recover_transactions(cmd)
 
         assert result.failure_count == 1
         assert result.failures[0].error_code == "NOT_DELETED"
 
-    def test_split_child_with_deleted_parent_fails(self) -> None:
+    async def test_split_child_with_deleted_parent_fails(self) -> None:
         svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
 
         # Create parent and split
         parent = _create_transaction(
@@ -747,14 +747,14 @@ class TestBulkRecover:
             requesting_user_id=user_id,
             transaction_ids=(children[0].id,),
         )
-        result = svc.bulk_recover_transactions(cmd)
+        result = await svc.bulk_recover_transactions(cmd)
 
         assert result.failure_count == 1
         assert result.failures[0].error_code == "PARENT_DELETED"
 
-    def test_split_parent_cascade_recovers_children(self) -> None:
+    async def test_split_parent_cascade_recovers_children(self) -> None:
         svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
 
         parent = _create_transaction(
             uow,
@@ -789,7 +789,7 @@ class TestBulkRecover:
             requesting_user_id=user_id,
             transaction_ids=(parent.id,),
         )
-        result = svc.bulk_recover_transactions(cmd)
+        result = await svc.bulk_recover_transactions(cmd)
 
         # Only parent in result
         assert result.success_count == 1
@@ -800,23 +800,23 @@ class TestBulkRecover:
             assert c is not None
             assert not c.is_deleted()
 
-    def test_not_found_fails(self) -> None:
+    async def test_not_found_fails(self) -> None:
         svc, acct_svc, _, _ = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
 
         cmd = BulkRecoverTransactions(
             account_id=acct_id,
             requesting_user_id=user_id,
             transaction_ids=(uuid.uuid4(),),
         )
-        result = svc.bulk_recover_transactions(cmd)
+        result = await svc.bulk_recover_transactions(cmd)
 
         assert result.failure_count == 1
         assert result.failures[0].error_code == "TRANSACTION_NOT_FOUND"
 
-    def test_deleted_account_raises(self) -> None:
+    async def test_deleted_account_raises(self) -> None:
         svc, acct_svc, _, uow = _make_services()
-        acct_id, user_id = _create_account(acct_svc)
+        acct_id, user_id = await _create_account(acct_svc)
         txn = _create_transaction(uow, acct_id, user_id)
         txn.soft_delete(user_id, _retention())
         uow.transactions.save(txn)
@@ -833,4 +833,4 @@ class TestBulkRecover:
             transaction_ids=(txn.id,),
         )
         with pytest.raises(AccountNotActiveError):
-            svc.bulk_recover_transactions(cmd)
+            await svc.bulk_recover_transactions(cmd)

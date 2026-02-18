@@ -42,16 +42,18 @@ def _make_add_term_cmd(**overrides: Any) -> AddTerm:
 
 
 class TestRenameTerm:
-    def test_rename_term_success(self) -> None:
+    async def test_rename_term_success(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name="Categories"))
-        term = service.add_term(
+        taxonomy = await service.create_taxonomy(
+            CreateTaxonomy(owner_id=owner_id, name="Categories")
+        )
+        term = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="Food")
         )
         uow.committed = False
 
-        service.rename_term(
+        await service.rename_term(
             RenameTerm(
                 taxonomy_id=taxonomy.id,
                 owner_id=owner_id,
@@ -63,19 +65,21 @@ class TestRenameTerm:
         assert term.name == TermName("Groceries")
         assert uow.committed is True
 
-    def test_rename_term_uniqueness_raises(self) -> None:
+    async def test_rename_term_uniqueness_raises(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name="Categories"))
-        service.add_term(
+        taxonomy = await service.create_taxonomy(
+            CreateTaxonomy(owner_id=owner_id, name="Categories")
+        )
+        await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="Food")
         )
-        term2 = service.add_term(
+        term2 = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="Travel")
         )
 
         with pytest.raises(TermNameAlreadyExistsError):
-            service.rename_term(
+            await service.rename_term(
                 RenameTerm(
                     taxonomy_id=taxonomy.id,
                     owner_id=owner_id,
@@ -86,16 +90,18 @@ class TestRenameTerm:
 
 
 class TestUpdateTermDescription:
-    def test_update_term_description_success(self) -> None:
+    async def test_update_term_description_success(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name="Categories"))
-        term = service.add_term(
+        taxonomy = await service.create_taxonomy(
+            CreateTaxonomy(owner_id=owner_id, name="Categories")
+        )
+        term = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="Food")
         )
         uow.committed = False
 
-        service.update_term_description(
+        await service.update_term_description(
             UpdateTermDescription(
                 taxonomy_id=taxonomy.id,
                 owner_id=owner_id,
@@ -107,16 +113,18 @@ class TestUpdateTermDescription:
         assert term.description == "All food expenses"
         assert uow.committed is True
 
-    def test_update_term_description_too_long_raises(self) -> None:
+    async def test_update_term_description_too_long_raises(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name="Categories"))
-        term = service.add_term(
+        taxonomy = await service.create_taxonomy(
+            CreateTaxonomy(owner_id=owner_id, name="Categories")
+        )
+        term = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="Food")
         )
 
         with pytest.raises(TermDescriptionTooLongError):
-            service.update_term_description(
+            await service.update_term_description(
                 UpdateTermDescription(
                     taxonomy_id=taxonomy.id,
                     owner_id=owner_id,

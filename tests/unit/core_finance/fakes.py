@@ -219,8 +219,8 @@ class FakeCoreFinanceUnitOfWork(AbstractCoreFinanceUnitOfWork):
         self.transactions = FakeTransactionRepository()
         self.committed = False
 
-    def commit(self) -> None:
+    async def commit(self) -> None:
         self.committed = True
 
-    def rollback(self) -> None:
+    async def rollback(self) -> None:
         pass

@@ -75,7 +75,7 @@ def _make_account(
     return account, owner_id
 
 
-def _create_transaction(
+async def _create_transaction(
     service: TransactionManagementService,
     account: Account,
     owner_id: uuid.UUID,
@@ -92,7 +92,7 @@ def _create_transaction(
     }
     defaults.update(overrides)
     cmd = CreateTransaction(**defaults)
-    txn = service.create_transaction(cmd)
+    txn = await service.create_transaction(cmd)
     txn.collect_events()
     return txn
 
@@ -104,10 +104,10 @@ def _soft_delete_transaction(txn: Transaction, deleted_by: uuid.UUID) -> None:
 
 
 class TestUpdateDescription:
-    def test_success(self) -> None:
+    async def test_success(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
         uow.committed = False
 
         cmd = UpdateTransactionDescription(
@@ -116,14 +116,14 @@ class TestUpdateDescription:
             transaction_id=txn.id,
             user_description="Updated desc",
         )
-        service.update_description(cmd)
+        await service.update_description(cmd)
         assert txn.user_description == "Updated desc"
         assert uow.committed is True
 
-    def test_viewer_denied(self) -> None:
+    async def test_viewer_denied(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
         viewer_id = uuid.uuid4()
         account.share_with(
             user_id=viewer_id,
@@ -139,14 +139,14 @@ class TestUpdateDescription:
             user_description="Nope",
         )
         with pytest.raises(InsufficientPermissionError):
-            service.update_description(cmd)
+            await service.update_description(cmd)
 
-    def test_deleted_transaction_raises_not_found(self) -> None:
+    async def test_deleted_transaction_raises_not_found(self) -> None:
         """Soft-deleted txn is filtered by repo (include_deleted=False),
         so service raises TransactionNotFoundError."""
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
         _soft_delete_transaction(txn, owner_id)
         uow.transactions.save(txn)
 
@@ -157,14 +157,14 @@ class TestUpdateDescription:
             user_description="Will fail",
         )
         with pytest.raises(TransactionNotFoundError):
-            service.update_description(cmd)
+            await service.update_description(cmd)
 
 
 class TestUpdateMerchant:
-    def test_success(self) -> None:
+    async def test_success(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
         uow.committed = False
 
         cmd = UpdateTransactionMerchant(
@@ -173,14 +173,14 @@ class TestUpdateMerchant:
             transaction_id=txn.id,
             merchant="New Merchant",
         )
-        service.update_merchant(cmd)
+        await service.update_merchant(cmd)
         assert txn.merchant == "New Merchant"
         assert uow.committed is True
 
-    def test_viewer_denied(self) -> None:
+    async def test_viewer_denied(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
         viewer_id = uuid.uuid4()
         account.share_with(
             user_id=viewer_id,
@@ -196,14 +196,14 @@ class TestUpdateMerchant:
             merchant="Nope",
         )
         with pytest.raises(InsufficientPermissionError):
-            service.update_merchant(cmd)
+            await service.update_merchant(cmd)
 
 
 class TestUpdateComments:
-    def test_success(self) -> None:
+    async def test_success(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
         uow.committed = False
 
         cmd = UpdateTransactionComments(
@@ -212,14 +212,14 @@ class TestUpdateComments:
             transaction_id=txn.id,
             comments="New comment",
         )
-        service.update_comments(cmd)
+        await service.update_comments(cmd)
         assert txn.comments == "New comment"
         assert uow.committed is True
 
-    def test_viewer_denied(self) -> None:
+    async def test_viewer_denied(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
         viewer_id = uuid.uuid4()
         account.share_with(
             user_id=viewer_id,
@@ -235,14 +235,14 @@ class TestUpdateComments:
             comments="Nope",
         )
         with pytest.raises(InsufficientPermissionError):
-            service.update_comments(cmd)
+            await service.update_comments(cmd)
 
 
 class TestUpdateDates:
-    def test_success(self) -> None:
+    async def test_success(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
         uow.committed = False
 
         cmd = UpdateTransactionDates(
@@ -252,15 +252,15 @@ class TestUpdateDates:
             transaction_date=date(2024, 2, 1),
             value_date=date(2024, 2, 2),
         )
-        service.update_dates(cmd)
+        await service.update_dates(cmd)
         assert txn.transaction_date == date(2024, 2, 1)
         assert txn.value_date == date(2024, 2, 2)
         assert uow.committed is True
 
-    def test_viewer_denied(self) -> None:
+    async def test_viewer_denied(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
         viewer_id = uuid.uuid4()
         account.share_with(
             user_id=viewer_id,
@@ -276,14 +276,14 @@ class TestUpdateDates:
             transaction_date=date(2024, 2, 1),
         )
         with pytest.raises(InsufficientPermissionError):
-            service.update_dates(cmd)
+            await service.update_dates(cmd)
 
 
 class TestUpdateAmount:
-    def test_success(self) -> None:
+    async def test_success(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
         uow.committed = False
 
         cmd = UpdateTransactionAmount(
@@ -293,14 +293,14 @@ class TestUpdateAmount:
             amount=Decimal("999.99"),
             currency_code="USD",
         )
-        service.update_amount(cmd)
+        await service.update_amount(cmd)
         assert txn.amount == Money(Decimal("999.99"), Currency.USD)
         assert uow.committed is True
 
-    def test_currency_mismatch_raises(self) -> None:
+    async def test_currency_mismatch_raises(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow, currency=Currency.USD)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
 
         cmd = UpdateTransactionAmount(
             account_id=account.id,
@@ -310,12 +310,12 @@ class TestUpdateAmount:
             currency_code="EUR",
         )
         with pytest.raises(CurrencyMismatchError):
-            service.update_amount(cmd)
+            await service.update_amount(cmd)
 
-    def test_viewer_denied(self) -> None:
+    async def test_viewer_denied(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
         viewer_id = uuid.uuid4()
         account.share_with(
             user_id=viewer_id,
@@ -332,11 +332,11 @@ class TestUpdateAmount:
             currency_code="USD",
         )
         with pytest.raises(InsufficientPermissionError):
-            service.update_amount(cmd)
+            await service.update_amount(cmd)
 
 
 class TestUpdateTransactionNotFound:
-    def test_description_not_found(self) -> None:
+    async def test_description_not_found(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
 
@@ -347,9 +347,9 @@ class TestUpdateTransactionNotFound:
             user_description="x",
         )
         with pytest.raises(TransactionNotFoundError):
-            service.update_description(cmd)
+            await service.update_description(cmd)
 
-    def test_merchant_not_found(self) -> None:
+    async def test_merchant_not_found(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
 
@@ -360,9 +360,9 @@ class TestUpdateTransactionNotFound:
             merchant="x",
         )
         with pytest.raises(TransactionNotFoundError):
-            service.update_merchant(cmd)
+            await service.update_merchant(cmd)
 
-    def test_comments_not_found(self) -> None:
+    async def test_comments_not_found(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
 
@@ -373,9 +373,9 @@ class TestUpdateTransactionNotFound:
             comments="x",
         )
         with pytest.raises(TransactionNotFoundError):
-            service.update_comments(cmd)
+            await service.update_comments(cmd)
 
-    def test_dates_not_found(self) -> None:
+    async def test_dates_not_found(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
 
@@ -386,9 +386,9 @@ class TestUpdateTransactionNotFound:
             transaction_date=date(2024, 1, 1),
         )
         with pytest.raises(TransactionNotFoundError):
-            service.update_dates(cmd)
+            await service.update_dates(cmd)
 
-    def test_amount_not_found(self) -> None:
+    async def test_amount_not_found(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
 
@@ -400,4 +400,4 @@ class TestUpdateTransactionNotFound:
             currency_code="USD",
         )
         with pytest.raises(TransactionNotFoundError):
-            service.update_amount(cmd)
+            await service.update_amount(cmd)

@@ -8,38 +8,38 @@ class _ConcreteUnitOfWork(AbstractUnitOfWork):
         self.committed = False
         self.rolled_back = False
 
-    def commit(self) -> None:
+    async def commit(self) -> None:
         self.committed = True
 
-    def rollback(self) -> None:
+    async def rollback(self) -> None:
         self.rolled_back = True
 
 
 class TestAbstractUnitOfWork:
-    def test_context_manager_returns_self(self):
+    async def test_context_manager_returns_self(self):
         uow = _ConcreteUnitOfWork()
-        with uow as ctx:
+        async with uow as ctx:
             assert ctx is uow
 
-    def test_rollback_called_on_exit_without_commit(self):
+    async def test_rollback_called_on_exit_without_commit(self):
         uow = _ConcreteUnitOfWork()
-        with uow:
+        async with uow:
             pass  # no commit
         assert uow.rolled_back is True
         assert uow.committed is False
 
-    def test_explicit_commit(self):
+    async def test_explicit_commit(self):
         uow = _ConcreteUnitOfWork()
-        with uow:
-            uow.commit()
+        async with uow:
+            await uow.commit()
         assert uow.committed is True
-        # rollback still called on __exit__ — safe by default
+        # rollback still called on __aexit__ — safe by default
         assert uow.rolled_back is True
 
-    def test_rollback_called_on_exception(self):
+    async def test_rollback_called_on_exception(self):
         uow = _ConcreteUnitOfWork()
         try:
-            with uow:
+            async with uow:
                 raise ValueError("boom")
         except ValueError:
             pass

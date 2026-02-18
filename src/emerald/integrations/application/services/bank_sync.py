@@ -54,9 +54,9 @@ class BankSyncService:
         self._registry = provider_registry
         self._dedup = DeduplicationService(transaction_import_port)
 
-    def execute_sync(self, cmd: TriggerSync) -> SyncHistory:
+    async def execute_sync(self, cmd: TriggerSync) -> SyncHistory:
         """Execute a full sync pipeline for a connection."""
-        with self._uow:
+        async with self._uow:
             connection = self._load_connection(cmd.connection_id)
             if not connection.is_syncable():
                 raise ConnectionNotActiveError()
@@ -96,7 +96,7 @@ class BankSyncService:
                         error=str(e),
                     )
                 )
-                self._uow.commit()
+                await self._uow.commit()
                 return history
             except ProviderError as e:
                 connection.record_sync_failure(str(e))
@@ -108,7 +108,7 @@ class BankSyncService:
                         error=str(e),
                     )
                 )
-                self._uow.commit()
+                await self._uow.commit()
                 return history
 
             # Process each transaction
@@ -196,12 +196,12 @@ class BankSyncService:
                     )
                 )
 
-            self._uow.commit()
+            await self._uow.commit()
             return history
 
-    def approve_pending(self, cmd: ApprovePendingTransaction) -> uuid.UUID:
+    async def approve_pending(self, cmd: ApprovePendingTransaction) -> uuid.UUID:
         """Approve a pending transaction and import it."""
-        with self._uow:
+        async with self._uow:
             pending = self._uow.pending_transactions.find_by_id(cmd.pending_id)
             if pending is None:
                 raise PendingTransactionNotFoundError()
@@ -234,12 +234,12 @@ class BankSyncService:
                     transaction_id=txn_id,
                 )
             )
-            self._uow.commit()
+            await self._uow.commit()
             return txn_id
 
-    def reject_pending(self, cmd: RejectPendingTransaction) -> None:
+    async def reject_pending(self, cmd: RejectPendingTransaction) -> None:
         """Reject a pending transaction."""
-        with self._uow:
+        async with self._uow:
             pending = self._uow.pending_transactions.find_by_id(cmd.pending_id)
             if pending is None:
                 raise PendingTransactionNotFoundError()
@@ -259,11 +259,11 @@ class BankSyncService:
                     pending_id=pending.id,
                 )
             )
-            self._uow.commit()
+            await self._uow.commit()
 
-    def find_connections_due_for_sync(self, as_of: datetime) -> list[BankConnection]:
+    async def find_connections_due_for_sync(self, as_of: datetime) -> list[BankConnection]:
         """Find connections that are due for sync."""
-        with self._uow:
+        async with self._uow:
             return self._uow.bank_connections.find_due_for_sync(as_of)
 
     # -- Private helpers -------------------------------------------------------

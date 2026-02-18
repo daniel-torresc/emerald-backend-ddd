@@ -81,56 +81,58 @@ def _make_cmd(**overrides: Any) -> AssignTerm:
 
 
 class TestAssignTermHappyPath:
-    def test_assign_creates_assignment(self) -> None:
+    async def test_assign_creates_assignment(self) -> None:
         service, uow, port = _make_deps()
         taxonomy = _create_taxonomy(uow)
         term_id = _add_term(taxonomy)
         tx_id = _setup_transaction(port)
 
         cmd = _make_cmd(transaction_id=tx_id, term_id=term_id)
-        assignment = service.assign_term(cmd)
+        assignment = await service.assign_term(cmd)
 
         assert assignment.transaction_id == tx_id
         assert assignment.term_id == term_id
         assert assignment.taxonomy_id == taxonomy.id
         assert assignment.assigned_by == _USER_ID
 
-    def test_assign_persists_to_repository(self) -> None:
+    async def test_assign_persists_to_repository(self) -> None:
         service, uow, port = _make_deps()
         taxonomy = _create_taxonomy(uow)
         term_id = _add_term(taxonomy)
         tx_id = _setup_transaction(port)
 
         cmd = _make_cmd(transaction_id=tx_id, term_id=term_id)
-        assignment = service.assign_term(cmd)
+        assignment = await service.assign_term(cmd)
 
         found = uow.assignments.find_by_transaction_and_taxonomy(tx_id, taxonomy.id)
         assert found is not None
         assert found.id == assignment.id
 
-    def test_assign_commits_uow(self) -> None:
+    async def test_assign_commits_uow(self) -> None:
         service, uow, port = _make_deps()
         taxonomy = _create_taxonomy(uow)
         term_id = _add_term(taxonomy)
         tx_id = _setup_transaction(port)
 
         cmd = _make_cmd(transaction_id=tx_id, term_id=term_id)
-        service.assign_term(cmd)
+        await service.assign_term(cmd)
 
         assert uow.committed is True
 
 
 class TestAssignTermReassignment:
-    def test_reassignment_replaces_old_assignment(self) -> None:
+    async def test_reassignment_replaces_old_assignment(self) -> None:
         service, uow, port = _make_deps()
         taxonomy = _create_taxonomy(uow)
         term_a_id = _add_term(taxonomy, "Food")
         term_b_id = _add_term(taxonomy, "Transport")
         tx_id = _setup_transaction(port)
 
-        service.assign_term(_make_cmd(transaction_id=tx_id, term_id=term_a_id))
+        await service.assign_term(_make_cmd(transaction_id=tx_id, term_id=term_a_id))
 
-        new_assignment = service.assign_term(_make_cmd(transaction_id=tx_id, term_id=term_b_id))
+        new_assignment = await service.assign_term(
+            _make_cmd(transaction_id=tx_id, term_id=term_b_id)
+        )
 
         # Only one assignment for this transaction + taxonomy
         assignments = uow.assignments.find_by_transaction(tx_id)
@@ -140,7 +142,7 @@ class TestAssignTermReassignment:
 
 
 class TestAssignTermMultiTaxonomy:
-    def test_terms_from_different_taxonomies_coexist(self) -> None:
+    async def test_terms_from_different_taxonomies_coexist(self) -> None:
         service, uow, port = _make_deps()
 
         tax_a = Taxonomy.create(owner_id=_OWNER_ID, name=TaxonomyName("Category"))
@@ -156,8 +158,8 @@ class TestAssignTermMultiTaxonomy:
 
         tx_id = _setup_transaction(port)
 
-        service.assign_term(_make_cmd(transaction_id=tx_id, term_id=term_a_id))
-        service.assign_term(_make_cmd(transaction_id=tx_id, term_id=term_b_id))
+        await service.assign_term(_make_cmd(transaction_id=tx_id, term_id=term_a_id))
+        await service.assign_term(_make_cmd(transaction_id=tx_id, term_id=term_b_id))
 
         assignments = uow.assignments.find_by_transaction(tx_id)
         assert len(assignments) == 2
@@ -166,7 +168,7 @@ class TestAssignTermMultiTaxonomy:
 
 
 class TestAssignTermSplitChildIndependence:
-    def test_parent_and_child_categorized_independently(self) -> None:
+    async def test_parent_and_child_categorized_independently(self) -> None:
         service, uow, port = _make_deps()
         taxonomy = _create_taxonomy(uow)
         term_food = _add_term(taxonomy, "Food")
@@ -175,8 +177,8 @@ class TestAssignTermSplitChildIndependence:
         parent_tx = _setup_transaction(port)
         child_tx = _setup_transaction(port)
 
-        service.assign_term(_make_cmd(transaction_id=parent_tx, term_id=term_food))
-        service.assign_term(_make_cmd(transaction_id=child_tx, term_id=term_transport))
+        await service.assign_term(_make_cmd(transaction_id=parent_tx, term_id=term_food))
+        await service.assign_term(_make_cmd(transaction_id=child_tx, term_id=term_transport))
 
         parent_assignments = uow.assignments.find_by_transaction(parent_tx)
         child_assignments = uow.assignments.find_by_transaction(child_tx)
@@ -188,7 +190,7 @@ class TestAssignTermSplitChildIndependence:
 
 
 class TestAssignTermErrors:
-    def test_transaction_not_active_raises(self) -> None:
+    async def test_transaction_not_active_raises(self) -> None:
         service, uow, port = _make_deps()
         taxonomy = _create_taxonomy(uow)
         term_id = _add_term(taxonomy)
@@ -196,9 +198,9 @@ class TestAssignTermErrors:
         cmd = _make_cmd(term_id=term_id)
         # transaction_id not registered in port
         with pytest.raises(TransactionNotActiveError):
-            service.assign_term(cmd)
+            await service.assign_term(cmd)
 
-    def test_no_editor_permission_raises(self) -> None:
+    async def test_no_editor_permission_raises(self) -> None:
         service, uow, port = _make_deps()
         taxonomy = _create_taxonomy(uow)
         term_id = _add_term(taxonomy)
@@ -208,18 +210,18 @@ class TestAssignTermErrors:
 
         cmd = _make_cmd(transaction_id=tx_id, term_id=term_id)
         with pytest.raises(AuthorizationError):
-            service.assign_term(cmd)
+            await service.assign_term(cmd)
 
-    def test_taxonomy_not_found_raises(self) -> None:
+    async def test_taxonomy_not_found_raises(self) -> None:
         service, uow, port = _make_deps()
         tx_id = _setup_transaction(port)
         # No taxonomy in UoW
 
         cmd = _make_cmd(transaction_id=tx_id, term_id=uuid.uuid4())
         with pytest.raises(TaxonomyNotFoundError):
-            service.assign_term(cmd)
+            await service.assign_term(cmd)
 
-    def test_term_not_found_raises(self) -> None:
+    async def test_term_not_found_raises(self) -> None:
         service, uow, port = _make_deps()
         taxonomy = _create_taxonomy(uow)
         tx_id = _setup_transaction(port)
@@ -234,9 +236,9 @@ class TestAssignTermErrors:
 
         cmd = _make_cmd(transaction_id=tx_id, term_id=term_id)
         with pytest.raises(TermNotFoundError):
-            service.assign_term(cmd)
+            await service.assign_term(cmd)
 
-    def test_taxonomy_soft_deleted_raises(self) -> None:
+    async def test_taxonomy_soft_deleted_raises(self) -> None:
         service, uow, port = _make_deps()
         taxonomy = _create_taxonomy(uow)
         _add_term(taxonomy, "Food")
@@ -253,4 +255,4 @@ class TestAssignTermErrors:
 
         cmd = _make_cmd(transaction_id=tx_id, term_id=uuid.uuid4())
         with pytest.raises(TaxonomyNotFoundError):
-            service.assign_term(cmd)
+            await service.assign_term(cmd)

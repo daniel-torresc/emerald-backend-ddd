@@ -56,48 +56,50 @@ def _setup(
 
 
 class TestRemoveAssignment:
-    def test_remove_existing_assignment(self) -> None:
+    async def test_remove_existing_assignment(self) -> None:
         service, uow, port = _make_deps()
         tx_id, term_id, taxonomy_id = _setup(uow, port)
 
         # First assign
-        service.assign_term(AssignTerm(transaction_id=tx_id, term_id=term_id, user_id=_USER_ID))
+        await service.assign_term(
+            AssignTerm(transaction_id=tx_id, term_id=term_id, user_id=_USER_ID)
+        )
 
         # Then remove
-        service.remove_assignment(
+        await service.remove_assignment(
             RemoveAssignment(transaction_id=tx_id, taxonomy_id=taxonomy_id, user_id=_USER_ID)
         )
 
         # Verify deleted
         assert uow.assignments.find_by_transaction(tx_id) == []
 
-    def test_remove_nonexistent_raises(self) -> None:
+    async def test_remove_nonexistent_raises(self) -> None:
         service, uow, port = _make_deps()
         tx_id, _, taxonomy_id = _setup(uow, port)
         # No assignment exists
 
         with pytest.raises(AssignmentNotFoundError):
-            service.remove_assignment(
+            await service.remove_assignment(
                 RemoveAssignment(transaction_id=tx_id, taxonomy_id=taxonomy_id, user_id=_USER_ID)
             )
 
-    def test_remove_transaction_not_active_raises(self) -> None:
+    async def test_remove_transaction_not_active_raises(self) -> None:
         service, uow, port = _make_deps()
         # No transaction registered
         with pytest.raises(TransactionNotActiveError):
-            service.remove_assignment(
+            await service.remove_assignment(
                 RemoveAssignment(
                     transaction_id=uuid.uuid4(), taxonomy_id=uuid.uuid4(), user_id=_USER_ID
                 )
             )
 
-    def test_remove_no_editor_permission_raises(self) -> None:
+    async def test_remove_no_editor_permission_raises(self) -> None:
         service, uow, port = _make_deps()
         tx_id = uuid.uuid4()
         port.add_active_transaction(tx_id, _ACCOUNT_ID)
         # No editor permission granted
 
         with pytest.raises(AuthorizationError):
-            service.remove_assignment(
+            await service.remove_assignment(
                 RemoveAssignment(transaction_id=tx_id, taxonomy_id=uuid.uuid4(), user_id=_USER_ID)
             )

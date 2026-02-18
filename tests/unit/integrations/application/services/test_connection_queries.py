@@ -69,7 +69,7 @@ def _create_connection(
 
 
 class TestGetConnectionsForUser:
-    def test_returns_user_connections(
+    async def test_returns_user_connections(
         self,
         service: BankConnectionService,
         uow: FakeIntegrationsUnitOfWork,
@@ -84,14 +84,14 @@ class TestGetConnectionsForUser:
         other_user = uuid.uuid4()
         _create_connection(uow, other_user, uuid.uuid4(), provider="mx")
 
-        results = service.get_connections_for_user(user_id)
+        results = await service.get_connections_for_user(user_id)
 
         result_ids = {c.id for c in results}
         assert result_ids == {conn1.id, conn2.id}
 
 
 class TestGetConnectionsForAccount:
-    def test_returns_account_connections(
+    async def test_returns_account_connections(
         self,
         service: BankConnectionService,
         uow: FakeIntegrationsUnitOfWork,
@@ -101,14 +101,14 @@ class TestGetConnectionsForAccount:
         conn = _create_connection(uow, user_id, account_id)
         _create_connection(uow, user_id, uuid.uuid4(), provider="yodlee")
 
-        results = service.get_connections_for_account(account_id)
+        results = await service.get_connections_for_account(account_id)
 
         assert len(results) == 1
         assert results[0].id == conn.id
 
 
 class TestGetSyncHistory:
-    def test_returns_history_for_connection(
+    async def test_returns_history_for_connection(
         self,
         service: BankConnectionService,
         uow: FakeIntegrationsUnitOfWork,
@@ -119,22 +119,22 @@ class TestGetSyncHistory:
         history = SyncHistory.create(connection_id=conn.id)
         uow.sync_history.save(history)
 
-        results = service.get_sync_history(conn.id)
+        results = await service.get_sync_history(conn.id)
 
         assert len(results) == 1
         assert results[0].id == history.id
 
-    def test_returns_empty_list_for_no_history(
+    async def test_returns_empty_list_for_no_history(
         self,
         service: BankConnectionService,
     ) -> None:
-        results = service.get_sync_history(uuid.uuid4())
+        results = await service.get_sync_history(uuid.uuid4())
 
         assert results == []
 
 
 class TestGetPendingForReview:
-    def test_returns_needs_review_pendings(
+    async def test_returns_needs_review_pendings(
         self,
         service: BankConnectionService,
         uow: FakeIntegrationsUnitOfWork,
@@ -179,7 +179,7 @@ class TestGetPendingForReview:
         )
         uow.pending_transactions.save(pending_new)
 
-        results = service.get_pending_for_review(conn.id)
+        results = await service.get_pending_for_review(conn.id)
 
         assert len(results) == 1
         assert results[0].id == pending_review.id

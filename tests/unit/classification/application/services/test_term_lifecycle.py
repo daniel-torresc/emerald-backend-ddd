@@ -37,29 +37,35 @@ def _make_add_term_cmd(**overrides: Any) -> AddTerm:
 
 
 class TestDeleteTerm:
-    def test_delete_term_success(self) -> None:
+    async def test_delete_term_success(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name="Categories"))
-        term = service.add_term(
+        taxonomy = await service.create_taxonomy(
+            CreateTaxonomy(owner_id=owner_id, name="Categories")
+        )
+        term = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="Food")
         )
         uow.committed = False
 
-        service.delete_term(DeleteTerm(taxonomy_id=taxonomy.id, owner_id=owner_id, term_id=term.id))
+        await service.delete_term(
+            DeleteTerm(taxonomy_id=taxonomy.id, owner_id=owner_id, term_id=term.id)
+        )
 
         assert term.is_deleted()
         assert uow.committed is True
 
-    def test_delete_term_cascade_descendants(self) -> None:
+    async def test_delete_term_cascade_descendants(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name="Categories"))
+        taxonomy = await service.create_taxonomy(
+            CreateTaxonomy(owner_id=owner_id, name="Categories")
+        )
 
-        parent = service.add_term(
+        parent = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="Food")
         )
-        child = service.add_term(
+        child = await service.add_term(
             _make_add_term_cmd(
                 taxonomy_id=taxonomy.id,
                 owner_id=owner_id,
@@ -67,7 +73,7 @@ class TestDeleteTerm:
                 parent_term_id=parent.id,
             )
         )
-        grandchild = service.add_term(
+        grandchild = await service.add_term(
             _make_add_term_cmd(
                 taxonomy_id=taxonomy.id,
                 owner_id=owner_id,
@@ -76,7 +82,7 @@ class TestDeleteTerm:
             )
         )
 
-        service.delete_term(
+        await service.delete_term(
             DeleteTerm(taxonomy_id=taxonomy.id, owner_id=owner_id, term_id=parent.id)
         )
 
@@ -86,32 +92,38 @@ class TestDeleteTerm:
 
 
 class TestRecoverTerm:
-    def test_recover_term_success(self) -> None:
+    async def test_recover_term_success(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name="Categories"))
-        term = service.add_term(
+        taxonomy = await service.create_taxonomy(
+            CreateTaxonomy(owner_id=owner_id, name="Categories")
+        )
+        term = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="Food")
         )
-        service.delete_term(DeleteTerm(taxonomy_id=taxonomy.id, owner_id=owner_id, term_id=term.id))
+        await service.delete_term(
+            DeleteTerm(taxonomy_id=taxonomy.id, owner_id=owner_id, term_id=term.id)
+        )
         uow.committed = False
 
-        service.recover_term(
+        await service.recover_term(
             RecoverTerm(taxonomy_id=taxonomy.id, owner_id=owner_id, term_id=term.id)
         )
 
         assert term.is_active()
         assert uow.committed is True
 
-    def test_recover_term_parent_deleted_raises(self) -> None:
+    async def test_recover_term_parent_deleted_raises(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name="Categories"))
+        taxonomy = await service.create_taxonomy(
+            CreateTaxonomy(owner_id=owner_id, name="Categories")
+        )
 
-        parent = service.add_term(
+        parent = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="Food")
         )
-        child = service.add_term(
+        child = await service.add_term(
             _make_add_term_cmd(
                 taxonomy_id=taxonomy.id,
                 owner_id=owner_id,
@@ -121,12 +133,12 @@ class TestRecoverTerm:
         )
 
         # Delete parent (cascades to child)
-        service.delete_term(
+        await service.delete_term(
             DeleteTerm(taxonomy_id=taxonomy.id, owner_id=owner_id, term_id=parent.id)
         )
 
         # Try to recover child while parent is still deleted
         with pytest.raises(ParentTermDeletedError):
-            service.recover_term(
+            await service.recover_term(
                 RecoverTerm(taxonomy_id=taxonomy.id, owner_id=owner_id, term_id=child.id)
             )

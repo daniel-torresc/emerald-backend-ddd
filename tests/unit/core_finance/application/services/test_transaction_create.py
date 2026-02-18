@@ -88,7 +88,7 @@ def _make_create_cmd(**overrides: Any) -> CreateTransaction:
 
 
 class TestCreateTransactionSuccess:
-    def test_creates_manual_transaction(self) -> None:
+    async def test_creates_manual_transaction(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
         cmd = _make_create_cmd(
@@ -96,12 +96,12 @@ class TestCreateTransactionSuccess:
             requesting_user_id=owner_id,
             currency_code=account.currency.code,
         )
-        txn = service.create_transaction(cmd)
+        txn = await service.create_transaction(cmd)
         assert txn.original_description == "Test Transaction"
         assert txn.import_source.source_type.value == "MANUAL"
         assert txn.review_status == ReviewStatus.TO_REVIEW
 
-    def test_creates_bank_import_transaction(self) -> None:
+    async def test_creates_bank_import_transaction(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
         cmd = _make_create_cmd(
@@ -112,12 +112,12 @@ class TestCreateTransactionSuccess:
             source_id="bank-conn-123",
             external_id="ext-001",
         )
-        txn = service.create_transaction(cmd)
+        txn = await service.create_transaction(cmd)
         assert txn.import_source.source_type.value == "BANK_IMPORT"
         assert txn.import_source.source_id == "bank-conn-123"
         assert txn.external_id == "ext-001"
 
-    def test_returns_transaction_with_correct_fields(self) -> None:
+    async def test_returns_transaction_with_correct_fields(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
         cmd = _make_create_cmd(
@@ -129,7 +129,7 @@ class TestCreateTransactionSuccess:
             comments="Morning coffee",
             value_date=date(2024, 1, 16),
         )
-        txn = service.create_transaction(cmd)
+        txn = await service.create_transaction(cmd)
         assert txn.amount == Money(Decimal("250.50"), Currency.USD)
         assert txn.account_id == account.id
         assert txn.merchant == "Coffee Shop"
@@ -137,7 +137,7 @@ class TestCreateTransactionSuccess:
         assert txn.transaction_date == date(2024, 1, 15)
         assert txn.value_date == date(2024, 1, 16)
 
-    def test_zero_amount_allowed(self) -> None:
+    async def test_zero_amount_allowed(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
         cmd = _make_create_cmd(
@@ -146,10 +146,10 @@ class TestCreateTransactionSuccess:
             currency_code=account.currency.code,
             amount=Decimal("0"),
         )
-        txn = service.create_transaction(cmd)
+        txn = await service.create_transaction(cmd)
         assert txn.amount.amount == Decimal("0")
 
-    def test_no_external_id_skips_dedup_check(self) -> None:
+    async def test_no_external_id_skips_dedup_check(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
         cmd1 = _make_create_cmd(
@@ -158,17 +158,17 @@ class TestCreateTransactionSuccess:
             currency_code=account.currency.code,
             external_id=None,
         )
-        txn1 = service.create_transaction(cmd1)
+        txn1 = await service.create_transaction(cmd1)
         cmd2 = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
             currency_code=account.currency.code,
             external_id=None,
         )
-        txn2 = service.create_transaction(cmd2)
+        txn2 = await service.create_transaction(cmd2)
         assert txn1.id != txn2.id
 
-    def test_editor_can_create(self) -> None:
+    async def test_editor_can_create(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
         editor_id = uuid.uuid4()
@@ -184,10 +184,10 @@ class TestCreateTransactionSuccess:
             requesting_user_id=editor_id,
             currency_code=account.currency.code,
         )
-        txn = service.create_transaction(cmd)
+        txn = await service.create_transaction(cmd)
         assert txn is not None
 
-    def test_commits_uow(self) -> None:
+    async def test_commits_uow(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
         uow.committed = False
@@ -196,10 +196,10 @@ class TestCreateTransactionSuccess:
             requesting_user_id=owner_id,
             currency_code=account.currency.code,
         )
-        service.create_transaction(cmd)
+        await service.create_transaction(cmd)
         assert uow.committed is True
 
-    def test_emits_transaction_created_event(self) -> None:
+    async def test_emits_transaction_created_event(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
         cmd = _make_create_cmd(
@@ -208,7 +208,7 @@ class TestCreateTransactionSuccess:
             currency_code=account.currency.code,
             amount=Decimal("42.00"),
         )
-        txn = service.create_transaction(cmd)
+        txn = await service.create_transaction(cmd)
         events = txn.collect_events()
         created_events = [e for e in events if isinstance(e, TransactionCreated)]
         assert len(created_events) == 1
@@ -221,7 +221,7 @@ class TestCreateTransactionSuccess:
 
 
 class TestCreateTransactionValidation:
-    def test_currency_mismatch_raises(self) -> None:
+    async def test_currency_mismatch_raises(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow, currency=Currency.USD)
         cmd = _make_create_cmd(
@@ -230,9 +230,9 @@ class TestCreateTransactionValidation:
             currency_code="EUR",
         )
         with pytest.raises(CurrencyMismatchError):
-            service.create_transaction(cmd)
+            await service.create_transaction(cmd)
 
-    def test_duplicate_external_id_raises(self) -> None:
+    async def test_duplicate_external_id_raises(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
         cmd1 = _make_create_cmd(
@@ -241,7 +241,7 @@ class TestCreateTransactionValidation:
             currency_code=account.currency.code,
             external_id="dup-001",
         )
-        service.create_transaction(cmd1)
+        await service.create_transaction(cmd1)
 
         cmd2 = _make_create_cmd(
             account_id=account.id,
@@ -250,9 +250,9 @@ class TestCreateTransactionValidation:
             external_id="dup-001",
         )
         with pytest.raises(DuplicateExternalIdError):
-            service.create_transaction(cmd2)
+            await service.create_transaction(cmd2)
 
-    def test_duplicate_external_id_includes_soft_deleted(self) -> None:
+    async def test_duplicate_external_id_includes_soft_deleted(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
         cmd1 = _make_create_cmd(
@@ -261,7 +261,7 @@ class TestCreateTransactionValidation:
             currency_code=account.currency.code,
             external_id="dup-002",
         )
-        txn = service.create_transaction(cmd1)
+        txn = await service.create_transaction(cmd1)
         txn.collect_events()
 
         # Soft-delete the transaction
@@ -278,15 +278,15 @@ class TestCreateTransactionValidation:
             external_id="dup-002",
         )
         with pytest.raises(DuplicateExternalIdError):
-            service.create_transaction(cmd2)
+            await service.create_transaction(cmd2)
 
-    def test_account_not_found_raises(self) -> None:
+    async def test_account_not_found_raises(self) -> None:
         service, uow = _make_service()
         cmd = _make_create_cmd()
         with pytest.raises(AccountNotFoundError):
-            service.create_transaction(cmd)
+            await service.create_transaction(cmd)
 
-    def test_deleted_account_raises(self) -> None:
+    async def test_deleted_account_raises(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
         retention = RetentionPeriod(duration=30, unit=RetentionUnit.DAYS)
@@ -300,9 +300,9 @@ class TestCreateTransactionValidation:
             currency_code=account.currency.code,
         )
         with pytest.raises(AccountNotActiveError):
-            service.create_transaction(cmd)
+            await service.create_transaction(cmd)
 
-    def test_viewer_permission_denied(self) -> None:
+    async def test_viewer_permission_denied(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
         viewer_id = uuid.uuid4()
@@ -319,4 +319,4 @@ class TestCreateTransactionValidation:
             currency_code=account.currency.code,
         )
         with pytest.raises(InsufficientPermissionError):
-            service.create_transaction(cmd)
+            await service.create_transaction(cmd)

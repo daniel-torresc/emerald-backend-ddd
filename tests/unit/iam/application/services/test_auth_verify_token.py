@@ -37,29 +37,29 @@ def auth_env():
     return service, uow, hasher, token_service
 
 
-def test_verify_valid_token_returns_authenticated_identity(auth_env):
+async def test_verify_valid_token_returns_authenticated_identity(auth_env):
     service, uow, _, _ = auth_env
     _create_active_user(uow)
 
-    login_result = service.login(
+    login_result = await service.login(
         LoginUser(email="test@example.com", password="Password123!", portal_context="REGULAR")
     )
 
-    identity = service.verify_access_token(login_result.access_token)
+    identity = await service.verify_access_token(login_result.access_token)
 
     assert isinstance(identity, AuthenticatedIdentity)
     assert identity.email == EmailAddress("test@example.com")
     assert identity.system_role == SystemRole.USER
 
 
-def test_verify_invalid_token_raises_error(auth_env):
+async def test_verify_invalid_token_raises_error(auth_env):
     service, uow, _, _ = auth_env
 
     with pytest.raises(InvalidTokenError):
-        service.verify_access_token("garbage_token")
+        await service.verify_access_token("garbage_token")
 
 
-def test_verify_user_not_found_raises_invalid_token(auth_env):
+async def test_verify_user_not_found_raises_invalid_token(auth_env):
     service, uow, _, token_service = auth_env
 
     # Sign a token with claims for a non-existent user
@@ -76,33 +76,33 @@ def test_verify_user_not_found_raises_invalid_token(auth_env):
     fake_token = token_service.sign_access_token(claims)
 
     with pytest.raises(InvalidTokenError):
-        service.verify_access_token(fake_token)
+        await service.verify_access_token(fake_token)
 
 
-def test_verify_display_name_uses_full_name(auth_env):
+async def test_verify_display_name_uses_full_name(auth_env):
     service, uow, _, _ = auth_env
     user = _create_active_user(uow)
     user.update_full_name("John Doe")
     user.collect_events()
 
-    login_result = service.login(
+    login_result = await service.login(
         LoginUser(email="test@example.com", password="Password123!", portal_context="REGULAR")
     )
 
-    identity = service.verify_access_token(login_result.access_token)
+    identity = await service.verify_access_token(login_result.access_token)
 
     assert identity.display_name == "John Doe"
 
 
-def test_verify_display_name_falls_back_to_username(auth_env):
+async def test_verify_display_name_falls_back_to_username(auth_env):
     service, uow, _, _ = auth_env
     _create_active_user(uow)
     # full_name is None by default after register
 
-    login_result = service.login(
+    login_result = await service.login(
         LoginUser(email="test@example.com", password="Password123!", portal_context="REGULAR")
     )
 
-    identity = service.verify_access_token(login_result.access_token)
+    identity = await service.verify_access_token(login_result.access_token)
 
     assert identity.display_name == "testuser"

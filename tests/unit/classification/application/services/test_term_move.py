@@ -39,18 +39,20 @@ def _make_add_term_cmd(**overrides: Any) -> AddTerm:
 
 
 class TestMoveTerm:
-    def test_move_to_new_parent_success(self) -> None:
+    async def test_move_to_new_parent_success(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name="Categories"))
+        taxonomy = await service.create_taxonomy(
+            CreateTaxonomy(owner_id=owner_id, name="Categories")
+        )
 
-        parent_a = service.add_term(
+        parent_a = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="A")
         )
-        parent_b = service.add_term(
+        parent_b = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="B")
         )
-        child = service.add_term(
+        child = await service.add_term(
             _make_add_term_cmd(
                 taxonomy_id=taxonomy.id,
                 owner_id=owner_id,
@@ -60,7 +62,7 @@ class TestMoveTerm:
         )
         uow.committed = False
 
-        service.move_term(
+        await service.move_term(
             MoveTerm(
                 taxonomy_id=taxonomy.id,
                 owner_id=owner_id,
@@ -72,15 +74,17 @@ class TestMoveTerm:
         assert child.parent_term_id == parent_b.id
         assert uow.committed is True
 
-    def test_move_to_root(self) -> None:
+    async def test_move_to_root(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name="Categories"))
+        taxonomy = await service.create_taxonomy(
+            CreateTaxonomy(owner_id=owner_id, name="Categories")
+        )
 
-        parent = service.add_term(
+        parent = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="Parent")
         )
-        child = service.add_term(
+        child = await service.add_term(
             _make_add_term_cmd(
                 taxonomy_id=taxonomy.id,
                 owner_id=owner_id,
@@ -89,7 +93,7 @@ class TestMoveTerm:
             )
         )
 
-        service.move_term(
+        await service.move_term(
             MoveTerm(
                 taxonomy_id=taxonomy.id,
                 owner_id=owner_id,
@@ -100,17 +104,19 @@ class TestMoveTerm:
 
         assert child.parent_term_id is None
 
-    def test_move_self_parent_raises(self) -> None:
+    async def test_move_self_parent_raises(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name="Categories"))
+        taxonomy = await service.create_taxonomy(
+            CreateTaxonomy(owner_id=owner_id, name="Categories")
+        )
 
-        term = service.add_term(
+        term = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="Food")
         )
 
         with pytest.raises(CannotBeOwnParentError):
-            service.move_term(
+            await service.move_term(
                 MoveTerm(
                     taxonomy_id=taxonomy.id,
                     owner_id=owner_id,
@@ -119,15 +125,17 @@ class TestMoveTerm:
                 )
             )
 
-    def test_move_cycle_raises(self) -> None:
+    async def test_move_cycle_raises(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name="Categories"))
+        taxonomy = await service.create_taxonomy(
+            CreateTaxonomy(owner_id=owner_id, name="Categories")
+        )
 
-        grandparent = service.add_term(
+        grandparent = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="Grandparent")
         )
-        parent = service.add_term(
+        parent = await service.add_term(
             _make_add_term_cmd(
                 taxonomy_id=taxonomy.id,
                 owner_id=owner_id,
@@ -135,7 +143,7 @@ class TestMoveTerm:
                 parent_term_id=grandparent.id,
             )
         )
-        child = service.add_term(
+        child = await service.add_term(
             _make_add_term_cmd(
                 taxonomy_id=taxonomy.id,
                 owner_id=owner_id,
@@ -146,7 +154,7 @@ class TestMoveTerm:
 
         # Moving grandparent under child creates a cycle
         with pytest.raises(CircularReferenceError):
-            service.move_term(
+            await service.move_term(
                 MoveTerm(
                     taxonomy_id=taxonomy.id,
                     owner_id=owner_id,
@@ -155,15 +163,17 @@ class TestMoveTerm:
                 )
             )
 
-    def test_move_same_parent_is_noop(self) -> None:
+    async def test_move_same_parent_is_noop(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name="Categories"))
+        taxonomy = await service.create_taxonomy(
+            CreateTaxonomy(owner_id=owner_id, name="Categories")
+        )
 
-        parent = service.add_term(
+        parent = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="Parent")
         )
-        child = service.add_term(
+        child = await service.add_term(
             _make_add_term_cmd(
                 taxonomy_id=taxonomy.id,
                 owner_id=owner_id,
@@ -172,7 +182,7 @@ class TestMoveTerm:
             )
         )
 
-        service.move_term(
+        await service.move_term(
             MoveTerm(
                 taxonomy_id=taxonomy.id,
                 owner_id=owner_id,

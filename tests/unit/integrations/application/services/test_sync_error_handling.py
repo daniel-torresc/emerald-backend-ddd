@@ -84,7 +84,7 @@ def _create_active_connection(
 
 
 class TestAuthErrorHandling:
-    def test_auth_error_marks_needs_reauth_and_fails_history(
+    async def test_auth_error_marks_needs_reauth_and_fails_history(
         self,
         service: BankSyncService,
         uow: FakeIntegrationsUnitOfWork,
@@ -96,7 +96,7 @@ class TestAuthErrorHandling:
         adapter.set_auth_error(ProviderAuthError("Token expired"))
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
 
-        history = service.execute_sync(cmd)
+        history = await service.execute_sync(cmd)
 
         assert history.status == SyncStatus.FAILED
         assert history.error_message == "Token expired"
@@ -108,7 +108,7 @@ class TestAuthErrorHandling:
 
 
 class TestProviderErrorHandling:
-    def test_provider_error_records_failure_and_fails_history(
+    async def test_provider_error_records_failure_and_fails_history(
         self,
         service: BankSyncService,
         uow: FakeIntegrationsUnitOfWork,
@@ -120,7 +120,7 @@ class TestProviderErrorHandling:
         adapter.set_provider_error(ProviderError("Service unavailable"))
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
 
-        history = service.execute_sync(cmd)
+        history = await service.execute_sync(cmd)
 
         assert history.status == SyncStatus.FAILED
         assert history.error_message == "Service unavailable"

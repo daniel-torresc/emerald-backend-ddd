@@ -59,9 +59,9 @@ class BulkTransactionService:
 
     # -- Bulk Create -----------------------------------------------------------
 
-    def bulk_create_transactions(self, cmd: BulkCreateTransactions) -> BulkResult:
+    async def bulk_create_transactions(self, cmd: BulkCreateTransactions) -> BulkResult:
         """Create multiple transactions with partial-success semantics."""
-        with self._uow:
+        async with self._uow:
             # Phase 1: Request-level validation
             account = self._load_account(cmd.account_id)
             self._verify_not_deleted(account)
@@ -130,14 +130,14 @@ class BulkTransactionService:
                     )
 
             result = self._build_result(successes, failures)
-            self._uow.commit()
+            await self._uow.commit()
             return result
 
     # -- Bulk Update -----------------------------------------------------------
 
-    def bulk_update_transactions(self, cmd: BulkUpdateTransactions) -> BulkResult:
+    async def bulk_update_transactions(self, cmd: BulkUpdateTransactions) -> BulkResult:
         """Update multiple transactions with partial-success semantics."""
-        with self._uow:
+        async with self._uow:
             # Phase 1: Request-level validation
             account = self._load_account(cmd.account_id)
             self._verify_not_deleted(account)
@@ -199,14 +199,14 @@ class BulkTransactionService:
                     updated_fields.add("merchant")
 
             result = self._build_result(successes, failures)
-            self._uow.commit()
+            await self._uow.commit()
             return result
 
     # -- Bulk Delete -----------------------------------------------------------
 
-    def bulk_delete_transactions(self, cmd: BulkDeleteTransactions) -> BulkResult:
+    async def bulk_delete_transactions(self, cmd: BulkDeleteTransactions) -> BulkResult:
         """Soft-delete multiple transactions with partial-success semantics."""
-        with self._uow:
+        async with self._uow:
             # Phase 1: Request-level validation
             account = self._load_account(cmd.account_id)
             self._verify_not_deleted(account)
@@ -250,14 +250,14 @@ class BulkTransactionService:
                     )
 
             result = self._build_result(successes, failures)
-            self._uow.commit()
+            await self._uow.commit()
             return result
 
     # -- Bulk Recover ----------------------------------------------------------
 
-    def bulk_recover_transactions(self, cmd: BulkRecoverTransactions) -> BulkResult:
+    async def bulk_recover_transactions(self, cmd: BulkRecoverTransactions) -> BulkResult:
         """Recover multiple soft-deleted transactions with partial-success semantics."""
-        with self._uow:
+        async with self._uow:
             # Phase 1: Request-level validation
             account = self._load_account(cmd.account_id)
             self._verify_not_deleted(account)
@@ -309,7 +309,7 @@ class BulkTransactionService:
                     )
 
             result = self._build_result(successes, failures)
-            self._uow.commit()
+            await self._uow.commit()
             return result
 
     # -- Private helpers -------------------------------------------------------

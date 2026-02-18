@@ -35,67 +35,79 @@ def _make_create_cmd(**overrides: Any) -> CreateTaxonomy:
 
 
 class TestSoftDeleteTaxonomy:
-    def test_soft_delete_success(self) -> None:
+    async def test_soft_delete_success(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(_make_create_cmd(owner_id=owner_id))
+        taxonomy = await service.create_taxonomy(_make_create_cmd(owner_id=owner_id))
         uow.committed = False
 
-        service.soft_delete_taxonomy(SoftDeleteTaxonomy(taxonomy_id=taxonomy.id, owner_id=owner_id))
+        await service.soft_delete_taxonomy(
+            SoftDeleteTaxonomy(taxonomy_id=taxonomy.id, owner_id=owner_id)
+        )
 
         assert taxonomy.is_deleted()
         assert uow.committed is True
 
-    def test_soft_delete_commits(self) -> None:
+    async def test_soft_delete_commits(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(_make_create_cmd(owner_id=owner_id))
+        taxonomy = await service.create_taxonomy(_make_create_cmd(owner_id=owner_id))
         uow.committed = False
 
-        service.soft_delete_taxonomy(SoftDeleteTaxonomy(taxonomy_id=taxonomy.id, owner_id=owner_id))
+        await service.soft_delete_taxonomy(
+            SoftDeleteTaxonomy(taxonomy_id=taxonomy.id, owner_id=owner_id)
+        )
 
         assert uow.committed is True
 
-    def test_soft_delete_uses_retention(self) -> None:
+    async def test_soft_delete_uses_retention(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(_make_create_cmd(owner_id=owner_id))
+        taxonomy = await service.create_taxonomy(_make_create_cmd(owner_id=owner_id))
 
-        service.soft_delete_taxonomy(SoftDeleteTaxonomy(taxonomy_id=taxonomy.id, owner_id=owner_id))
+        await service.soft_delete_taxonomy(
+            SoftDeleteTaxonomy(taxonomy_id=taxonomy.id, owner_id=owner_id)
+        )
 
         assert taxonomy.is_deleted()
         assert taxonomy.hard_delete_scheduled_at is not None
 
-    def test_soft_delete_already_deleted_raises(self) -> None:
+    async def test_soft_delete_already_deleted_raises(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(_make_create_cmd(owner_id=owner_id))
+        taxonomy = await service.create_taxonomy(_make_create_cmd(owner_id=owner_id))
 
-        service.soft_delete_taxonomy(SoftDeleteTaxonomy(taxonomy_id=taxonomy.id, owner_id=owner_id))
+        await service.soft_delete_taxonomy(
+            SoftDeleteTaxonomy(taxonomy_id=taxonomy.id, owner_id=owner_id)
+        )
 
         with pytest.raises(AlreadyDeletedError):
-            service.soft_delete_taxonomy(
+            await service.soft_delete_taxonomy(
                 SoftDeleteTaxonomy(taxonomy_id=taxonomy.id, owner_id=owner_id)
             )
 
 
 class TestRecoverTaxonomy:
-    def test_recover_success(self) -> None:
+    async def test_recover_success(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(_make_create_cmd(owner_id=owner_id))
-        service.soft_delete_taxonomy(SoftDeleteTaxonomy(taxonomy_id=taxonomy.id, owner_id=owner_id))
+        taxonomy = await service.create_taxonomy(_make_create_cmd(owner_id=owner_id))
+        await service.soft_delete_taxonomy(
+            SoftDeleteTaxonomy(taxonomy_id=taxonomy.id, owner_id=owner_id)
+        )
         uow.committed = False
 
-        service.recover_taxonomy(RecoverTaxonomy(taxonomy_id=taxonomy.id, owner_id=owner_id))
+        await service.recover_taxonomy(RecoverTaxonomy(taxonomy_id=taxonomy.id, owner_id=owner_id))
 
         assert not taxonomy.is_deleted()
         assert uow.committed is True
 
-    def test_recover_not_deleted_raises(self) -> None:
+    async def test_recover_not_deleted_raises(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(_make_create_cmd(owner_id=owner_id))
+        taxonomy = await service.create_taxonomy(_make_create_cmd(owner_id=owner_id))
 
         with pytest.raises(NotDeletedError):
-            service.recover_taxonomy(RecoverTaxonomy(taxonomy_id=taxonomy.id, owner_id=owner_id))
+            await service.recover_taxonomy(
+                RecoverTaxonomy(taxonomy_id=taxonomy.id, owner_id=owner_id)
+            )
