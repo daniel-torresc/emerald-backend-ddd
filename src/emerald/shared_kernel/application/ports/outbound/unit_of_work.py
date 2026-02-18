@@ -1,25 +1,26 @@
 from abc import ABC, abstractmethod
+from typing import Self
 
 
 class AbstractUnitOfWork(ABC):
     """Base Unit of Work — manages transaction boundaries.
 
     Usage:
-        with uow:
+        async with uow:
             entity = uow.some_repo.find_by_id(...)
             entity.do_something()
             uow.some_repo.add(new_entity)
-            uow.commit()
+            await uow.commit()
     """
 
-    def __enter__(self) -> "AbstractUnitOfWork":
+    async def __aenter__(self) -> Self:
         return self
 
-    def __exit__(self, *args: object) -> None:
-        self.rollback()
+    async def __aexit__(self, *args: object) -> None:
+        await self.rollback()
 
     @abstractmethod
-    def commit(self) -> None: ...
+    async def commit(self) -> None: ...
 
     @abstractmethod
-    def rollback(self) -> None: ...
+    async def rollback(self) -> None: ...
