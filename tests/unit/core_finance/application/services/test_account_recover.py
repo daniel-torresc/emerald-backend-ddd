@@ -45,16 +45,16 @@ def _make_create_cmd(**overrides: Any) -> CreateAccount:
 
 
 class TestRecoverAccount:
-    def test_recovers_successfully(self) -> None:
+    async def test_recovers_successfully(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        account = service.create_account(_make_create_cmd(owner_user_id=uid))
-        service.soft_delete_account(
+        account = await service.create_account(_make_create_cmd(owner_user_id=uid))
+        await service.soft_delete_account(
             SoftDeleteAccount(account_id=account.id, requesting_user_id=uid)
         )
         uow.committed = False
 
-        service.recover_account(RecoverAccount(account_id=account.id, requesting_user_id=uid))
+        await service.recover_account(RecoverAccount(account_id=account.id, requesting_user_id=uid))
         assert account.is_active()
         assert account.deleted_at is None
         assert account.deleted_by is None
@@ -62,49 +62,51 @@ class TestRecoverAccount:
         assert account.hard_delete_scheduled_at is None
         assert uow.committed
 
-    def test_raises_not_found_for_nonexistent(self) -> None:
+    async def test_raises_not_found_for_nonexistent(self) -> None:
         service, uow = _make_service()
         with pytest.raises(AccountNotFoundError):
-            service.recover_account(
+            await service.recover_account(
                 RecoverAccount(
                     account_id=uuid.uuid4(),
                     requesting_user_id=uuid.uuid4(),
                 )
             )
 
-    def test_raises_insufficient_permission(self) -> None:
+    async def test_raises_insufficient_permission(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        account = service.create_account(_make_create_cmd(owner_user_id=uid))
-        service.soft_delete_account(
+        account = await service.create_account(_make_create_cmd(owner_user_id=uid))
+        await service.soft_delete_account(
             SoftDeleteAccount(account_id=account.id, requesting_user_id=uid)
         )
 
         with pytest.raises(InsufficientPermissionError):
-            service.recover_account(
+            await service.recover_account(
                 RecoverAccount(
                     account_id=account.id,
                     requesting_user_id=uuid.uuid4(),
                 )
             )
 
-    def test_raises_not_deleted(self) -> None:
+    async def test_raises_not_deleted(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        account = service.create_account(_make_create_cmd(owner_user_id=uid))
+        account = await service.create_account(_make_create_cmd(owner_user_id=uid))
 
         with pytest.raises(NotDeletedError):
-            service.recover_account(RecoverAccount(account_id=account.id, requesting_user_id=uid))
+            await service.recover_account(
+                RecoverAccount(account_id=account.id, requesting_user_id=uid)
+            )
 
-    def test_loads_with_include_deleted(self) -> None:
+    async def test_loads_with_include_deleted(self) -> None:
         """The service must use include_deleted=True to find soft-deleted accounts."""
         service, uow = _make_service()
         uid = uuid.uuid4()
-        account = service.create_account(_make_create_cmd(owner_user_id=uid))
-        service.soft_delete_account(
+        account = await service.create_account(_make_create_cmd(owner_user_id=uid))
+        await service.soft_delete_account(
             SoftDeleteAccount(account_id=account.id, requesting_user_id=uid)
         )
 
         # If include_deleted were not used, this would raise AccountNotFoundError
-        service.recover_account(RecoverAccount(account_id=account.id, requesting_user_id=uid))
+        await service.recover_account(RecoverAccount(account_id=account.id, requesting_user_id=uid))
         assert account.is_active()

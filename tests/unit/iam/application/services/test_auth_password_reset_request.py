@@ -37,26 +37,26 @@ def auth_env():
     return service, uow, hasher, token_service
 
 
-def test_request_existing_user_returns_raw_token(auth_env):
+async def test_request_existing_user_returns_raw_token(auth_env):
     service, uow, _, _ = auth_env
     _create_active_user(uow)
 
-    raw_token = service.request_password_reset(RequestPasswordReset(email="test@example.com"))
+    raw_token = await service.request_password_reset(RequestPasswordReset(email="test@example.com"))
 
     assert raw_token is not None
     assert isinstance(raw_token, str)
     assert len(raw_token) > 0
 
 
-def test_request_nonexistent_email_returns_none(auth_env):
+async def test_request_nonexistent_email_returns_none(auth_env):
     service, uow, _, _ = auth_env
 
-    result = service.request_password_reset(RequestPasswordReset(email="nobody@example.com"))
+    result = await service.request_password_reset(RequestPasswordReset(email="nobody@example.com"))
 
     assert result is None
 
 
-def test_request_deleted_user_returns_none(auth_env):
+async def test_request_deleted_user_returns_none(auth_env):
     service, uow, _, _ = auth_env
     user = _create_active_user(uow)
     user.soft_delete(
@@ -65,21 +65,25 @@ def test_request_deleted_user_returns_none(auth_env):
     )
     user.collect_events()
 
-    result = service.request_password_reset(RequestPasswordReset(email="test@example.com"))
+    result = await service.request_password_reset(RequestPasswordReset(email="test@example.com"))
 
     assert result is None
 
 
-def test_request_invalidates_previous_tokens(auth_env):
+async def test_request_invalidates_previous_tokens(auth_env):
     service, uow, _, token_service = auth_env
     _create_active_user(uow)
 
     # Request first token
-    raw_token_1 = service.request_password_reset(RequestPasswordReset(email="test@example.com"))
+    raw_token_1 = await service.request_password_reset(
+        RequestPasswordReset(email="test@example.com")
+    )
     assert raw_token_1 is not None
 
     # Request second token
-    raw_token_2 = service.request_password_reset(RequestPasswordReset(email="test@example.com"))
+    raw_token_2 = await service.request_password_reset(
+        RequestPasswordReset(email="test@example.com")
+    )
     assert raw_token_2 is not None
 
     # First token should be invalidated (used_at set)
@@ -95,12 +99,12 @@ def test_request_invalidates_previous_tokens(auth_env):
     assert not token_2.is_used()
 
 
-def test_request_reset_token_expires_in_one_hour(auth_env):
+async def test_request_reset_token_expires_in_one_hour(auth_env):
     service, uow, _, token_service = auth_env
     _create_active_user(uow)
 
     before = datetime.now(UTC)
-    raw_token = service.request_password_reset(RequestPasswordReset(email="test@example.com"))
+    raw_token = await service.request_password_reset(RequestPasswordReset(email="test@example.com"))
     after = datetime.now(UTC)
 
     assert raw_token is not None

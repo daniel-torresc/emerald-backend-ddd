@@ -105,7 +105,7 @@ def _create_pending(connection_id: uuid.UUID, account_id: uuid.UUID) -> PendingT
 
 
 class TestApprovePending:
-    def test_approves_imports_and_returns_transaction_id(
+    async def test_approves_imports_and_returns_transaction_id(
         self,
         service: BankSyncService,
         uow: FakeIntegrationsUnitOfWork,
@@ -119,7 +119,7 @@ class TestApprovePending:
 
         cmd = ApprovePendingTransaction(pending_id=pending.id, approved_by=user_id)
 
-        txn_id = service.approve_pending(cmd)
+        txn_id = await service.approve_pending(cmd)
 
         assert txn_id is not None
         assert len(import_port.imported) == 1
@@ -133,16 +133,16 @@ class TestApprovePending:
         assert updated_pending.imported_transaction_id == txn_id
         assert uow.committed is True
 
-    def test_raises_not_found_for_missing_pending(
+    async def test_raises_not_found_for_missing_pending(
         self,
         service: BankSyncService,
     ) -> None:
         cmd = ApprovePendingTransaction(pending_id=uuid.uuid4(), approved_by=uuid.uuid4())
 
         with pytest.raises(PendingTransactionNotFoundError):
-            service.approve_pending(cmd)
+            await service.approve_pending(cmd)
 
-    def test_raises_invalid_state_if_user_does_not_own_connection(
+    async def test_raises_invalid_state_if_user_does_not_own_connection(
         self,
         service: BankSyncService,
         uow: FakeIntegrationsUnitOfWork,
@@ -157,11 +157,11 @@ class TestApprovePending:
         cmd = ApprovePendingTransaction(pending_id=pending.id, approved_by=other_user)
 
         with pytest.raises(InvalidConnectionStateError):
-            service.approve_pending(cmd)
+            await service.approve_pending(cmd)
 
 
 class TestRejectPending:
-    def test_rejects_pending_transaction(
+    async def test_rejects_pending_transaction(
         self,
         service: BankSyncService,
         uow: FakeIntegrationsUnitOfWork,
@@ -174,18 +174,18 @@ class TestRejectPending:
 
         cmd = RejectPendingTransaction(pending_id=pending.id, rejected_by=user_id)
 
-        service.reject_pending(cmd)
+        await service.reject_pending(cmd)
 
         updated = uow.pending_transactions.find_by_id(pending.id)
         assert updated is not None
         assert updated.match_status == MatchStatus.USER_REJECTED
         assert uow.committed is True
 
-    def test_raises_not_found_for_missing_pending(
+    async def test_raises_not_found_for_missing_pending(
         self,
         service: BankSyncService,
     ) -> None:
         cmd = RejectPendingTransaction(pending_id=uuid.uuid4(), rejected_by=uuid.uuid4())
 
         with pytest.raises(PendingTransactionNotFoundError):
-            service.reject_pending(cmd)
+            await service.reject_pending(cmd)

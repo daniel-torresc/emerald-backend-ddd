@@ -71,7 +71,7 @@ def _find_latest_refresh_token(uow: FakeIamUnitOfWork, user_id: uuid.UUID):
 # ---------------------------------------------------------------------------
 
 
-def test_superadmin_login_gets_15_minute_refresh_ttl_regular_portal():
+async def test_superadmin_login_gets_15_minute_refresh_ttl_regular_portal():
     uow, _, _, svc = _setup_auth_service()
     superadmin = _make_superadmin(
         email=EmailAddress("sa@example.com"),
@@ -80,7 +80,9 @@ def test_superadmin_login_gets_15_minute_refresh_ttl_regular_portal():
     )
     uow.users.add(superadmin)
 
-    svc.login(LoginUser(email="sa@example.com", password="Password1!", portal_context="REGULAR"))
+    await svc.login(
+        LoginUser(email="sa@example.com", password="Password1!", portal_context="REGULAR")
+    )
 
     token = _find_latest_refresh_token(uow, superadmin.id)
     assert token is not None
@@ -89,7 +91,7 @@ def test_superadmin_login_gets_15_minute_refresh_ttl_regular_portal():
     assert expected_min <= token.expires_at <= expected_max
 
 
-def test_superadmin_login_gets_15_minute_refresh_ttl_admin_portal():
+async def test_superadmin_login_gets_15_minute_refresh_ttl_admin_portal():
     uow, _, _, svc = _setup_auth_service()
     superadmin = _make_superadmin(
         email=EmailAddress("sa@example.com"),
@@ -98,7 +100,9 @@ def test_superadmin_login_gets_15_minute_refresh_ttl_admin_portal():
     )
     uow.users.add(superadmin)
 
-    svc.login(LoginUser(email="sa@example.com", password="Password1!", portal_context="ADMIN"))
+    await svc.login(
+        LoginUser(email="sa@example.com", password="Password1!", portal_context="ADMIN")
+    )
 
     token = _find_latest_refresh_token(uow, superadmin.id)
     assert token is not None
@@ -107,7 +111,7 @@ def test_superadmin_login_gets_15_minute_refresh_ttl_admin_portal():
     assert expected_min <= token.expires_at <= expected_max
 
 
-def test_regular_user_login_gets_portal_context_ttl_regular():
+async def test_regular_user_login_gets_portal_context_ttl_regular():
     uow, _, _, svc = _setup_auth_service()
     user = _make_user(
         email=EmailAddress("user@example.com"),
@@ -116,7 +120,9 @@ def test_regular_user_login_gets_portal_context_ttl_regular():
     )
     uow.users.add(user)
 
-    svc.login(LoginUser(email="user@example.com", password="Password1!", portal_context="REGULAR"))
+    await svc.login(
+        LoginUser(email="user@example.com", password="Password1!", portal_context="REGULAR")
+    )
 
     token = _find_latest_refresh_token(uow, user.id)
     assert token is not None
@@ -126,7 +132,7 @@ def test_regular_user_login_gets_portal_context_ttl_regular():
     assert expected_min <= token.expires_at <= expected_max
 
 
-def test_admin_login_on_admin_portal_gets_4_hour_ttl():
+async def test_admin_login_on_admin_portal_gets_4_hour_ttl():
     uow, _, _, svc = _setup_auth_service()
     admin = _make_admin(
         permissions=frozenset({MASTER_DATA}),
@@ -136,7 +142,9 @@ def test_admin_login_on_admin_portal_gets_4_hour_ttl():
     )
     uow.users.add(admin)
 
-    svc.login(LoginUser(email="admin@example.com", password="Password1!", portal_context="ADMIN"))
+    await svc.login(
+        LoginUser(email="admin@example.com", password="Password1!", portal_context="ADMIN")
+    )
 
     token = _find_latest_refresh_token(uow, admin.id)
     assert token is not None
@@ -146,7 +154,7 @@ def test_admin_login_on_admin_portal_gets_4_hour_ttl():
     assert expected_min <= token.expires_at <= expected_max
 
 
-def test_admin_login_on_regular_portal_gets_7_day_ttl():
+async def test_admin_login_on_regular_portal_gets_7_day_ttl():
     uow, _, _, svc = _setup_auth_service()
     admin = _make_admin(
         permissions=frozenset({MASTER_DATA}),
@@ -156,7 +164,9 @@ def test_admin_login_on_regular_portal_gets_7_day_ttl():
     )
     uow.users.add(admin)
 
-    svc.login(LoginUser(email="admin@example.com", password="Password1!", portal_context="REGULAR"))
+    await svc.login(
+        LoginUser(email="admin@example.com", password="Password1!", portal_context="REGULAR")
+    )
 
     token = _find_latest_refresh_token(uow, admin.id)
     assert token is not None
@@ -171,7 +181,7 @@ def test_admin_login_on_regular_portal_gets_7_day_ttl():
 # ---------------------------------------------------------------------------
 
 
-def test_superadmin_refresh_gets_15_minute_refresh_ttl():
+async def test_superadmin_refresh_gets_15_minute_refresh_ttl():
     uow, _, token_service, svc = _setup_auth_service()
     superadmin = _make_superadmin(
         email=EmailAddress("sa@example.com"),
@@ -180,11 +190,11 @@ def test_superadmin_refresh_gets_15_minute_refresh_ttl():
     )
     uow.users.add(superadmin)
 
-    login_result = svc.login(
+    login_result = await svc.login(
         LoginUser(email="sa@example.com", password="Password1!", portal_context="REGULAR")
     )
 
-    refresh_result = svc.refresh(RefreshAccessToken(refresh_token=login_result.refresh_token))
+    refresh_result = await svc.refresh(RefreshAccessToken(refresh_token=login_result.refresh_token))
 
     # Find the new (non-revoked) refresh token
     new_hash = token_service.hash_token(refresh_result.refresh_token)
@@ -195,7 +205,7 @@ def test_superadmin_refresh_gets_15_minute_refresh_ttl():
     assert expected_min <= new_token.expires_at <= expected_max
 
 
-def test_regular_user_refresh_keeps_portal_context_ttl():
+async def test_regular_user_refresh_keeps_portal_context_ttl():
     uow, _, token_service, svc = _setup_auth_service()
     user = _make_user(
         email=EmailAddress("user@example.com"),
@@ -204,11 +214,11 @@ def test_regular_user_refresh_keeps_portal_context_ttl():
     )
     uow.users.add(user)
 
-    login_result = svc.login(
+    login_result = await svc.login(
         LoginUser(email="user@example.com", password="Password1!", portal_context="REGULAR")
     )
 
-    refresh_result = svc.refresh(RefreshAccessToken(refresh_token=login_result.refresh_token))
+    refresh_result = await svc.refresh(RefreshAccessToken(refresh_token=login_result.refresh_token))
 
     new_hash = token_service.hash_token(refresh_result.refresh_token)
     new_token = uow.refresh_tokens.find_by_hash(new_hash)
@@ -219,7 +229,7 @@ def test_regular_user_refresh_keeps_portal_context_ttl():
     assert expected_min <= new_token.expires_at <= expected_max
 
 
-def test_superadmin_refresh_on_admin_portal_still_gets_15_minute_ttl():
+async def test_superadmin_refresh_on_admin_portal_still_gets_15_minute_ttl():
     uow, _, token_service, svc = _setup_auth_service()
     superadmin = _make_superadmin(
         email=EmailAddress("sa@example.com"),
@@ -228,11 +238,11 @@ def test_superadmin_refresh_on_admin_portal_still_gets_15_minute_ttl():
     )
     uow.users.add(superadmin)
 
-    login_result = svc.login(
+    login_result = await svc.login(
         LoginUser(email="sa@example.com", password="Password1!", portal_context="ADMIN")
     )
 
-    refresh_result = svc.refresh(RefreshAccessToken(refresh_token=login_result.refresh_token))
+    refresh_result = await svc.refresh(RefreshAccessToken(refresh_token=login_result.refresh_token))
 
     new_hash = token_service.hash_token(refresh_result.refresh_token)
     new_token = uow.refresh_tokens.find_by_hash(new_hash)
@@ -242,7 +252,7 @@ def test_superadmin_refresh_on_admin_portal_still_gets_15_minute_ttl():
     assert expected_min <= new_token.expires_at <= expected_max
 
 
-def test_admin_refresh_on_admin_portal_gets_4_hour_ttl():
+async def test_admin_refresh_on_admin_portal_gets_4_hour_ttl():
     uow, _, token_service, svc = _setup_auth_service()
     admin = _make_admin(
         permissions=frozenset({MASTER_DATA}),
@@ -252,11 +262,11 @@ def test_admin_refresh_on_admin_portal_gets_4_hour_ttl():
     )
     uow.users.add(admin)
 
-    login_result = svc.login(
+    login_result = await svc.login(
         LoginUser(email="admin@example.com", password="Password1!", portal_context="ADMIN")
     )
 
-    refresh_result = svc.refresh(RefreshAccessToken(refresh_token=login_result.refresh_token))
+    refresh_result = await svc.refresh(RefreshAccessToken(refresh_token=login_result.refresh_token))
 
     new_hash = token_service.hash_token(refresh_result.refresh_token)
     new_token = uow.refresh_tokens.find_by_hash(new_hash)

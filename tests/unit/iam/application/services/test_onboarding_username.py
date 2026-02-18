@@ -49,7 +49,7 @@ def service(uow: FakeIamUnitOfWork) -> AuthenticationService:
 class TestSetOnboardingUsername:
     """Tests for AuthenticationService.set_onboarding_username()."""
 
-    def test_set_username_success(
+    async def test_set_username_success(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """Social-only user (username=None) -> set username succeeds."""
@@ -58,7 +58,7 @@ class TestSetOnboardingUsername:
         user.collect_events()
 
         cmd = SetOnboardingUsername(user_id=str(user.id), username="mynewname")
-        service.set_onboarding_username(cmd)
+        await service.set_onboarding_username(cmd)
 
         assert user.username == Username("mynewname")
 
@@ -67,7 +67,7 @@ class TestSetOnboardingUsername:
         assert any(isinstance(e, UserUsernameChanged) for e in agg_events)
         assert uow.committed is True
 
-    def test_username_already_taken(
+    async def test_username_already_taken(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """Username already exists -> UsernameAlreadyExistsError."""
@@ -88,9 +88,9 @@ class TestSetOnboardingUsername:
         cmd = SetOnboardingUsername(user_id=str(user.id), username="takenname")
 
         with pytest.raises(UsernameAlreadyExistsError):
-            service.set_onboarding_username(cmd)
+            await service.set_onboarding_username(cmd)
 
-    def test_invalid_username_format(
+    async def test_invalid_username_format(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """Too short username -> InvalidUsernameError."""
@@ -100,16 +100,18 @@ class TestSetOnboardingUsername:
         cmd = SetOnboardingUsername(user_id=str(user.id), username="a")
 
         with pytest.raises(InvalidUsernameError):
-            service.set_onboarding_username(cmd)
+            await service.set_onboarding_username(cmd)
 
-    def test_user_not_found(self, uow: FakeIamUnitOfWork, service: AuthenticationService) -> None:
+    async def test_user_not_found(
+        self, uow: FakeIamUnitOfWork, service: AuthenticationService
+    ) -> None:
         """Invalid user_id -> AuthenticationFailedError."""
         cmd = SetOnboardingUsername(user_id=str(uuid.uuid4()), username="validname")
 
         with pytest.raises(AuthenticationFailedError):
-            service.set_onboarding_username(cmd)
+            await service.set_onboarding_username(cmd)
 
-    def test_overwrite_existing_username(
+    async def test_overwrite_existing_username(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """User with existing username -> update_username still works."""
@@ -118,7 +120,7 @@ class TestSetOnboardingUsername:
         user.collect_events()
 
         cmd = SetOnboardingUsername(user_id=str(user.id), username="newname123")
-        service.set_onboarding_username(cmd)
+        await service.set_onboarding_username(cmd)
 
         assert user.username == Username("newname123")
 

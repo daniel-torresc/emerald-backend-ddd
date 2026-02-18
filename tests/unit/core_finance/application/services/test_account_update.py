@@ -46,14 +46,14 @@ def _make_create_cmd(**overrides: Any) -> CreateAccount:
 
 
 class TestUpdateAccountType:
-    def test_updates_successfully(self) -> None:
+    async def test_updates_successfully(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        account = service.create_account(_make_create_cmd(owner_user_id=uid))
+        account = await service.create_account(_make_create_cmd(owner_user_id=uid))
         new_type_id = uuid.uuid4()
         uow.committed = False
 
-        service.update_account_type(
+        await service.update_account_type(
             UpdateAccountType(
                 account_id=account.id,
                 requesting_user_id=uid,
@@ -63,10 +63,10 @@ class TestUpdateAccountType:
         assert account.account_type_id == new_type_id
         assert uow.committed
 
-    def test_raises_not_found(self) -> None:
+    async def test_raises_not_found(self) -> None:
         service, uow = _make_service()
         with pytest.raises(AccountNotFoundError):
-            service.update_account_type(
+            await service.update_account_type(
                 UpdateAccountType(
                     account_id=uuid.uuid4(),
                     requesting_user_id=uuid.uuid4(),
@@ -74,13 +74,13 @@ class TestUpdateAccountType:
                 )
             )
 
-    def test_raises_insufficient_permission(self) -> None:
+    async def test_raises_insufficient_permission(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        account = service.create_account(_make_create_cmd(owner_user_id=uid))
+        account = await service.create_account(_make_create_cmd(owner_user_id=uid))
 
         with pytest.raises(InsufficientPermissionError):
-            service.update_account_type(
+            await service.update_account_type(
                 UpdateAccountType(
                     account_id=account.id,
                     requesting_user_id=uuid.uuid4(),
@@ -90,14 +90,14 @@ class TestUpdateAccountType:
 
 
 class TestUpdateFinancialInstitution:
-    def test_updates_successfully(self) -> None:
+    async def test_updates_successfully(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        account = service.create_account(_make_create_cmd(owner_user_id=uid))
+        account = await service.create_account(_make_create_cmd(owner_user_id=uid))
         new_inst_id = uuid.uuid4()
         uow.committed = False
 
-        service.update_financial_institution(
+        await service.update_financial_institution(
             UpdateFinancialInstitution(
                 account_id=account.id,
                 requesting_user_id=uid,
@@ -107,10 +107,10 @@ class TestUpdateFinancialInstitution:
         assert account.financial_institution_id == new_inst_id
         assert uow.committed
 
-    def test_raises_not_found(self) -> None:
+    async def test_raises_not_found(self) -> None:
         service, uow = _make_service()
         with pytest.raises(AccountNotFoundError):
-            service.update_financial_institution(
+            await service.update_financial_institution(
                 UpdateFinancialInstitution(
                     account_id=uuid.uuid4(),
                     requesting_user_id=uuid.uuid4(),
@@ -118,13 +118,13 @@ class TestUpdateFinancialInstitution:
                 )
             )
 
-    def test_raises_insufficient_permission(self) -> None:
+    async def test_raises_insufficient_permission(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        account = service.create_account(_make_create_cmd(owner_user_id=uid))
+        account = await service.create_account(_make_create_cmd(owner_user_id=uid))
 
         with pytest.raises(InsufficientPermissionError):
-            service.update_financial_institution(
+            await service.update_financial_institution(
                 UpdateFinancialInstitution(
                     account_id=account.id,
                     requesting_user_id=uuid.uuid4(),
@@ -134,13 +134,13 @@ class TestUpdateFinancialInstitution:
 
 
 class TestUpdateAccountNotes:
-    def test_updates_notes(self) -> None:
+    async def test_updates_notes(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        account = service.create_account(_make_create_cmd(owner_user_id=uid))
+        account = await service.create_account(_make_create_cmd(owner_user_id=uid))
         uow.committed = False
 
-        service.update_account_notes(
+        await service.update_account_notes(
             UpdateAccountNotes(
                 account_id=account.id,
                 requesting_user_id=uid,
@@ -150,12 +150,14 @@ class TestUpdateAccountNotes:
         assert account.notes == "New notes"
         assert uow.committed
 
-    def test_clears_notes(self) -> None:
+    async def test_clears_notes(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        account = service.create_account(_make_create_cmd(owner_user_id=uid, notes="Old notes"))
+        account = await service.create_account(
+            _make_create_cmd(owner_user_id=uid, notes="Old notes")
+        )
 
-        service.update_account_notes(
+        await service.update_account_notes(
             UpdateAccountNotes(
                 account_id=account.id,
                 requesting_user_id=uid,
@@ -164,10 +166,10 @@ class TestUpdateAccountNotes:
         )
         assert account.notes is None
 
-    def test_raises_not_found(self) -> None:
+    async def test_raises_not_found(self) -> None:
         service, uow = _make_service()
         with pytest.raises(AccountNotFoundError):
-            service.update_account_notes(
+            await service.update_account_notes(
                 UpdateAccountNotes(
                     account_id=uuid.uuid4(),
                     requesting_user_id=uuid.uuid4(),
@@ -175,13 +177,13 @@ class TestUpdateAccountNotes:
                 )
             )
 
-    def test_raises_insufficient_permission(self) -> None:
+    async def test_raises_insufficient_permission(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        account = service.create_account(_make_create_cmd(owner_user_id=uid))
+        account = await service.create_account(_make_create_cmd(owner_user_id=uid))
 
         with pytest.raises(InsufficientPermissionError):
-            service.update_account_notes(
+            await service.update_account_notes(
                 UpdateAccountNotes(
                     account_id=account.id,
                     requesting_user_id=uuid.uuid4(),
@@ -189,13 +191,13 @@ class TestUpdateAccountNotes:
                 )
             )
 
-    def test_rejects_notes_over_500_chars(self) -> None:
+    async def test_rejects_notes_over_500_chars(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        account = service.create_account(_make_create_cmd(owner_user_id=uid))
+        account = await service.create_account(_make_create_cmd(owner_user_id=uid))
 
         with pytest.raises(InvalidAccountNotesError):
-            service.update_account_notes(
+            await service.update_account_notes(
                 UpdateAccountNotes(
                     account_id=account.id,
                     requesting_user_id=uid,

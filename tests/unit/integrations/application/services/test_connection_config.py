@@ -69,7 +69,7 @@ def _create_connection(
 
 
 class TestUpdateSyncFrequency:
-    def test_updates_frequency_hours(
+    async def test_updates_frequency_hours(
         self,
         service: BankConnectionService,
         uow: FakeIntegrationsUnitOfWork,
@@ -79,14 +79,14 @@ class TestUpdateSyncFrequency:
         conn = _create_connection(uow, user_id, account_id)
         cmd = UpdateSyncFrequency(connection_id=conn.id, hours=12, updated_by=user_id)
 
-        service.update_sync_frequency(cmd)
+        await service.update_sync_frequency(cmd)
 
         updated = uow.bank_connections.find_by_id(conn.id)
         assert updated is not None
         assert updated.sync_frequency_hours == 12
         assert uow.committed is True
 
-    def test_raises_if_user_does_not_own_connection(
+    async def test_raises_if_user_does_not_own_connection(
         self,
         service: BankConnectionService,
         uow: FakeIntegrationsUnitOfWork,
@@ -98,9 +98,9 @@ class TestUpdateSyncFrequency:
         cmd = UpdateSyncFrequency(connection_id=conn.id, hours=12, updated_by=other_user)
 
         with pytest.raises(InvalidConnectionStateError):
-            service.update_sync_frequency(cmd)
+            await service.update_sync_frequency(cmd)
 
-    def test_raises_invalid_sync_frequency_for_out_of_range(
+    async def test_raises_invalid_sync_frequency_for_out_of_range(
         self,
         service: BankConnectionService,
         uow: FakeIntegrationsUnitOfWork,
@@ -111,8 +111,8 @@ class TestUpdateSyncFrequency:
 
         cmd_too_low = UpdateSyncFrequency(connection_id=conn.id, hours=0, updated_by=user_id)
         with pytest.raises(InvalidSyncFrequencyError):
-            service.update_sync_frequency(cmd_too_low)
+            await service.update_sync_frequency(cmd_too_low)
 
         cmd_too_high = UpdateSyncFrequency(connection_id=conn.id, hours=25, updated_by=user_id)
         with pytest.raises(InvalidSyncFrequencyError):
-            service.update_sync_frequency(cmd_too_high)
+            await service.update_sync_frequency(cmd_too_high)

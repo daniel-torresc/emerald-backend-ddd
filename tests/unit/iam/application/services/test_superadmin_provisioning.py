@@ -53,7 +53,7 @@ def _setup() -> tuple[FakeIamUnitOfWork, FakePasswordHasher, SuperadminProvision
 # ---------------------------------------------------------------------------
 
 
-def test_provision_superadmin_happy_path():
+async def test_provision_superadmin_happy_path():
     uow, _, svc = _setup()
 
     cmd = ProvisionSuperadmin(
@@ -61,7 +61,7 @@ def test_provision_superadmin_happy_path():
         username="superadmin",
         password="StrongP@ss1!",
     )
-    user = svc.provision_superadmin(cmd)
+    user = await svc.provision_superadmin(cmd)
 
     assert user.system_role == SystemRole.SUPERADMIN
     assert user.status == UserStatus.ACTIVE
@@ -70,7 +70,7 @@ def test_provision_superadmin_happy_path():
     assert str(user.username) == "superadmin"
 
 
-def test_provision_superadmin_password_is_hashed():
+async def test_provision_superadmin_password_is_hashed():
     uow, _, svc = _setup()
 
     cmd = ProvisionSuperadmin(
@@ -78,13 +78,13 @@ def test_provision_superadmin_password_is_hashed():
         username="superadmin",
         password="StrongP@ss1!",
     )
-    user = svc.provision_superadmin(cmd)
+    user = await svc.provision_superadmin(cmd)
 
     assert user.password is not None
     assert user.password.hashed_value == "hashed:StrongP@ss1!"
 
 
-def test_provision_superadmin_admin_permissions_is_none():
+async def test_provision_superadmin_admin_permissions_is_none():
     uow, _, svc = _setup()
 
     cmd = ProvisionSuperadmin(
@@ -92,12 +92,12 @@ def test_provision_superadmin_admin_permissions_is_none():
         username="superadmin",
         password="StrongP@ss1!",
     )
-    user = svc.provision_superadmin(cmd)
+    user = await svc.provision_superadmin(cmd)
 
     assert user.admin_permissions is None
 
 
-def test_provision_superadmin_records_event():
+async def test_provision_superadmin_records_event():
     uow, _, svc = _setup()
 
     cmd = ProvisionSuperadmin(
@@ -105,7 +105,7 @@ def test_provision_superadmin_records_event():
         username="superadmin",
         password="StrongP@ss1!",
     )
-    user = svc.provision_superadmin(cmd)
+    user = await svc.provision_superadmin(cmd)
 
     events = user.collect_events()
     provisioned_events = [e for e in events if isinstance(e, SuperadminProvisioned)]
@@ -113,7 +113,7 @@ def test_provision_superadmin_records_event():
     assert provisioned_events[-1].aggregate_id == user.id
 
 
-def test_provision_superadmin_user_persisted():
+async def test_provision_superadmin_user_persisted():
     uow, _, svc = _setup()
 
     cmd = ProvisionSuperadmin(
@@ -121,14 +121,14 @@ def test_provision_superadmin_user_persisted():
         username="superadmin",
         password="StrongP@ss1!",
     )
-    user = svc.provision_superadmin(cmd)
+    user = await svc.provision_superadmin(cmd)
 
     stored = uow.users.find_by_id(user.id)
     assert stored is not None
     assert stored.system_role == SystemRole.SUPERADMIN
 
 
-def test_provision_superadmin_weak_password_raises():
+async def test_provision_superadmin_weak_password_raises():
     _, _, svc = _setup()
 
     cmd = ProvisionSuperadmin(
@@ -138,10 +138,10 @@ def test_provision_superadmin_weak_password_raises():
     )
 
     with pytest.raises(PasswordTooWeakError):
-        svc.provision_superadmin(cmd)
+        await svc.provision_superadmin(cmd)
 
 
-def test_provision_superadmin_already_exists_raises():
+async def test_provision_superadmin_already_exists_raises():
     uow, _, svc = _setup()
     existing = _make_superadmin(
         email=EmailAddress("existing@example.com"),
@@ -156,10 +156,10 @@ def test_provision_superadmin_already_exists_raises():
     )
 
     with pytest.raises(SuperadminAlreadyExistsError):
-        svc.provision_superadmin(cmd)
+        await svc.provision_superadmin(cmd)
 
 
-def test_provision_superadmin_duplicate_email_raises():
+async def test_provision_superadmin_duplicate_email_raises():
     uow, _, svc = _setup()
     existing = _make_user(email=EmailAddress("taken@example.com"))
     uow.users.add(existing)
@@ -171,10 +171,10 @@ def test_provision_superadmin_duplicate_email_raises():
     )
 
     with pytest.raises(EmailAlreadyExistsError):
-        svc.provision_superadmin(cmd)
+        await svc.provision_superadmin(cmd)
 
 
-def test_provision_superadmin_duplicate_username_raises():
+async def test_provision_superadmin_duplicate_username_raises():
     uow, _, svc = _setup()
     existing = _make_user(username=Username("superadmin"))
     uow.users.add(existing)
@@ -186,10 +186,10 @@ def test_provision_superadmin_duplicate_username_raises():
     )
 
     with pytest.raises(UsernameAlreadyExistsError):
-        svc.provision_superadmin(cmd)
+        await svc.provision_superadmin(cmd)
 
 
-def test_provision_superadmin_commits_uow():
+async def test_provision_superadmin_commits_uow():
     uow, _, svc = _setup()
 
     cmd = ProvisionSuperadmin(
@@ -197,12 +197,12 @@ def test_provision_superadmin_commits_uow():
         username="superadmin",
         password="StrongP@ss1!",
     )
-    svc.provision_superadmin(cmd)
+    await svc.provision_superadmin(cmd)
 
     assert uow.committed is True
 
 
-def test_provision_superadmin_not_committed_on_failure():
+async def test_provision_superadmin_not_committed_on_failure():
     uow, _, svc = _setup()
 
     cmd = ProvisionSuperadmin(
@@ -212,12 +212,12 @@ def test_provision_superadmin_not_committed_on_failure():
     )
 
     with pytest.raises(PasswordTooWeakError):
-        svc.provision_superadmin(cmd)
+        await svc.provision_superadmin(cmd)
 
     assert uow.committed is False
 
 
-def test_provision_superadmin_returns_user_with_correct_email():
+async def test_provision_superadmin_returns_user_with_correct_email():
     uow, _, svc = _setup()
 
     cmd = ProvisionSuperadmin(
@@ -225,13 +225,13 @@ def test_provision_superadmin_returns_user_with_correct_email():
         username="emeraldadmin",
         password="StrongP@ss1!",
     )
-    user = svc.provision_superadmin(cmd)
+    user = await svc.provision_superadmin(cmd)
 
     assert str(user.email) == "admin@emerald.io"
     assert str(user.username) == "emeraldadmin"
 
 
-def test_provision_superadmin_password_no_digits_raises():
+async def test_provision_superadmin_password_no_digits_raises():
     _, _, svc = _setup()
 
     cmd = ProvisionSuperadmin(
@@ -241,10 +241,10 @@ def test_provision_superadmin_password_no_digits_raises():
     )
 
     with pytest.raises(PasswordTooWeakError):
-        svc.provision_superadmin(cmd)
+        await svc.provision_superadmin(cmd)
 
 
-def test_provision_superadmin_password_no_special_char_raises():
+async def test_provision_superadmin_password_no_special_char_raises():
     _, _, svc = _setup()
 
     cmd = ProvisionSuperadmin(
@@ -254,4 +254,4 @@ def test_provision_superadmin_password_no_special_char_raises():
     )
 
     with pytest.raises(PasswordTooWeakError):
-        svc.provision_superadmin(cmd)
+        await svc.provision_superadmin(cmd)

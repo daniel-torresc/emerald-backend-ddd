@@ -36,24 +36,26 @@ def _make_add_term_cmd(**overrides: Any) -> AddTerm:
 
 
 class TestReorderTerms:
-    def test_reorder_success(self) -> None:
+    async def test_reorder_success(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name="Categories"))
+        taxonomy = await service.create_taxonomy(
+            CreateTaxonomy(owner_id=owner_id, name="Categories")
+        )
 
-        term_a = service.add_term(
+        term_a = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="A")
         )
-        term_b = service.add_term(
+        term_b = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="B")
         )
-        term_c = service.add_term(
+        term_c = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="C")
         )
         uow.committed = False
 
         # Reverse the order: C, B, A
-        service.reorder_terms(
+        await service.reorder_terms(
             ReorderTerms(
                 taxonomy_id=taxonomy.id,
                 owner_id=owner_id,
@@ -67,19 +69,23 @@ class TestReorderTerms:
         assert term_a.sort_order == 2
         assert uow.committed is True
 
-    def test_reorder_incomplete_raises(self) -> None:
+    async def test_reorder_incomplete_raises(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name="Categories"))
+        taxonomy = await service.create_taxonomy(
+            CreateTaxonomy(owner_id=owner_id, name="Categories")
+        )
 
-        term_a = service.add_term(
+        term_a = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="A")
         )
-        service.add_term(_make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="B"))
+        await service.add_term(
+            _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="B")
+        )
 
         # Only include one of two siblings
         with pytest.raises(IncompleteReorderError):
-            service.reorder_terms(
+            await service.reorder_terms(
                 ReorderTerms(
                     taxonomy_id=taxonomy.id,
                     owner_id=owner_id,
@@ -88,19 +94,23 @@ class TestReorderTerms:
                 )
             )
 
-    def test_reorder_duplicates_raises(self) -> None:
+    async def test_reorder_duplicates_raises(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name="Categories"))
+        taxonomy = await service.create_taxonomy(
+            CreateTaxonomy(owner_id=owner_id, name="Categories")
+        )
 
-        term_a = service.add_term(
+        term_a = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="A")
         )
-        service.add_term(_make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="B"))
+        await service.add_term(
+            _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="B")
+        )
 
         # Duplicate IDs in the list
         with pytest.raises(IncompleteReorderError):
-            service.reorder_terms(
+            await service.reorder_terms(
                 ReorderTerms(
                     taxonomy_id=taxonomy.id,
                     owner_id=owner_id,
@@ -109,15 +119,17 @@ class TestReorderTerms:
                 )
             )
 
-    def test_reorder_children_of_parent(self) -> None:
+    async def test_reorder_children_of_parent(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
-        taxonomy = service.create_taxonomy(CreateTaxonomy(owner_id=owner_id, name="Categories"))
+        taxonomy = await service.create_taxonomy(
+            CreateTaxonomy(owner_id=owner_id, name="Categories")
+        )
 
-        parent = service.add_term(
+        parent = await service.add_term(
             _make_add_term_cmd(taxonomy_id=taxonomy.id, owner_id=owner_id, name="Food")
         )
-        child_a = service.add_term(
+        child_a = await service.add_term(
             _make_add_term_cmd(
                 taxonomy_id=taxonomy.id,
                 owner_id=owner_id,
@@ -125,7 +137,7 @@ class TestReorderTerms:
                 parent_term_id=parent.id,
             )
         )
-        child_b = service.add_term(
+        child_b = await service.add_term(
             _make_add_term_cmd(
                 taxonomy_id=taxonomy.id,
                 owner_id=owner_id,
@@ -134,7 +146,7 @@ class TestReorderTerms:
             )
         )
 
-        service.reorder_terms(
+        await service.reorder_terms(
             ReorderTerms(
                 taxonomy_id=taxonomy.id,
                 owner_id=owner_id,

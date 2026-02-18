@@ -40,9 +40,9 @@ class AccountManagementService:
         self._uow = uow
         self._retention_policy_service = retention_policy_service
 
-    def create_account(self, cmd: CreateAccount) -> Account:
+    async def create_account(self, cmd: CreateAccount) -> Account:
         """Create a new account with all validations."""
-        with self._uow:
+        async with self._uow:
             owner = UserReference(user_id=cmd.owner_user_id, display_name=cmd.owner_display_name)
             currency = Currency[cmd.currency_code]
             account_name = AccountName(cmd.account_name)
@@ -63,12 +63,12 @@ class AccountManagementService:
                 notes=cmd.notes,
             )
             self._uow.accounts.save(account)
-            self._uow.commit()
+            await self._uow.commit()
             return account
 
-    def rename_account(self, cmd: RenameAccount) -> None:
+    async def rename_account(self, cmd: RenameAccount) -> None:
         """Rename an account, checking ownership and uniqueness."""
-        with self._uow:
+        async with self._uow:
             account = self._load_account(cmd.account_id)
             self._verify_owner(account, cmd.requesting_user_id)
 
@@ -78,37 +78,37 @@ class AccountManagementService:
                 raise AccountNameAlreadyExistsError()
 
             account.update_name(new_name, cmd.requesting_user_id)
-            self._uow.commit()
+            await self._uow.commit()
 
-    def update_account_type(self, cmd: UpdateAccountType) -> None:
+    async def update_account_type(self, cmd: UpdateAccountType) -> None:
         """Update account type."""
-        with self._uow:
+        async with self._uow:
             account = self._load_account(cmd.account_id)
             self._verify_owner(account, cmd.requesting_user_id)
             account.update_account_type(cmd.account_type_id, cmd.requesting_user_id)
-            self._uow.commit()
+            await self._uow.commit()
 
-    def update_financial_institution(self, cmd: UpdateFinancialInstitution) -> None:
+    async def update_financial_institution(self, cmd: UpdateFinancialInstitution) -> None:
         """Update financial institution."""
-        with self._uow:
+        async with self._uow:
             account = self._load_account(cmd.account_id)
             self._verify_owner(account, cmd.requesting_user_id)
             account.update_financial_institution(
                 cmd.financial_institution_id, cmd.requesting_user_id
             )
-            self._uow.commit()
+            await self._uow.commit()
 
-    def update_account_notes(self, cmd: UpdateAccountNotes) -> None:
+    async def update_account_notes(self, cmd: UpdateAccountNotes) -> None:
         """Update account notes."""
-        with self._uow:
+        async with self._uow:
             account = self._load_account(cmd.account_id)
             self._verify_owner(account, cmd.requesting_user_id)
             account.update_notes(cmd.notes, cmd.requesting_user_id)
-            self._uow.commit()
+            await self._uow.commit()
 
-    def soft_delete_account(self, cmd: SoftDeleteAccount) -> None:
+    async def soft_delete_account(self, cmd: SoftDeleteAccount) -> None:
         """Soft-delete an account with retention period."""
-        with self._uow:
+        async with self._uow:
             account = self._load_account(cmd.account_id, include_deleted=True)
             self._verify_owner(account, cmd.requesting_user_id)
 
@@ -116,15 +116,15 @@ class AccountManagementService:
                 DeletableEntityType.FINANCIAL_ACCOUNT, cmd.requesting_user_id
             )
             account.soft_delete(cmd.requesting_user_id, retention, cmd.reason)
-            self._uow.commit()
+            await self._uow.commit()
 
-    def recover_account(self, cmd: RecoverAccount) -> None:
+    async def recover_account(self, cmd: RecoverAccount) -> None:
         """Recover a soft-deleted account."""
-        with self._uow:
+        async with self._uow:
             account = self._load_account(cmd.account_id, include_deleted=True)
             self._verify_owner(account, cmd.requesting_user_id)
             account.recover()
-            self._uow.commit()
+            await self._uow.commit()
 
     # -- Private helpers -------------------------------------------------------
 

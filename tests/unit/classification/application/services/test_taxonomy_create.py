@@ -33,66 +33,66 @@ def _make_cmd(**overrides: Any) -> CreateTaxonomy:
 
 
 class TestCreateTaxonomy:
-    def test_creates_taxonomy_and_returns_it(self) -> None:
+    async def test_creates_taxonomy_and_returns_it(self) -> None:
         service, uow = _make_service()
         cmd = _make_cmd()
-        taxonomy = service.create_taxonomy(cmd)
+        taxonomy = await service.create_taxonomy(cmd)
 
         assert isinstance(taxonomy, Taxonomy)
         assert taxonomy.name == TaxonomyName("My Taxonomy")
         assert taxonomy.owner_id == cmd.owner_id
         assert taxonomy.description is None
 
-    def test_saves_to_repository(self) -> None:
+    async def test_saves_to_repository(self) -> None:
         service, uow = _make_service()
         cmd = _make_cmd()
-        taxonomy = service.create_taxonomy(cmd)
+        taxonomy = await service.create_taxonomy(cmd)
 
         found = uow.taxonomies.find_by_id(taxonomy.id)
         assert found is not None
         assert found.id == taxonomy.id
 
-    def test_commits_unit_of_work(self) -> None:
+    async def test_commits_unit_of_work(self) -> None:
         service, uow = _make_service()
         cmd = _make_cmd()
-        service.create_taxonomy(cmd)
+        await service.create_taxonomy(cmd)
 
         assert uow.committed is True
 
-    def test_with_description(self) -> None:
+    async def test_with_description(self) -> None:
         service, uow = _make_service()
         cmd = _make_cmd(description="A custom taxonomy for groceries")
-        taxonomy = service.create_taxonomy(cmd)
+        taxonomy = await service.create_taxonomy(cmd)
 
         assert taxonomy.description == "A custom taxonomy for groceries"
 
 
 class TestCreateTaxonomyUniqueness:
-    def test_duplicate_name_for_same_owner_raises(self) -> None:
+    async def test_duplicate_name_for_same_owner_raises(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
         cmd1 = _make_cmd(owner_id=owner_id, name="Groceries")
-        service.create_taxonomy(cmd1)
+        await service.create_taxonomy(cmd1)
 
         cmd2 = _make_cmd(owner_id=owner_id, name="Groceries")
         with pytest.raises(TaxonomyNameAlreadyExistsError):
-            service.create_taxonomy(cmd2)
+            await service.create_taxonomy(cmd2)
 
-    def test_duplicate_name_case_insensitive_raises(self) -> None:
+    async def test_duplicate_name_case_insensitive_raises(self) -> None:
         service, uow = _make_service()
         owner_id = uuid.uuid4()
         cmd1 = _make_cmd(owner_id=owner_id, name="Groceries")
-        service.create_taxonomy(cmd1)
+        await service.create_taxonomy(cmd1)
 
         cmd2 = _make_cmd(owner_id=owner_id, name="GROCERIES")
         with pytest.raises(TaxonomyNameAlreadyExistsError):
-            service.create_taxonomy(cmd2)
+            await service.create_taxonomy(cmd2)
 
-    def test_same_name_different_owners_allowed(self) -> None:
+    async def test_same_name_different_owners_allowed(self) -> None:
         service, uow = _make_service()
         cmd1 = _make_cmd(owner_id=uuid.uuid4(), name="Groceries")
-        service.create_taxonomy(cmd1)
+        await service.create_taxonomy(cmd1)
 
         cmd2 = _make_cmd(owner_id=uuid.uuid4(), name="Groceries")
-        taxonomy = service.create_taxonomy(cmd2)
+        taxonomy = await service.create_taxonomy(cmd2)
         assert taxonomy is not None

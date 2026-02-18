@@ -71,7 +71,7 @@ def _make_account(
     return account, owner_id
 
 
-def _create_transaction(
+async def _create_transaction(
     service: TransactionManagementService,
     account: Account,
     owner_id: uuid.UUID,
@@ -88,16 +88,16 @@ def _create_transaction(
     }
     defaults.update(overrides)
     cmd = CreateTransaction(**defaults)
-    txn = service.create_transaction(cmd)
+    txn = await service.create_transaction(cmd)
     txn.collect_events()
     return txn
 
 
 class TestReviewTransaction:
-    def test_review_success(self) -> None:
+    async def test_review_success(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
         assert txn.review_status == ReviewStatus.TO_REVIEW
         uow.committed = False
 
@@ -106,14 +106,14 @@ class TestReviewTransaction:
             requesting_user_id=owner_id,
             transaction_id=txn.id,
         )
-        service.review_transaction(cmd)
+        await service.review_transaction(cmd)
         assert txn.review_status == ReviewStatus.REVIEWED
         assert uow.committed is True
 
-    def test_review_viewer_denied(self) -> None:
+    async def test_review_viewer_denied(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
         viewer_id = uuid.uuid4()
         account.share_with(
             user_id=viewer_id,
@@ -128,14 +128,14 @@ class TestReviewTransaction:
             transaction_id=txn.id,
         )
         with pytest.raises(InsufficientPermissionError):
-            service.review_transaction(cmd)
+            await service.review_transaction(cmd)
 
-    def test_review_deleted_raises_not_found(self) -> None:
+    async def test_review_deleted_raises_not_found(self) -> None:
         """Soft-deleted txn is filtered by repo (include_deleted=False),
         so service raises TransactionNotFoundError."""
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
         retention = RetentionPeriod(duration=30, unit=RetentionUnit.DAYS)
         txn.soft_delete(deleted_by=owner_id, retention=retention)
         txn.collect_events()
@@ -147,21 +147,21 @@ class TestReviewTransaction:
             transaction_id=txn.id,
         )
         with pytest.raises(TransactionNotFoundError):
-            service.review_transaction(cmd)
+            await service.review_transaction(cmd)
 
 
 class TestUnreviewTransaction:
-    def test_unreview_success(self) -> None:
+    async def test_unreview_success(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
         # First mark as reviewed
         review_cmd = ReviewTransaction(
             account_id=account.id,
             requesting_user_id=owner_id,
             transaction_id=txn.id,
         )
-        service.review_transaction(review_cmd)
+        await service.review_transaction(review_cmd)
         assert txn.review_status == ReviewStatus.REVIEWED
         uow.committed = False
 
@@ -170,20 +170,20 @@ class TestUnreviewTransaction:
             requesting_user_id=owner_id,
             transaction_id=txn.id,
         )
-        service.unreview_transaction(unreview_cmd)
+        await service.unreview_transaction(unreview_cmd)
         assert txn.review_status == ReviewStatus.TO_REVIEW
         assert uow.committed is True
 
-    def test_unreview_viewer_denied(self) -> None:
+    async def test_unreview_viewer_denied(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
         review_cmd = ReviewTransaction(
             account_id=account.id,
             requesting_user_id=owner_id,
             transaction_id=txn.id,
         )
-        service.review_transaction(review_cmd)
+        await service.review_transaction(review_cmd)
 
         viewer_id = uuid.uuid4()
         account.share_with(
@@ -199,14 +199,14 @@ class TestUnreviewTransaction:
             transaction_id=txn.id,
         )
         with pytest.raises(InsufficientPermissionError):
-            service.unreview_transaction(unreview_cmd)
+            await service.unreview_transaction(unreview_cmd)
 
-    def test_unreview_deleted_raises_not_found(self) -> None:
+    async def test_unreview_deleted_raises_not_found(self) -> None:
         """Soft-deleted txn is filtered by repo (include_deleted=False),
         so service raises TransactionNotFoundError."""
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
         retention = RetentionPeriod(duration=30, unit=RetentionUnit.DAYS)
         txn.soft_delete(deleted_by=owner_id, retention=retention)
         txn.collect_events()
@@ -218,12 +218,12 @@ class TestUnreviewTransaction:
             transaction_id=txn.id,
         )
         with pytest.raises(TransactionNotFoundError):
-            service.unreview_transaction(cmd)
+            await service.unreview_transaction(cmd)
 
-    def test_review_commits_uow(self) -> None:
+    async def test_review_commits_uow(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
         uow.committed = False
 
         cmd = ReviewTransaction(
@@ -231,5 +231,5 @@ class TestUnreviewTransaction:
             requesting_user_id=owner_id,
             transaction_id=txn.id,
         )
-        service.review_transaction(cmd)
+        await service.review_transaction(cmd)
         assert uow.committed is True

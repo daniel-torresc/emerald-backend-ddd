@@ -19,7 +19,7 @@ class UserRegistrationService:
         self._uow = uow
         self._hasher = hasher
 
-    def register_user(self, cmd: RegisterUser) -> User:
+    async def register_user(self, cmd: RegisterUser) -> User:
         """Register a new user with email + password.
 
         Raises:
@@ -29,7 +29,7 @@ class UserRegistrationService:
             EmailAlreadyExistsError: if email is already in use
             UsernameAlreadyExistsError: if username is taken
         """
-        with self._uow:
+        async with self._uow:
             # 1. Validate format (creates value objects which validate)
             email_vo = EmailAddress(cmd.email)
             username_vo = Username(cmd.username)
@@ -50,6 +50,6 @@ class UserRegistrationService:
             # 5. Create user and persist
             user = User.register(email_vo, username_vo, hashed_password)
             self._uow.users.add(user)
-            self._uow.commit()
+            await self._uow.commit()
 
             return user

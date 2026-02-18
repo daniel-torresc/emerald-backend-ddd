@@ -71,7 +71,7 @@ def service(uow: FakeIamUnitOfWork) -> AuthenticationService:
 class TestLoginWithProvider:
     """Tests for AuthenticationService.login_with_provider()."""
 
-    def test_existing_user_provider_already_linked(
+    async def test_existing_user_provider_already_linked(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """User has GOOGLE linked with same external_id -> login succeeds."""
@@ -85,13 +85,13 @@ class TestLoginWithProvider:
         user.collect_events()  # Clear prior events
 
         claims = _make_claims()
-        result = service.login_with_provider(claims)
+        result = await service.login_with_provider(claims)
 
         assert isinstance(result, LoginResult)
         assert result.is_new_registration is False
         assert user.last_login_at is not None
 
-    def test_existing_active_user_auto_link(
+    async def test_existing_active_user_auto_link(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """User exists ACTIVE, no GOOGLE linked -> auto-link."""
@@ -100,7 +100,7 @@ class TestLoginWithProvider:
         user.collect_events()
 
         claims = _make_claims()
-        result = service.login_with_provider(claims)
+        result = await service.login_with_provider(claims)
 
         assert isinstance(result, LoginResult)
         assert result.is_new_registration is False
@@ -109,7 +109,7 @@ class TestLoginWithProvider:
         agg_events = user.collect_events()
         assert any(isinstance(e, AuthProviderLinked) for e in agg_events)
 
-    def test_pending_verification_user_upgrade(
+    async def test_pending_verification_user_upgrade(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """User is PENDING_VERIFICATION -> link, verify, become ACTIVE."""
@@ -121,7 +121,7 @@ class TestLoginWithProvider:
         user.collect_events()
 
         claims = _make_claims()
-        result = service.login_with_provider(claims)
+        result = await service.login_with_provider(claims)
 
         assert isinstance(result, LoginResult)
         assert user.status == UserStatus.ACTIVE
@@ -132,7 +132,7 @@ class TestLoginWithProvider:
         assert any(isinstance(e, AuthProviderLinked) for e in agg_events)
         assert any(isinstance(e, EmailVerified) for e in agg_events)
 
-    def test_deleted_user_raises_auth_failed(
+    async def test_deleted_user_raises_auth_failed(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """User is DELETED -> AuthenticationFailedError."""
@@ -142,9 +142,9 @@ class TestLoginWithProvider:
         claims = _make_claims()
 
         with pytest.raises(AuthenticationFailedError):
-            service.login_with_provider(claims)
+            await service.login_with_provider(claims)
 
-    def test_suspended_user_raises_account_suspended(
+    async def test_suspended_user_raises_account_suspended(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """User is SUSPENDED -> AccountSuspendedError."""
@@ -154,9 +154,9 @@ class TestLoginWithProvider:
         claims = _make_claims()
 
         with pytest.raises(AccountSuspendedError):
-            service.login_with_provider(claims)
+            await service.login_with_provider(claims)
 
-    def test_external_id_mismatch_raises(
+    async def test_external_id_mismatch_raises(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """User has GOOGLE with google-123 but claims have google-999."""
@@ -171,15 +171,15 @@ class TestLoginWithProvider:
         claims = _make_claims(external_id="google-999")
 
         with pytest.raises(ProviderExternalIdMismatchError):
-            service.login_with_provider(claims)
+            await service.login_with_provider(claims)
 
-    def test_new_user_social_registration(
+    async def test_new_user_social_registration(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """No user exists -> creates new user with is_new_registration=True."""
         claims = _make_claims(email="newuser@test.com")
 
-        result = service.login_with_provider(claims)
+        result = await service.login_with_provider(claims)
 
         assert isinstance(result, LoginResult)
         assert result.is_new_registration is True
@@ -195,20 +195,20 @@ class TestLoginWithProvider:
         agg_events = new_user.collect_events()
         assert any(isinstance(e, UserRegisteredViaSocialProvider) for e in agg_events)
 
-    def test_new_user_social_registration_no_full_name(
+    async def test_new_user_social_registration_no_full_name(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """full_name=None in claims -> still registers, user.full_name is None."""
         claims = _make_claims(email="nofullname@test.com", full_name=None)
 
-        result = service.login_with_provider(claims)
+        result = await service.login_with_provider(claims)
 
         assert result.is_new_registration is True
         new_user = uow.users.find_by_email(EmailAddress("nofullname@test.com"))
         assert new_user is not None
         assert new_user.full_name is None
 
-    def test_superadmin_social_login_short_ttl(
+    async def test_superadmin_social_login_short_ttl(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """Existing SUPERADMIN with GOOGLE linked -> login succeeds."""
@@ -223,12 +223,12 @@ class TestLoginWithProvider:
         user.collect_events()
 
         claims = _make_claims()
-        result = service.login_with_provider(claims)
+        result = await service.login_with_provider(claims)
 
         assert isinstance(result, LoginResult)
         assert result.is_new_registration is False
 
-    def test_session_limit_enforced(
+    async def test_session_limit_enforced(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """At MAX_CONCURRENT_SESSIONS, oldest family is revoked."""
@@ -258,7 +258,7 @@ class TestLoginWithProvider:
             uow.refresh_tokens.add(token)
 
         claims = _make_claims()
-        result = service.login_with_provider(claims)
+        result = await service.login_with_provider(claims)
 
         assert result is not None
 

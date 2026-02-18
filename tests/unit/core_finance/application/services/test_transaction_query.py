@@ -67,7 +67,7 @@ def _make_account(
     return account, owner_id
 
 
-def _create_transaction(
+async def _create_transaction(
     service: TransactionManagementService,
     account: Account,
     owner_id: uuid.UUID,
@@ -84,18 +84,18 @@ def _create_transaction(
     }
     defaults.update(overrides)
     cmd = CreateTransaction(**defaults)
-    txn = service.create_transaction(cmd)
+    txn = await service.create_transaction(cmd)
     txn.collect_events()
     return txn
 
 
 class TestGetTransaction:
-    def test_get_success(self) -> None:
+    async def test_get_success(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
 
-        result = service.get_transaction(
+        result = await service.get_transaction(
             account_id=account.id,
             transaction_id=txn.id,
             requesting_user_id=owner_id,
@@ -103,21 +103,21 @@ class TestGetTransaction:
         assert result.id == txn.id
         assert result.original_description == "Test Transaction"
 
-    def test_get_not_found(self) -> None:
+    async def test_get_not_found(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
 
         with pytest.raises(TransactionNotFoundError):
-            service.get_transaction(
+            await service.get_transaction(
                 account_id=account.id,
                 transaction_id=uuid.uuid4(),
                 requesting_user_id=owner_id,
             )
 
-    def test_get_viewer_ok(self) -> None:
+    async def test_get_viewer_ok(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn = _create_transaction(service, account, owner_id)
+        txn = await _create_transaction(service, account, owner_id)
         viewer_id = uuid.uuid4()
         account.share_with(
             user_id=viewer_id,
@@ -126,7 +126,7 @@ class TestGetTransaction:
         )
         account.collect_events()
 
-        result = service.get_transaction(
+        result = await service.get_transaction(
             account_id=account.id,
             transaction_id=txn.id,
             requesting_user_id=viewer_id,
@@ -135,14 +135,14 @@ class TestGetTransaction:
 
 
 class TestListTransactions:
-    def test_returns_paginated_result(self) -> None:
+    async def test_returns_paginated_result(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        _create_transaction(service, account, owner_id, original_description="Txn 1")
-        _create_transaction(service, account, owner_id, original_description="Txn 2")
-        _create_transaction(service, account, owner_id, original_description="Txn 3")
+        await _create_transaction(service, account, owner_id, original_description="Txn 1")
+        await _create_transaction(service, account, owner_id, original_description="Txn 2")
+        await _create_transaction(service, account, owner_id, original_description="Txn 3")
 
-        result = service.list_transactions(
+        result = await service.list_transactions(
             account_id=account.id,
             requesting_user_id=owner_id,
         )
@@ -150,10 +150,10 @@ class TestListTransactions:
         assert len(result.items) == 3
         assert result.page == 1
 
-    def test_viewer_ok(self) -> None:
+    async def test_viewer_ok(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        _create_transaction(service, account, owner_id)
+        await _create_transaction(service, account, owner_id)
         viewer_id = uuid.uuid4()
         account.share_with(
             user_id=viewer_id,
@@ -162,24 +162,24 @@ class TestListTransactions:
         )
         account.collect_events()
 
-        result = service.list_transactions(
+        result = await service.list_transactions(
             account_id=account.id,
             requesting_user_id=viewer_id,
         )
         assert result.total == 1
 
-    def test_pagination_works(self) -> None:
+    async def test_pagination_works(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
         for i in range(5):
-            _create_transaction(
+            await _create_transaction(
                 service,
                 account,
                 owner_id,
                 original_description=f"Txn {i}",
             )
 
-        page1 = service.list_transactions(
+        page1 = await service.list_transactions(
             account_id=account.id,
             requesting_user_id=owner_id,
             page=1,
@@ -189,7 +189,7 @@ class TestListTransactions:
         assert page1.total == 5
         assert page1.has_next is True
 
-        page2 = service.list_transactions(
+        page2 = await service.list_transactions(
             account_id=account.id,
             requesting_user_id=owner_id,
             page=2,
@@ -198,7 +198,7 @@ class TestListTransactions:
         assert len(page2.items) == 2
         assert page2.has_previous is True
 
-        page3 = service.list_transactions(
+        page3 = await service.list_transactions(
             account_id=account.id,
             requesting_user_id=owner_id,
             page=3,
@@ -209,31 +209,31 @@ class TestListTransactions:
 
 
 class TestListTransactionsInRange:
-    def test_filters_by_date_range(self) -> None:
+    async def test_filters_by_date_range(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        _create_transaction(
+        await _create_transaction(
             service,
             account,
             owner_id,
             transaction_date=date(2024, 1, 5),
             original_description="Before range",
         )
-        _create_transaction(
+        await _create_transaction(
             service,
             account,
             owner_id,
             transaction_date=date(2024, 1, 15),
             original_description="In range",
         )
-        _create_transaction(
+        await _create_transaction(
             service,
             account,
             owner_id,
             transaction_date=date(2024, 1, 25),
             original_description="In range too",
         )
-        _create_transaction(
+        await _create_transaction(
             service,
             account,
             owner_id,
@@ -245,7 +245,7 @@ class TestListTransactionsInRange:
             start_date=date(2024, 1, 10),
             end_date=date(2024, 1, 31),
         )
-        result = service.list_transactions_in_range(
+        result = await service.list_transactions_in_range(
             account_id=account.id,
             requesting_user_id=owner_id,
             date_range=date_range,
@@ -256,24 +256,24 @@ class TestListTransactionsInRange:
 
 
 class TestCalculateBalance:
-    def test_opening_balance_plus_transactions(self) -> None:
+    async def test_opening_balance_plus_transactions(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
         # opening_balance = 1000.00
-        _create_transaction(service, account, owner_id, amount=Decimal("500.00"))
-        _create_transaction(service, account, owner_id, amount=Decimal("-200.00"))
+        await _create_transaction(service, account, owner_id, amount=Decimal("500.00"))
+        await _create_transaction(service, account, owner_id, amount=Decimal("-200.00"))
 
-        balance = service.calculate_balance(
+        balance = await service.calculate_balance(
             account_id=account.id,
             requesting_user_id=owner_id,
         )
         # 1000 + 500 + (-200) = 1300
         assert balance == Money(Decimal("1300.00"), Currency.USD)
 
-    def test_viewer_ok(self) -> None:
+    async def test_viewer_ok(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        _create_transaction(service, account, owner_id, amount=Decimal("100.00"))
+        await _create_transaction(service, account, owner_id, amount=Decimal("100.00"))
         viewer_id = uuid.uuid4()
         account.share_with(
             user_id=viewer_id,
@@ -282,17 +282,17 @@ class TestCalculateBalance:
         )
         account.collect_events()
 
-        balance = service.calculate_balance(
+        balance = await service.calculate_balance(
             account_id=account.id,
             requesting_user_id=viewer_id,
         )
         assert balance == Money(Decimal("1100.00"), Currency.USD)
 
-    def test_no_transactions_returns_opening_balance(self) -> None:
+    async def test_no_transactions_returns_opening_balance(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
 
-        balance = service.calculate_balance(
+        balance = await service.calculate_balance(
             account_id=account.id,
             requesting_user_id=owner_id,
         )
@@ -300,24 +300,24 @@ class TestCalculateBalance:
 
 
 class TestGetTransactionCount:
-    def test_returns_correct_count(self) -> None:
+    async def test_returns_correct_count(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        _create_transaction(service, account, owner_id)
-        _create_transaction(service, account, owner_id)
-        _create_transaction(service, account, owner_id)
+        await _create_transaction(service, account, owner_id)
+        await _create_transaction(service, account, owner_id)
+        await _create_transaction(service, account, owner_id)
 
-        count = service.get_transaction_count(
+        count = await service.get_transaction_count(
             account_id=account.id,
             requesting_user_id=owner_id,
         )
         assert count == 3
 
-    def test_excludes_deleted(self) -> None:
+    async def test_excludes_deleted(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
-        txn1 = _create_transaction(service, account, owner_id)
-        _create_transaction(service, account, owner_id)
+        txn1 = await _create_transaction(service, account, owner_id)
+        await _create_transaction(service, account, owner_id)
 
         # Soft-delete one
         retention = RetentionPeriod(duration=30, unit=RetentionUnit.DAYS)
@@ -325,17 +325,17 @@ class TestGetTransactionCount:
         txn1.collect_events()
         uow.transactions.save(txn1)
 
-        count = service.get_transaction_count(
+        count = await service.get_transaction_count(
             account_id=account.id,
             requesting_user_id=owner_id,
         )
         assert count == 1
 
-    def test_returns_zero_when_empty(self) -> None:
+    async def test_returns_zero_when_empty(self) -> None:
         service, uow = _make_service()
         account, owner_id = _make_account(uow)
 
-        count = service.get_transaction_count(
+        count = await service.get_transaction_count(
             account_id=account.id,
             requesting_user_id=owner_id,
         )

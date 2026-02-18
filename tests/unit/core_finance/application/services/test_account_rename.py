@@ -45,22 +45,22 @@ def _make_create_cmd(**overrides: Any) -> CreateAccount:
 
 
 class TestRenameAccount:
-    def test_renames_successfully(self) -> None:
+    async def test_renames_successfully(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        account = service.create_account(_make_create_cmd(owner_user_id=uid))
+        account = await service.create_account(_make_create_cmd(owner_user_id=uid))
         uow.committed = False
 
-        service.rename_account(
+        await service.rename_account(
             RenameAccount(account_id=account.id, requesting_user_id=uid, new_name="Savings")
         )
         assert account.account_name == AccountName("Savings")
         assert uow.committed
 
-    def test_raises_not_found(self) -> None:
+    async def test_raises_not_found(self) -> None:
         service, uow = _make_service()
         with pytest.raises(AccountNotFoundError):
-            service.rename_account(
+            await service.rename_account(
                 RenameAccount(
                     account_id=uuid.uuid4(),
                     requesting_user_id=uuid.uuid4(),
@@ -68,13 +68,13 @@ class TestRenameAccount:
                 )
             )
 
-    def test_raises_insufficient_permission(self) -> None:
+    async def test_raises_insufficient_permission(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        account = service.create_account(_make_create_cmd(owner_user_id=uid))
+        account = await service.create_account(_make_create_cmd(owner_user_id=uid))
 
         with pytest.raises(InsufficientPermissionError):
-            service.rename_account(
+            await service.rename_account(
                 RenameAccount(
                     account_id=account.id,
                     requesting_user_id=uuid.uuid4(),
@@ -82,16 +82,16 @@ class TestRenameAccount:
                 )
             )
 
-    def test_rejects_duplicate_name(self) -> None:
+    async def test_rejects_duplicate_name(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        service.create_account(_make_create_cmd(owner_user_id=uid, account_name="Savings"))
-        account = service.create_account(
+        await service.create_account(_make_create_cmd(owner_user_id=uid, account_name="Savings"))
+        account = await service.create_account(
             _make_create_cmd(owner_user_id=uid, account_name="Checking")
         )
 
         with pytest.raises(AccountNameAlreadyExistsError):
-            service.rename_account(
+            await service.rename_account(
                 RenameAccount(
                     account_id=account.id,
                     requesting_user_id=uid,
@@ -99,16 +99,16 @@ class TestRenameAccount:
                 )
             )
 
-    def test_rejects_duplicate_name_case_insensitive(self) -> None:
+    async def test_rejects_duplicate_name_case_insensitive(self) -> None:
         service, uow = _make_service()
         uid = uuid.uuid4()
-        service.create_account(_make_create_cmd(owner_user_id=uid, account_name="Savings"))
-        account = service.create_account(
+        await service.create_account(_make_create_cmd(owner_user_id=uid, account_name="Savings"))
+        account = await service.create_account(
             _make_create_cmd(owner_user_id=uid, account_name="Checking")
         )
 
         with pytest.raises(AccountNameAlreadyExistsError):
-            service.rename_account(
+            await service.rename_account(
                 RenameAccount(
                     account_id=account.id,
                     requesting_user_id=uid,

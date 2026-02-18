@@ -49,13 +49,13 @@ def _make_create_cmd(**overrides: Any) -> CreateAccount:
 
 
 class TestShareAccount:
-    def test_shares_successfully(self) -> None:
+    async def test_shares_successfully(self) -> None:
         sharing, mgmt, uow = _make_services()
         owner_id = uuid.uuid4()
-        account = mgmt.create_account(_make_create_cmd(owner_user_id=owner_id))
+        account = await mgmt.create_account(_make_create_cmd(owner_user_id=owner_id))
         target = uuid.uuid4()
 
-        share = sharing.share_account(
+        share = await sharing.share_account(
             ShareAccountWith(
                 account_id=account.id,
                 requesting_user_id=owner_id,
@@ -66,13 +66,13 @@ class TestShareAccount:
         assert share.user_id == target
         assert share.permission_level == PermissionLevel.EDITOR
 
-    def test_commits_uow(self) -> None:
+    async def test_commits_uow(self) -> None:
         sharing, mgmt, uow = _make_services()
         owner_id = uuid.uuid4()
-        account = mgmt.create_account(_make_create_cmd(owner_user_id=owner_id))
+        account = await mgmt.create_account(_make_create_cmd(owner_user_id=owner_id))
         uow.committed = False
 
-        sharing.share_account(
+        await sharing.share_account(
             ShareAccountWith(
                 account_id=account.id,
                 requesting_user_id=owner_id,
@@ -82,10 +82,10 @@ class TestShareAccount:
         )
         assert uow.committed
 
-    def test_account_not_found(self) -> None:
+    async def test_account_not_found(self) -> None:
         sharing, mgmt, uow = _make_services()
         with pytest.raises(AccountNotFoundError):
-            sharing.share_account(
+            await sharing.share_account(
                 ShareAccountWith(
                     account_id=uuid.uuid4(),
                     requesting_user_id=uuid.uuid4(),
@@ -96,12 +96,12 @@ class TestShareAccount:
 
 
 class TestUpdateSharePermission:
-    def test_updates_successfully(self) -> None:
+    async def test_updates_successfully(self) -> None:
         sharing, mgmt, uow = _make_services()
         owner_id = uuid.uuid4()
-        account = mgmt.create_account(_make_create_cmd(owner_user_id=owner_id))
+        account = await mgmt.create_account(_make_create_cmd(owner_user_id=owner_id))
         target = uuid.uuid4()
-        sharing.share_account(
+        await sharing.share_account(
             ShareAccountWith(
                 account_id=account.id,
                 requesting_user_id=owner_id,
@@ -110,7 +110,7 @@ class TestUpdateSharePermission:
             )
         )
 
-        sharing.update_share_permission(
+        await sharing.update_share_permission(
             UpdateSharePermission(
                 account_id=account.id,
                 requesting_user_id=owner_id,
@@ -120,10 +120,10 @@ class TestUpdateSharePermission:
         )
         assert account.get_permission_level(target) == PermissionLevel.EDITOR
 
-    def test_account_not_found(self) -> None:
+    async def test_account_not_found(self) -> None:
         sharing, mgmt, uow = _make_services()
         with pytest.raises(AccountNotFoundError):
-            sharing.update_share_permission(
+            await sharing.update_share_permission(
                 UpdateSharePermission(
                     account_id=uuid.uuid4(),
                     requesting_user_id=uuid.uuid4(),
@@ -134,12 +134,12 @@ class TestUpdateSharePermission:
 
 
 class TestRevokeShare:
-    def test_revokes_successfully(self) -> None:
+    async def test_revokes_successfully(self) -> None:
         sharing, mgmt, uow = _make_services()
         owner_id = uuid.uuid4()
-        account = mgmt.create_account(_make_create_cmd(owner_user_id=owner_id))
+        account = await mgmt.create_account(_make_create_cmd(owner_user_id=owner_id))
         target = uuid.uuid4()
-        sharing.share_account(
+        await sharing.share_account(
             ShareAccountWith(
                 account_id=account.id,
                 requesting_user_id=owner_id,
@@ -148,7 +148,7 @@ class TestRevokeShare:
             )
         )
 
-        sharing.revoke_share(
+        await sharing.revoke_share(
             RevokeAccountShare(
                 account_id=account.id,
                 requesting_user_id=owner_id,
@@ -157,10 +157,10 @@ class TestRevokeShare:
         )
         assert account.get_share_for_user(target) is None
 
-    def test_account_not_found(self) -> None:
+    async def test_account_not_found(self) -> None:
         sharing, mgmt, uow = _make_services()
         with pytest.raises(AccountNotFoundError):
-            sharing.revoke_share(
+            await sharing.revoke_share(
                 RevokeAccountShare(
                     account_id=uuid.uuid4(),
                     requesting_user_id=uuid.uuid4(),
@@ -170,12 +170,12 @@ class TestRevokeShare:
 
 
 class TestLeaveShare:
-    def test_leaves_successfully(self) -> None:
+    async def test_leaves_successfully(self) -> None:
         sharing, mgmt, uow = _make_services()
         owner_id = uuid.uuid4()
-        account = mgmt.create_account(_make_create_cmd(owner_user_id=owner_id))
+        account = await mgmt.create_account(_make_create_cmd(owner_user_id=owner_id))
         target = uuid.uuid4()
-        sharing.share_account(
+        await sharing.share_account(
             ShareAccountWith(
                 account_id=account.id,
                 requesting_user_id=owner_id,
@@ -184,7 +184,7 @@ class TestLeaveShare:
             )
         )
 
-        sharing.leave_share(
+        await sharing.leave_share(
             LeaveAccountShare(
                 account_id=account.id,
                 requesting_user_id=target,
@@ -192,10 +192,10 @@ class TestLeaveShare:
         )
         assert account.get_share_for_user(target) is None
 
-    def test_account_not_found(self) -> None:
+    async def test_account_not_found(self) -> None:
         sharing, mgmt, uow = _make_services()
         with pytest.raises(AccountNotFoundError):
-            sharing.leave_share(
+            await sharing.leave_share(
                 LeaveAccountShare(
                     account_id=uuid.uuid4(),
                     requesting_user_id=uuid.uuid4(),
@@ -204,12 +204,12 @@ class TestLeaveShare:
 
 
 class TestTransferOwnership:
-    def test_transfers_successfully(self) -> None:
+    async def test_transfers_successfully(self) -> None:
         sharing, mgmt, uow = _make_services()
         owner_id = uuid.uuid4()
-        account = mgmt.create_account(_make_create_cmd(owner_user_id=owner_id))
+        account = await mgmt.create_account(_make_create_cmd(owner_user_id=owner_id))
         target = uuid.uuid4()
-        sharing.share_account(
+        await sharing.share_account(
             ShareAccountWith(
                 account_id=account.id,
                 requesting_user_id=owner_id,
@@ -218,7 +218,7 @@ class TestTransferOwnership:
             )
         )
 
-        sharing.transfer_ownership(
+        await sharing.transfer_ownership(
             TransferAccountOwnership(
                 account_id=account.id,
                 requesting_user_id=owner_id,
@@ -228,10 +228,10 @@ class TestTransferOwnership:
         assert account.is_owner(target)
         assert not account.is_owner(owner_id)
 
-    def test_account_not_found(self) -> None:
+    async def test_account_not_found(self) -> None:
         sharing, mgmt, uow = _make_services()
         with pytest.raises(AccountNotFoundError):
-            sharing.transfer_ownership(
+            await sharing.transfer_ownership(
                 TransferAccountOwnership(
                     account_id=uuid.uuid4(),
                     requesting_user_id=uuid.uuid4(),

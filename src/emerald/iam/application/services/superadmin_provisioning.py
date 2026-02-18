@@ -26,9 +26,9 @@ class SuperadminProvisioningService:
         self._uow = uow
         self._hasher = hasher
 
-    def provision_superadmin(self, cmd: ProvisionSuperadmin) -> User:
+    async def provision_superadmin(self, cmd: ProvisionSuperadmin) -> User:
         """Create the SUPERADMIN user during platform installation."""
-        with self._uow:
+        async with self._uow:
             # 1. Validate password strength
             validate_password_strength(cmd.password)
 
@@ -53,6 +53,6 @@ class SuperadminProvisioningService:
 
             # 6. Persist
             self._uow.users.add(user)
-            self._uow.commit()
+            await self._uow.commit()
 
             return user

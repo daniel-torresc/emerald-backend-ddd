@@ -103,7 +103,7 @@ def _make_pending(connection_id: uuid.UUID, account_id: uuid.UUID) -> PendingTra
 
 
 class TestActivateConnection:
-    def test_activates_with_credentials(
+    async def test_activates_with_credentials(
         self,
         service: BankConnectionService,
         uow: FakeIntegrationsUnitOfWork,
@@ -117,7 +117,7 @@ class TestActivateConnection:
             activated_by=user_id,
         )
 
-        service.activate_connection(cmd)
+        await service.activate_connection(cmd)
 
         updated = uow.bank_connections.find_by_id(conn.id)
         assert updated is not None
@@ -125,7 +125,7 @@ class TestActivateConnection:
         assert updated.credentials == ProviderCredentials("new-token")
         assert uow.committed is True
 
-    def test_raises_not_found_for_missing_connection(
+    async def test_raises_not_found_for_missing_connection(
         self,
         service: BankConnectionService,
     ) -> None:
@@ -136,11 +136,11 @@ class TestActivateConnection:
         )
 
         with pytest.raises(BankConnectionNotFoundError):
-            service.activate_connection(cmd)
+            await service.activate_connection(cmd)
 
 
 class TestDisconnectConnection:
-    def test_disconnects_and_deletes_pending(
+    async def test_disconnects_and_deletes_pending(
         self,
         service: BankConnectionService,
         uow: FakeIntegrationsUnitOfWork,
@@ -154,7 +154,7 @@ class TestDisconnectConnection:
 
         cmd = DisconnectBankConnection(connection_id=conn.id, disconnected_by=user_id)
 
-        service.disconnect_connection(cmd)
+        await service.disconnect_connection(cmd)
 
         updated = uow.bank_connections.find_by_id(conn.id)
         assert updated is not None
@@ -162,18 +162,18 @@ class TestDisconnectConnection:
         assert len(uow.pending_transactions.find_by_connection(conn.id)) == 0
         assert uow.committed is True
 
-    def test_raises_not_found_for_missing_connection(
+    async def test_raises_not_found_for_missing_connection(
         self,
         service: BankConnectionService,
     ) -> None:
         cmd = DisconnectBankConnection(connection_id=uuid.uuid4(), disconnected_by=uuid.uuid4())
 
         with pytest.raises(BankConnectionNotFoundError):
-            service.disconnect_connection(cmd)
+            await service.disconnect_connection(cmd)
 
 
 class TestReconnectConnection:
-    def test_reconnects_with_new_credentials(
+    async def test_reconnects_with_new_credentials(
         self,
         service: BankConnectionService,
         uow: FakeIntegrationsUnitOfWork,
@@ -191,7 +191,7 @@ class TestReconnectConnection:
             reconnected_by=user_id,
         )
 
-        service.reconnect_connection(cmd)
+        await service.reconnect_connection(cmd)
 
         updated = uow.bank_connections.find_by_id(conn.id)
         assert updated is not None
@@ -201,7 +201,7 @@ class TestReconnectConnection:
 
 
 class TestSoftDeleteConnection:
-    def test_soft_deletes_and_removes_pending(
+    async def test_soft_deletes_and_removes_pending(
         self,
         service: BankConnectionService,
         uow: FakeIntegrationsUnitOfWork,
@@ -216,7 +216,7 @@ class TestSoftDeleteConnection:
             connection_id=conn.id, deleted_by=user_id, reason="no longer needed"
         )
 
-        service.soft_delete_connection(cmd)
+        await service.soft_delete_connection(cmd)
 
         # Connection is soft-deleted (not visible without include_deleted)
         assert uow.bank_connections.find_by_id(conn.id) is None

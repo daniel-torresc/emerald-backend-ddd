@@ -64,7 +64,7 @@ def service(uow: FakeIamUnitOfWork) -> AuthenticationService:
 class TestLinkProvider:
     """Tests for AuthenticationService.link_provider()."""
 
-    def test_link_provider_success(
+    async def test_link_provider_success(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """ACTIVE user, claims email matches, new provider type -> link succeeds."""
@@ -73,7 +73,7 @@ class TestLinkProvider:
         user.collect_events()
 
         claims = _make_claims()
-        service.link_provider(user.id, claims)
+        await service.link_provider(user.id, claims)
 
         # Should have GOOGLE in providers now
         provider_types = {p.provider_type for p in user.auth_providers}
@@ -84,7 +84,7 @@ class TestLinkProvider:
         assert any(isinstance(e, AuthProviderLinked) for e in agg_events)
         assert uow.committed is True
 
-    def test_link_provider_email_mismatch(
+    async def test_link_provider_email_mismatch(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """Claims email != user email -> ProviderEmailMismatchError."""
@@ -94,9 +94,9 @@ class TestLinkProvider:
         claims = _make_claims(email="different@test.com")
 
         with pytest.raises(ProviderEmailMismatchError):
-            service.link_provider(user.id, claims)
+            await service.link_provider(user.id, claims)
 
-    def test_link_provider_already_linked(
+    async def test_link_provider_already_linked(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """Provider type already linked -> ProviderAlreadyLinkedError."""
@@ -111,22 +111,22 @@ class TestLinkProvider:
         claims = _make_claims()
 
         with pytest.raises(ProviderAlreadyLinkedError):
-            service.link_provider(user.id, claims)
+            await service.link_provider(user.id, claims)
 
-    def test_link_provider_user_not_found(
+    async def test_link_provider_user_not_found(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """Invalid user_id -> AuthenticationFailedError."""
         claims = _make_claims()
 
         with pytest.raises(AuthenticationFailedError):
-            service.link_provider(uuid.uuid4(), claims)
+            await service.link_provider(uuid.uuid4(), claims)
 
 
 class TestUnlinkProvider:
     """Tests for AuthenticationService.unlink_provider()."""
 
-    def test_unlink_provider_success(
+    async def test_unlink_provider_success(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """User has PASSWORD + GOOGLE, unlink GOOGLE -> success."""
@@ -140,7 +140,7 @@ class TestUnlinkProvider:
         user.collect_events()
 
         cmd = UnlinkAuthProvider(user_id=str(user.id), provider_type="GOOGLE")
-        service.unlink_provider(cmd)
+        await service.unlink_provider(cmd)
 
         provider_types = {p.provider_type for p in user.auth_providers}
         assert ProviderType.GOOGLE not in provider_types
@@ -150,7 +150,7 @@ class TestUnlinkProvider:
         assert any(isinstance(e, AuthProviderUnlinked) for e in agg_events)
         assert uow.committed is True
 
-    def test_unlink_last_provider(
+    async def test_unlink_last_provider(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """User has only PASSWORD, unlink PASSWORD -> CannotUnlinkLastProviderError."""
@@ -160,9 +160,9 @@ class TestUnlinkProvider:
         cmd = UnlinkAuthProvider(user_id=str(user.id), provider_type="PASSWORD")
 
         with pytest.raises(CannotUnlinkLastProviderError):
-            service.unlink_provider(cmd)
+            await service.unlink_provider(cmd)
 
-    def test_unlink_not_linked(
+    async def test_unlink_not_linked(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """Provider type not linked -> ProviderNotLinkedError."""
@@ -172,9 +172,9 @@ class TestUnlinkProvider:
         cmd = UnlinkAuthProvider(user_id=str(user.id), provider_type="GOOGLE")
 
         with pytest.raises(ProviderNotLinkedError):
-            service.unlink_provider(cmd)
+            await service.unlink_provider(cmd)
 
-    def test_unlink_password_when_social_remains(
+    async def test_unlink_password_when_social_remains(
         self, uow: FakeIamUnitOfWork, service: AuthenticationService
     ) -> None:
         """User has PASSWORD + GOOGLE, unlink PASSWORD -> success."""
@@ -188,7 +188,7 @@ class TestUnlinkProvider:
         user.collect_events()
 
         cmd = UnlinkAuthProvider(user_id=str(user.id), provider_type="PASSWORD")
-        service.unlink_provider(cmd)
+        await service.unlink_provider(cmd)
 
         provider_types = {p.provider_type for p in user.auth_providers}
         assert ProviderType.PASSWORD not in provider_types

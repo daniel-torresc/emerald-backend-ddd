@@ -105,7 +105,7 @@ def _create_active_connection(
 
 
 class TestExecuteSyncWithNewTransactions:
-    def test_creates_history_imports_and_completes_success(
+    async def test_creates_history_imports_and_completes_success(
         self,
         service: BankSyncService,
         uow: FakeIntegrationsUnitOfWork,
@@ -118,7 +118,7 @@ class TestExecuteSyncWithNewTransactions:
         adapter.set_transactions([_raw_txn(external_id="ext_1"), _raw_txn(external_id="ext_2")])
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
 
-        history = service.execute_sync(cmd)
+        history = await service.execute_sync(cmd)
 
         assert history.status == SyncStatus.SUCCESS
         assert history.transactions_found == 2
@@ -130,7 +130,7 @@ class TestExecuteSyncWithNewTransactions:
 
 
 class TestExecuteSyncWithDuplicates:
-    def test_skips_duplicates_and_counts_them(
+    async def test_skips_duplicates_and_counts_them(
         self,
         service: BankSyncService,
         uow: FakeIntegrationsUnitOfWork,
@@ -144,7 +144,7 @@ class TestExecuteSyncWithDuplicates:
         adapter.set_transactions([_raw_txn(external_id="ext_dup")])
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
 
-        history = service.execute_sync(cmd)
+        history = await service.execute_sync(cmd)
 
         assert history.status == SyncStatus.SUCCESS
         assert history.transactions_found == 1
@@ -155,7 +155,7 @@ class TestExecuteSyncWithDuplicates:
 
 
 class TestExecuteSyncWithNeedsReview:
-    def test_stages_pending_for_review(
+    async def test_stages_pending_for_review(
         self,
         service: BankSyncService,
         uow: FakeIntegrationsUnitOfWork,
@@ -185,7 +185,7 @@ class TestExecuteSyncWithNeedsReview:
         adapter.set_transactions([_raw_txn()])
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
 
-        history = service.execute_sync(cmd)
+        history = await service.execute_sync(cmd)
 
         assert history.status == SyncStatus.PARTIAL
         assert history.transactions_found == 1
@@ -198,7 +198,7 @@ class TestExecuteSyncWithNeedsReview:
 
 
 class TestExecuteSyncMixed:
-    def test_mixed_results_with_correct_counts(
+    async def test_mixed_results_with_correct_counts(
         self,
         service: BankSyncService,
         uow: FakeIntegrationsUnitOfWork,
@@ -245,7 +245,7 @@ class TestExecuteSyncMixed:
         )
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
 
-        history = service.execute_sync(cmd)
+        history = await service.execute_sync(cmd)
 
         assert history.transactions_found == 3
         assert history.transactions_duplicate == 1
@@ -255,7 +255,7 @@ class TestExecuteSyncMixed:
 
 
 class TestExecuteSyncValidation:
-    def test_raises_connection_not_active_for_pending_connection(
+    async def test_raises_connection_not_active_for_pending_connection(
         self,
         service: BankSyncService,
         uow: FakeIntegrationsUnitOfWork,
@@ -276,9 +276,9 @@ class TestExecuteSyncValidation:
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
 
         with pytest.raises(ConnectionNotActiveError):
-            service.execute_sync(cmd)
+            await service.execute_sync(cmd)
 
-    def test_raises_sync_already_in_progress(
+    async def test_raises_sync_already_in_progress(
         self,
         service: BankSyncService,
         uow: FakeIntegrationsUnitOfWork,
@@ -292,4 +292,4 @@ class TestExecuteSyncValidation:
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
 
         with pytest.raises(SyncAlreadyInProgressError):
-            service.execute_sync(cmd)
+            await service.execute_sync(cmd)

@@ -39,7 +39,7 @@ def _add_term(taxonomy: Taxonomy, name: str) -> uuid.UUID:
     return term.id
 
 
-def _assign(
+async def _assign(
     service: TransactionCategorizationService,
     port: FakeTransactionAccessPort,
     tx_id: uuid.UUID,
@@ -47,55 +47,55 @@ def _assign(
 ) -> None:
     port.add_active_transaction(tx_id, _ACCOUNT_ID)
     port.grant_editor_permission(_ACCOUNT_ID, _USER_ID)
-    service.assign_term(AssignTerm(transaction_id=tx_id, term_id=term_id, user_id=_USER_ID))
+    await service.assign_term(AssignTerm(transaction_id=tx_id, term_id=term_id, user_id=_USER_ID))
 
 
 class TestHandleTermDeleted:
-    def test_removes_all_assignments_for_term(self) -> None:
+    async def test_removes_all_assignments_for_term(self) -> None:
         service, uow, port = _make_deps()
         taxonomy = _create_taxonomy(uow)
         term_id = _add_term(taxonomy, "Food")
 
         tx_a, tx_b = uuid.uuid4(), uuid.uuid4()
-        _assign(service, port, tx_a, term_id)
-        _assign(service, port, tx_b, term_id)
+        await _assign(service, port, tx_a, term_id)
+        await _assign(service, port, tx_b, term_id)
 
-        count = service.handle_term_deleted(term_id)
+        count = await service.handle_term_deleted(term_id)
 
         assert count == 2
         assert uow.assignments.find_by_term(term_id) == []
 
-    def test_no_assignments_returns_zero(self) -> None:
+    async def test_no_assignments_returns_zero(self) -> None:
         service, uow, port = _make_deps()
-        count = service.handle_term_deleted(uuid.uuid4())
+        count = await service.handle_term_deleted(uuid.uuid4())
         assert count == 0
 
 
 class TestHandleTaxonomySoftDeleted:
-    def test_removes_all_assignments_for_taxonomy(self) -> None:
+    async def test_removes_all_assignments_for_taxonomy(self) -> None:
         service, uow, port = _make_deps()
         taxonomy = _create_taxonomy(uow)
         term_a = _add_term(taxonomy, "Food")
         term_b = _add_term(taxonomy, "Transport")
 
         tx_a, tx_b = uuid.uuid4(), uuid.uuid4()
-        _assign(service, port, tx_a, term_a)
-        _assign(service, port, tx_b, term_b)
+        await _assign(service, port, tx_a, term_a)
+        await _assign(service, port, tx_b, term_b)
 
-        count = service.handle_taxonomy_soft_deleted(taxonomy.id)
+        count = await service.handle_taxonomy_soft_deleted(taxonomy.id)
 
         assert count == 2
         assert uow.assignments.find_by_transaction(tx_a) == []
         assert uow.assignments.find_by_transaction(tx_b) == []
 
-    def test_no_assignments_returns_zero(self) -> None:
+    async def test_no_assignments_returns_zero(self) -> None:
         service, uow, port = _make_deps()
-        count = service.handle_taxonomy_soft_deleted(uuid.uuid4())
+        count = await service.handle_taxonomy_soft_deleted(uuid.uuid4())
         assert count == 0
 
 
 class TestHandleTransactionSoftDeleted:
-    def test_removes_all_assignments_for_transaction(self) -> None:
+    async def test_removes_all_assignments_for_transaction(self) -> None:
         service, uow, port = _make_deps()
         tax_a = _create_taxonomy(uow, "Category")
         tax_b = _create_taxonomy(uow, "Project")
@@ -103,15 +103,15 @@ class TestHandleTransactionSoftDeleted:
         term_b = _add_term(tax_b, "Personal")
 
         tx_id = uuid.uuid4()
-        _assign(service, port, tx_id, term_a)
-        _assign(service, port, tx_id, term_b)
+        await _assign(service, port, tx_id, term_a)
+        await _assign(service, port, tx_id, term_b)
 
-        count = service.handle_transaction_soft_deleted(tx_id)
+        count = await service.handle_transaction_soft_deleted(tx_id)
 
         assert count == 2
         assert uow.assignments.find_by_transaction(tx_id) == []
 
-    def test_no_assignments_returns_zero(self) -> None:
+    async def test_no_assignments_returns_zero(self) -> None:
         service, uow, port = _make_deps()
-        count = service.handle_transaction_soft_deleted(uuid.uuid4())
+        count = await service.handle_transaction_soft_deleted(uuid.uuid4())
         assert count == 0

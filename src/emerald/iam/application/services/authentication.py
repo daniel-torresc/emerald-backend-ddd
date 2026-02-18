@@ -137,9 +137,9 @@ class AuthenticationService:
 
     # -- Password Login --------------------------------------------------------
 
-    def login(self, cmd: LoginUser) -> LoginResult:
+    async def login(self, cmd: LoginUser) -> LoginResult:
         """Authenticate user with email + password and return token pair."""
-        with self._uow:
+        async with self._uow:
             # 1. Resolve portal context
             portal_context = PortalContext(cmd.portal_context)
 
@@ -163,14 +163,14 @@ class AuthenticationService:
             # 6. Issue tokens
             result = self._issue_tokens(user, portal_context)
 
-            self._uow.commit()
+            await self._uow.commit()
             return result
 
     # -- Social Login ----------------------------------------------------------
 
-    def login_with_provider(self, claims: OidcClaims) -> LoginResult:
+    async def login_with_provider(self, claims: OidcClaims) -> LoginResult:
         """Authenticate or register a user via social provider claims."""
-        with self._uow:
+        async with self._uow:
             # 1. Validate email verified (defense-in-depth; OidcClaims already validates)
             if not claims.email_verified:
                 raise ProviderEmailNotVerifiedError()
@@ -182,12 +182,14 @@ class AuthenticationService:
             user = self._uow.users.find_by_email(email)
 
             if user is not None:
-                return self._handle_existing_user_social_login(user, claims)
+                return await self._handle_existing_user_social_login(user, claims)
 
             # No existing user — social registration
-            return self._handle_social_registration(email, claims)
+            return await self._handle_social_registration(email, claims)
 
-    def _handle_existing_user_social_login(self, user: User, claims: OidcClaims) -> LoginResult:
+    async def _handle_existing_user_social_login(
+        self, user: User, claims: OidcClaims
+    ) -> LoginResult:
         """Handle social login for an existing user (linking/verification)."""
         # Check status (social login allows PENDING_VERIFICATION)
         user.validate_can_social_login()
@@ -221,10 +223,12 @@ class AuthenticationService:
         portal_context = PortalContext("REGULAR")
         result = self._issue_tokens(user, portal_context)
 
-        self._uow.commit()
+        await self._uow.commit()
         return result
 
-    def _handle_social_registration(self, email: EmailAddress, claims: OidcClaims) -> LoginResult:
+    async def _handle_social_registration(
+        self, email: EmailAddress, claims: OidcClaims
+    ) -> LoginResult:
         """Handle social registration for a new user."""
         now = datetime.now(UTC)
         auth_provider = AuthProvider(claims.provider_type, claims.external_id, now)
@@ -241,14 +245,14 @@ class AuthenticationService:
         portal_context = PortalContext("REGULAR")
         result = self._issue_tokens(user, portal_context, is_new_registration=True)
 
-        self._uow.commit()
+        await self._uow.commit()
         return result
 
     # -- Provider Management ---------------------------------------------------
 
-    def link_provider(self, user_id: uuid.UUID, claims: OidcClaims) -> None:
+    async def link_provider(self, user_id: uuid.UUID, claims: OidcClaims) -> None:
         """Link a social provider to an authenticated user's account."""
-        with self._uow:
+        async with self._uow:
             user = self._uow.users.find_by_id(user_id)
             if user is None:
                 raise AuthenticationFailedError()
@@ -265,11 +269,11 @@ class AuthenticationService:
             new_provider = AuthProvider(claims.provider_type, claims.external_id, now)
             user.link_auth_provider(new_provider)
 
-            self._uow.commit()
+            await self._uow.commit()
 
-    def unlink_provider(self, cmd: UnlinkAuthProvider) -> None:
+    async def unlink_provider(self, cmd: UnlinkAuthProvider) -> None:
         """Remove a linked provider from a user's account."""
-        with self._uow:
+        async with self._uow:
             user_id = uuid.UUID(cmd.user_id)
             user = self._uow.users.find_by_id(user_id)
             if user is None:
@@ -278,13 +282,13 @@ class AuthenticationService:
             provider_type = ProviderType(cmd.provider_type)
             user.unlink_auth_provider(provider_type)
 
-            self._uow.commit()
+            await self._uow.commit()
 
     # -- Username Onboarding ---------------------------------------------------
 
-    def set_onboarding_username(self, cmd: SetOnboardingUsername) -> None:
+    async def set_onboarding_username(self, cmd: SetOnboardingUsername) -> None:
         """Set username for a socially registered user (onboarding)."""
-        with self._uow:
+        async with self._uow:
             user_id = uuid.UUID(cmd.user_id)
             user = self._uow.users.find_by_id(user_id)
             if user is None:
@@ -301,13 +305,13 @@ class AuthenticationService:
 
             user.update_username(username)
 
-            self._uow.commit()
+            await self._uow.commit()
 
     # -- Token Refresh ---------------------------------------------------------
 
-    def refresh(self, cmd: RefreshAccessToken) -> LoginResult:
+    async def refresh(self, cmd: RefreshAccessToken) -> LoginResult:
         """Refresh an access token using a refresh token with rotation."""
-        with self._uow:
+        async with self._uow:
             # 1. Hash the presented token
             token_hash = self._token_service.hash_token(cmd.refresh_token)
 
@@ -323,7 +327,7 @@ class AuthenticationService:
             # 4. Check revoked -> THEFT DETECTED
             if token.is_revoked():
                 self._uow.refresh_tokens.revoke_family(token.family_id)
-                self._uow.commit()
+                await self._uow.commit()
                 raise InvalidTokenError()
 
             # 5. Revoke current refresh token
@@ -371,7 +375,7 @@ class AuthenticationService:
             # 10. Persist new refresh token
             self._uow.refresh_tokens.add(new_refresh_token)
 
-            self._uow.commit()
+            await self._uow.commit()
 
             return LoginResult(
                 access_token=access_token_str,
@@ -381,29 +385,29 @@ class AuthenticationService:
 
     # -- Session Management ----------------------------------------------------
 
-    def logout(self, cmd: LogoutSession) -> None:
+    async def logout(self, cmd: LogoutSession) -> None:
         """Revoke a single session's refresh token."""
-        with self._uow:
+        async with self._uow:
             token_hash = self._token_service.hash_token(cmd.refresh_token)
             token = self._uow.refresh_tokens.find_by_hash(token_hash)
 
             if token is not None and token.is_active():
                 token.revoke()
 
-            self._uow.commit()
+            await self._uow.commit()
 
-    def logout_all(self, cmd: LogoutAllSessions) -> None:
+    async def logout_all(self, cmd: LogoutAllSessions) -> None:
         """Revoke all sessions for a user."""
-        with self._uow:
+        async with self._uow:
             user_id = uuid.UUID(cmd.user_id)
             self._uow.refresh_tokens.revoke_all_for_user(user_id)
-            self._uow.commit()
+            await self._uow.commit()
 
     # -- Password Reset --------------------------------------------------------
 
-    def request_password_reset(self, cmd: RequestPasswordReset) -> str | None:
+    async def request_password_reset(self, cmd: RequestPasswordReset) -> str | None:
         """Request a password reset token. Returns raw token or None."""
-        with self._uow:
+        async with self._uow:
             user = self._uow.users.find_by_email(EmailAddress(cmd.email))
             if user is None:
                 return None
@@ -426,12 +430,12 @@ class AuthenticationService:
             # Persist
             self._uow.password_reset_tokens.add(reset_token)
 
-            self._uow.commit()
+            await self._uow.commit()
             return raw_token
 
-    def submit_password_reset(self, cmd: SubmitPasswordReset) -> None:
+    async def submit_password_reset(self, cmd: SubmitPasswordReset) -> None:
         """Submit a new password using a reset token."""
-        with self._uow:
+        async with self._uow:
             # 1. Hash and find token
             token_hash = self._token_service.hash_token(cmd.reset_token)
             reset_token = self._uow.password_reset_tokens.find_by_hash(token_hash)
@@ -469,13 +473,13 @@ class AuthenticationService:
             # 8. Revoke all refresh tokens
             self._uow.refresh_tokens.revoke_all_for_user(user.id)
 
-            self._uow.commit()
+            await self._uow.commit()
 
     # -- Token Verification ----------------------------------------------------
 
-    def verify_access_token(self, token: str) -> AuthenticatedIdentity:
+    async def verify_access_token(self, token: str) -> AuthenticatedIdentity:
         """Verify an access token and return the authenticated identity."""
-        with self._uow:
+        async with self._uow:
             # 1. Verify token
             claims = self._token_service.verify_access_token(token)
 
