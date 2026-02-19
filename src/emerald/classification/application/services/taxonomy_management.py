@@ -47,23 +47,23 @@ class TaxonomyManagementService:
     async def create_taxonomy(self, cmd: CreateTaxonomy) -> Taxonomy:
         async with self._uow:
             name = TaxonomyName(cmd.name)
-            if self._uow.taxonomies.exists_by_name_for_owner(name, cmd.owner_id):
+            if await self._uow.taxonomies.exists_by_name_for_owner(name, cmd.owner_id):
                 raise TaxonomyNameAlreadyExistsError()
             taxonomy = Taxonomy.create(
                 owner_id=cmd.owner_id,
                 name=name,
                 description=cmd.description,
             )
-            self._uow.taxonomies.save(taxonomy)
+            await self._uow.taxonomies.save(taxonomy)
             await self._uow.commit()
             return taxonomy
 
     async def rename_taxonomy(self, cmd: RenameTaxonomy) -> None:
         async with self._uow:
-            taxonomy = self._load_taxonomy(cmd.taxonomy_id)
+            taxonomy = await self._load_taxonomy(cmd.taxonomy_id)
             self._verify_ownership(taxonomy, cmd.owner_id)
             new_name = TaxonomyName(cmd.new_name)
-            if self._uow.taxonomies.exists_by_name_for_owner(
+            if await self._uow.taxonomies.exists_by_name_for_owner(
                 new_name, cmd.owner_id, exclude_taxonomy_id=cmd.taxonomy_id
             ):
                 raise TaxonomyNameAlreadyExistsError()
@@ -72,16 +72,16 @@ class TaxonomyManagementService:
 
     async def update_taxonomy_description(self, cmd: UpdateTaxonomyDescription) -> None:
         async with self._uow:
-            taxonomy = self._load_taxonomy(cmd.taxonomy_id)
+            taxonomy = await self._load_taxonomy(cmd.taxonomy_id)
             self._verify_ownership(taxonomy, cmd.owner_id)
             taxonomy.update_description(cmd.description)
             await self._uow.commit()
 
     async def soft_delete_taxonomy(self, cmd: SoftDeleteTaxonomy) -> None:
         async with self._uow:
-            taxonomy = self._load_taxonomy(cmd.taxonomy_id, include_deleted=True)
+            taxonomy = await self._load_taxonomy(cmd.taxonomy_id, include_deleted=True)
             self._verify_ownership(taxonomy, cmd.owner_id)
-            retention = self._retention_policy_service.get_effective_retention(
+            retention = await self._retention_policy_service.get_effective_retention(
                 DeletableEntityType.TAXONOMY, cmd.owner_id
             )
             taxonomy.soft_delete(cmd.owner_id, retention)
@@ -89,7 +89,7 @@ class TaxonomyManagementService:
 
     async def recover_taxonomy(self, cmd: RecoverTaxonomy) -> None:
         async with self._uow:
-            taxonomy = self._load_taxonomy(cmd.taxonomy_id, include_deleted=True)
+            taxonomy = await self._load_taxonomy(cmd.taxonomy_id, include_deleted=True)
             self._verify_ownership(taxonomy, cmd.owner_id)
             taxonomy.recover()
             await self._uow.commit()
@@ -98,7 +98,7 @@ class TaxonomyManagementService:
 
     async def add_term(self, cmd: AddTerm) -> TaxonomyTerm:
         async with self._uow:
-            taxonomy = self._load_taxonomy(cmd.taxonomy_id)
+            taxonomy = await self._load_taxonomy(cmd.taxonomy_id)
             self._verify_ownership(taxonomy, cmd.owner_id)
             name = TermName(cmd.name)
             term = taxonomy.add_term(
@@ -111,7 +111,7 @@ class TaxonomyManagementService:
 
     async def rename_term(self, cmd: RenameTerm) -> None:
         async with self._uow:
-            taxonomy = self._load_taxonomy(cmd.taxonomy_id)
+            taxonomy = await self._load_taxonomy(cmd.taxonomy_id)
             self._verify_ownership(taxonomy, cmd.owner_id)
             new_name = TermName(cmd.new_name)
             taxonomy.rename_term(cmd.term_id, new_name)
@@ -119,35 +119,35 @@ class TaxonomyManagementService:
 
     async def update_term_description(self, cmd: UpdateTermDescription) -> None:
         async with self._uow:
-            taxonomy = self._load_taxonomy(cmd.taxonomy_id)
+            taxonomy = await self._load_taxonomy(cmd.taxonomy_id)
             self._verify_ownership(taxonomy, cmd.owner_id)
             taxonomy.update_term_description(cmd.term_id, cmd.description)
             await self._uow.commit()
 
     async def move_term(self, cmd: MoveTerm) -> None:
         async with self._uow:
-            taxonomy = self._load_taxonomy(cmd.taxonomy_id)
+            taxonomy = await self._load_taxonomy(cmd.taxonomy_id)
             self._verify_ownership(taxonomy, cmd.owner_id)
             taxonomy.move_term(cmd.term_id, cmd.new_parent_id)
             await self._uow.commit()
 
     async def delete_term(self, cmd: DeleteTerm) -> None:
         async with self._uow:
-            taxonomy = self._load_taxonomy(cmd.taxonomy_id)
+            taxonomy = await self._load_taxonomy(cmd.taxonomy_id)
             self._verify_ownership(taxonomy, cmd.owner_id)
             taxonomy.delete_term(cmd.term_id, deleted_by=cmd.owner_id)
             await self._uow.commit()
 
     async def recover_term(self, cmd: RecoverTerm) -> None:
         async with self._uow:
-            taxonomy = self._load_taxonomy(cmd.taxonomy_id)
+            taxonomy = await self._load_taxonomy(cmd.taxonomy_id)
             self._verify_ownership(taxonomy, cmd.owner_id)
             taxonomy.recover_term(cmd.term_id)
             await self._uow.commit()
 
     async def reorder_terms(self, cmd: ReorderTerms) -> None:
         async with self._uow:
-            taxonomy = self._load_taxonomy(cmd.taxonomy_id)
+            taxonomy = await self._load_taxonomy(cmd.taxonomy_id)
             self._verify_ownership(taxonomy, cmd.owner_id)
             taxonomy.reorder_terms(cmd.term_ids, cmd.parent_id)
             await self._uow.commit()
@@ -156,18 +156,22 @@ class TaxonomyManagementService:
 
     async def get_taxonomy(self, taxonomy_id: uuid.UUID, owner_id: uuid.UUID) -> Taxonomy:
         async with self._uow:
-            taxonomy = self._load_taxonomy(taxonomy_id)
+            taxonomy = await self._load_taxonomy(taxonomy_id)
             self._verify_ownership(taxonomy, owner_id)
             return taxonomy
 
     async def list_taxonomies(self, owner_id: uuid.UUID) -> list[Taxonomy]:
         async with self._uow:
-            return self._uow.taxonomies.find_by_owner(owner_id)
+            return await self._uow.taxonomies.find_by_owner(owner_id)
 
     # -- Private helpers -------------------------------------------------------
 
-    def _load_taxonomy(self, taxonomy_id: uuid.UUID, include_deleted: bool = False) -> Taxonomy:
-        taxonomy = self._uow.taxonomies.find_by_id(taxonomy_id, include_deleted=include_deleted)
+    async def _load_taxonomy(
+        self, taxonomy_id: uuid.UUID, include_deleted: bool = False
+    ) -> Taxonomy:
+        taxonomy = await self._uow.taxonomies.find_by_id(
+            taxonomy_id, include_deleted=include_deleted
+        )
         if taxonomy is None:
             raise TaxonomyNotFoundError(f"Taxonomy {taxonomy_id} not found")
         return taxonomy

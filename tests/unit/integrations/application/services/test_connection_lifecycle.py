@@ -61,7 +61,7 @@ def account_id() -> uuid.UUID:
     return uuid.uuid4()
 
 
-def _create_connection(
+async def _create_connection(
     uow: FakeIntegrationsUnitOfWork,
     user_id: uuid.UUID,
     account_id: uuid.UUID,
@@ -79,7 +79,7 @@ def _create_connection(
     if activate:
         conn.activate(ProviderCredentials("test-token"))
     conn.collect_events()
-    uow.bank_connections.save(conn)
+    await uow.bank_connections.save(conn)
     return conn
 
 
@@ -110,7 +110,7 @@ class TestActivateConnection:
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn = _create_connection(uow, user_id, account_id)
+        conn = await _create_connection(uow, user_id, account_id)
         cmd = ActivateBankConnection(
             connection_id=conn.id,
             credentials_token="new-token",
@@ -119,7 +119,7 @@ class TestActivateConnection:
 
         await service.activate_connection(cmd)
 
-        updated = uow.bank_connections.find_by_id(conn.id)
+        updated = await uow.bank_connections.find_by_id(conn.id)
         assert updated is not None
         assert updated.status == ConnectionStatus.ACTIVE
         assert updated.credentials == ProviderCredentials("new-token")
@@ -147,19 +147,19 @@ class TestDisconnectConnection:
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn = _create_connection(uow, user_id, account_id, activate=True)
+        conn = await _create_connection(uow, user_id, account_id, activate=True)
         pending = _make_pending(conn.id, account_id)
-        uow.pending_transactions.save(pending)
-        assert len(uow.pending_transactions.find_by_connection(conn.id)) == 1
+        await uow.pending_transactions.save(pending)
+        assert len(await uow.pending_transactions.find_by_connection(conn.id)) == 1
 
         cmd = DisconnectBankConnection(connection_id=conn.id, disconnected_by=user_id)
 
         await service.disconnect_connection(cmd)
 
-        updated = uow.bank_connections.find_by_id(conn.id)
+        updated = await uow.bank_connections.find_by_id(conn.id)
         assert updated is not None
         assert updated.status == ConnectionStatus.DISCONNECTED
-        assert len(uow.pending_transactions.find_by_connection(conn.id)) == 0
+        assert len(await uow.pending_transactions.find_by_connection(conn.id)) == 0
         assert uow.committed is True
 
     async def test_raises_not_found_for_missing_connection(
@@ -180,7 +180,7 @@ class TestReconnectConnection:
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn = _create_connection(uow, user_id, account_id, activate=True)
+        conn = await _create_connection(uow, user_id, account_id, activate=True)
         conn.mark_needs_reauth()
         conn.collect_events()
         assert conn.status == ConnectionStatus.NEEDS_REAUTH
@@ -193,7 +193,7 @@ class TestReconnectConnection:
 
         await service.reconnect_connection(cmd)
 
-        updated = uow.bank_connections.find_by_id(conn.id)
+        updated = await uow.bank_connections.find_by_id(conn.id)
         assert updated is not None
         assert updated.status == ConnectionStatus.ACTIVE
         assert updated.credentials == ProviderCredentials("fresh-token")
@@ -208,9 +208,9 @@ class TestSoftDeleteConnection:
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn = _create_connection(uow, user_id, account_id, activate=True)
+        conn = await _create_connection(uow, user_id, account_id, activate=True)
         pending = _make_pending(conn.id, account_id)
-        uow.pending_transactions.save(pending)
+        await uow.pending_transactions.save(pending)
 
         cmd = SoftDeleteBankConnection(
             connection_id=conn.id, deleted_by=user_id, reason="no longer needed"
@@ -219,9 +219,9 @@ class TestSoftDeleteConnection:
         await service.soft_delete_connection(cmd)
 
         # Connection is soft-deleted (not visible without include_deleted)
-        assert uow.bank_connections.find_by_id(conn.id) is None
-        deleted = uow.bank_connections.find_by_id(conn.id, include_deleted=True)
+        assert await uow.bank_connections.find_by_id(conn.id) is None
+        deleted = await uow.bank_connections.find_by_id(conn.id, include_deleted=True)
         assert deleted is not None
         assert deleted.is_deleted()
-        assert len(uow.pending_transactions.find_by_connection(conn.id)) == 0
+        assert len(await uow.pending_transactions.find_by_connection(conn.id)) == 0
         assert uow.committed is True

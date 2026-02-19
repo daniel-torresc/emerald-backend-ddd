@@ -33,26 +33,26 @@ class SuperadminProvisioningService:
             validate_password_strength(cmd.password)
 
             # 2. Check no SUPERADMIN exists
-            if self._uow.users.exists_by_role(SystemRole.SUPERADMIN):
+            if await self._uow.users.exists_by_role(SystemRole.SUPERADMIN):
                 raise SuperadminAlreadyExistsError()
 
             # 3. Validate email/username format + uniqueness
             email = EmailAddress(cmd.email)
             username = Username(cmd.username)
 
-            if self._uow.users.exists_by_email(email):
+            if await self._uow.users.exists_by_email(email):
                 raise EmailAlreadyExistsError(f"Email {email} is already in use")
-            if self._uow.users.exists_by_username(username):
+            if await self._uow.users.exists_by_username(username):
                 raise UsernameAlreadyExistsError(f"Username {username} is already taken")
 
             # 4. Hash password
-            hashed = self._hasher.hash(cmd.password)
+            hashed = await self._hasher.hash(cmd.password)
 
             # 5. Create user via superadmin factory
             user = User.provision_as_superadmin(email, username, HashedPassword(hashed))
 
             # 6. Persist
-            self._uow.users.add(user)
+            await self._uow.users.add(user)
             await self._uow.commit()
 
             return user

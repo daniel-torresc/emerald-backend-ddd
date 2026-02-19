@@ -63,7 +63,7 @@ class TransactionManagementService:
     async def create_transaction(self, cmd: CreateTransaction) -> Transaction:
         """Create a new transaction with all validations."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_permission(account, cmd.requesting_user_id, PermissionLevel.EDITOR)
             if account.is_deleted():
                 raise AccountNotActiveError()
@@ -83,7 +83,7 @@ class TransactionManagementService:
                 )
 
             if cmd.external_id is not None:
-                existing = self._uow.transactions.find_by_external_id(
+                existing = await self._uow.transactions.find_by_external_id(
                     cmd.account_id, cmd.external_id
                 )
                 if existing is not None:
@@ -104,7 +104,7 @@ class TransactionManagementService:
                 comments=cmd.comments,
                 external_id=cmd.external_id,
             )
-            self._uow.transactions.save(transaction)
+            await self._uow.transactions.save(transaction)
             await self._uow.commit()
             return transaction
 
@@ -113,57 +113,57 @@ class TransactionManagementService:
     async def update_description(self, cmd: UpdateTransactionDescription) -> None:
         """Update a transaction's user description."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_permission(account, cmd.requesting_user_id, PermissionLevel.EDITOR)
-            transaction = self._load_transaction(cmd.transaction_id)
+            transaction = await self._load_transaction(cmd.transaction_id)
             self._verify_not_deleted(transaction)
             transaction.update_description(cmd.user_description, cmd.requesting_user_id)
-            self._uow.transactions.save(transaction)
+            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     async def update_merchant(self, cmd: UpdateTransactionMerchant) -> None:
         """Update a transaction's merchant."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_permission(account, cmd.requesting_user_id, PermissionLevel.EDITOR)
-            transaction = self._load_transaction(cmd.transaction_id)
+            transaction = await self._load_transaction(cmd.transaction_id)
             self._verify_not_deleted(transaction)
             transaction.update_merchant(cmd.merchant, cmd.requesting_user_id)
-            self._uow.transactions.save(transaction)
+            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     async def update_comments(self, cmd: UpdateTransactionComments) -> None:
         """Update a transaction's comments."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_permission(account, cmd.requesting_user_id, PermissionLevel.EDITOR)
-            transaction = self._load_transaction(cmd.transaction_id)
+            transaction = await self._load_transaction(cmd.transaction_id)
             self._verify_not_deleted(transaction)
             transaction.update_comments(cmd.comments, cmd.requesting_user_id)
-            self._uow.transactions.save(transaction)
+            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     async def update_dates(self, cmd: UpdateTransactionDates) -> None:
         """Update a transaction's dates."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_permission(account, cmd.requesting_user_id, PermissionLevel.EDITOR)
-            transaction = self._load_transaction(cmd.transaction_id)
+            transaction = await self._load_transaction(cmd.transaction_id)
             self._verify_not_deleted(transaction)
             transaction.update_dates(
                 updated_by=cmd.requesting_user_id,
                 transaction_date=cmd.transaction_date,
                 value_date=cmd.value_date,
             )
-            self._uow.transactions.save(transaction)
+            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     async def update_amount(self, cmd: UpdateTransactionAmount) -> None:
         """Update a transaction's amount. Auto-joins split parents; validates sum for children."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_permission(account, cmd.requesting_user_id, PermissionLevel.EDITOR)
-            transaction = self._load_transaction(cmd.transaction_id)
+            transaction = await self._load_transaction(cmd.transaction_id)
             self._verify_not_deleted(transaction)
 
             currency = Currency[cmd.currency_code]
@@ -176,17 +176,17 @@ class TransactionManagementService:
 
             # Auto-join if updating a split parent
             if transaction.is_split_parent:
-                children = self._uow.transactions.find_children(transaction.id)
+                children = await self._uow.transactions.find_children(transaction.id)
                 transaction.join_splits(child_count=len(children))
-                self._uow.transactions.hard_delete_children(transaction.id)
+                await self._uow.transactions.hard_delete_children(transaction.id)
 
             # Validate sum for split children
             if transaction.is_split_child():
-                parent = self._uow.transactions.find_by_id(
+                parent = await self._uow.transactions.find_by_id(
                     transaction.parent_transaction_id  # type: ignore[arg-type]
                 )
                 if parent is not None:
-                    siblings = self._uow.transactions.find_children(parent.id)
+                    siblings = await self._uow.transactions.find_children(parent.id)
                     new_sum = Money.zero(amount.currency)
                     for sibling in siblings:
                         if sibling.id == transaction.id:
@@ -200,7 +200,7 @@ class TransactionManagementService:
                         )
 
             transaction.update_amount(amount, cmd.requesting_user_id)
-            self._uow.transactions.save(transaction)
+            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     # -- Splitting -------------------------------------------------------------
@@ -208,29 +208,29 @@ class TransactionManagementService:
     async def split_transaction(self, cmd: SplitTransaction) -> list[Transaction]:
         """Split a transaction into children."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_permission(account, cmd.requesting_user_id, PermissionLevel.EDITOR)
-            parent = self._load_transaction(cmd.transaction_id)
+            parent = await self._load_transaction(cmd.transaction_id)
             self._verify_not_deleted(parent)
 
             children = parent.split(list(cmd.splits), cmd.requesting_user_id)
-            self._uow.transactions.save(parent)
-            self._uow.transactions.save_many(children)
+            await self._uow.transactions.save(parent)
+            await self._uow.transactions.save_many(children)
             await self._uow.commit()
             return children
 
     async def join_transaction_splits(self, cmd: JoinTransactionSplits) -> None:
         """Join (undo) a transaction split by hard-deleting children."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_permission(account, cmd.requesting_user_id, PermissionLevel.EDITOR)
-            parent = self._load_transaction(cmd.transaction_id)
+            parent = await self._load_transaction(cmd.transaction_id)
             self._verify_not_deleted(parent)
 
-            children = self._uow.transactions.find_children(cmd.transaction_id)
+            children = await self._uow.transactions.find_children(cmd.transaction_id)
             parent.join_splits(child_count=len(children))
-            self._uow.transactions.hard_delete_children(cmd.transaction_id)
-            self._uow.transactions.save(parent)
+            await self._uow.transactions.hard_delete_children(cmd.transaction_id)
+            await self._uow.transactions.save(parent)
             await self._uow.commit()
 
     # -- Review ----------------------------------------------------------------
@@ -238,23 +238,23 @@ class TransactionManagementService:
     async def review_transaction(self, cmd: ReviewTransaction) -> None:
         """Mark a transaction as reviewed."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_permission(account, cmd.requesting_user_id, PermissionLevel.EDITOR)
-            transaction = self._load_transaction(cmd.transaction_id)
+            transaction = await self._load_transaction(cmd.transaction_id)
             self._verify_not_deleted(transaction)
             transaction.mark_as_reviewed(cmd.requesting_user_id)
-            self._uow.transactions.save(transaction)
+            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     async def unreview_transaction(self, cmd: UnreviewTransaction) -> None:
         """Mark a transaction as needing review."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_permission(account, cmd.requesting_user_id, PermissionLevel.EDITOR)
-            transaction = self._load_transaction(cmd.transaction_id)
+            transaction = await self._load_transaction(cmd.transaction_id)
             self._verify_not_deleted(transaction)
             transaction.mark_for_review(cmd.requesting_user_id)
-            self._uow.transactions.save(transaction)
+            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     # -- Lifecycle -------------------------------------------------------------
@@ -262,22 +262,22 @@ class TransactionManagementService:
     async def soft_delete_transaction(self, cmd: SoftDeleteTransaction) -> None:
         """Soft-delete a transaction. Cascades to children if split parent."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_permission(account, cmd.requesting_user_id, PermissionLevel.EDITOR)
-            transaction = self._load_transaction(cmd.transaction_id, include_deleted=True)
-            retention = self._retention_policy_service.get_effective_retention(
+            transaction = await self._load_transaction(cmd.transaction_id, include_deleted=True)
+            retention = await self._retention_policy_service.get_effective_retention(
                 DeletableEntityType.TRANSACTION, cmd.requesting_user_id
             )
 
             # Cascade soft-delete to children if split parent
             if transaction.is_split_parent:
-                children = self._uow.transactions.find_children(transaction.id)
+                children = await self._uow.transactions.find_children(transaction.id)
                 for child in children:
                     child.soft_delete(cmd.requesting_user_id, retention, cmd.reason)
-                    self._uow.transactions.save(child)
+                    await self._uow.transactions.save(child)
 
             transaction.soft_delete(cmd.requesting_user_id, retention, cmd.reason)
-            self._uow.transactions.save(transaction)
+            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     async def recover_transaction(self, cmd: RecoverTransaction) -> None:
@@ -286,15 +286,15 @@ class TransactionManagementService:
         Validates parent for children, cascades for parents.
         """
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_permission(account, cmd.requesting_user_id, PermissionLevel.OWNER)
             if account.is_deleted():
                 raise ParentAccountDeletedError()
-            transaction = self._load_transaction(cmd.transaction_id, include_deleted=True)
+            transaction = await self._load_transaction(cmd.transaction_id, include_deleted=True)
 
             # If recovering a split child, verify parent is not deleted
             if transaction.is_split_child():
-                parent = self._uow.transactions.find_by_id(
+                parent = await self._uow.transactions.find_by_id(
                     transaction.parent_transaction_id,  # type: ignore[arg-type]
                     include_deleted=True,
                 )
@@ -303,16 +303,16 @@ class TransactionManagementService:
 
             # If recovering a split parent, cascade to deleted children
             if transaction.is_split_parent:
-                children = self._uow.transactions.find_children(
+                children = await self._uow.transactions.find_children(
                     transaction.id, include_deleted=True
                 )
                 for child in children:
                     if child.is_deleted():
                         child.recover()
-                        self._uow.transactions.save(child)
+                        await self._uow.transactions.save(child)
 
             transaction.recover()
-            self._uow.transactions.save(transaction)
+            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     # -- Query -----------------------------------------------------------------
@@ -322,9 +322,9 @@ class TransactionManagementService:
     ) -> Transaction:
         """Get a single transaction by ID."""
         async with self._uow:
-            account = self._load_account(account_id)
+            account = await self._load_account(account_id)
             self._verify_permission(account, requesting_user_id, PermissionLevel.VIEWER)
-            transaction = self._load_transaction(transaction_id)
+            transaction = await self._load_transaction(transaction_id)
             return transaction
 
     async def list_transactions(
@@ -336,9 +336,9 @@ class TransactionManagementService:
     ) -> PaginatedResult[Transaction]:
         """List transactions for an account with pagination."""
         async with self._uow:
-            account = self._load_account(account_id)
+            account = await self._load_account(account_id)
             self._verify_permission(account, requesting_user_id, PermissionLevel.VIEWER)
-            return self._uow.transactions.find_by_account(
+            return await self._uow.transactions.find_by_account(
                 account_id=account_id, page=page, page_size=page_size
             )
 
@@ -352,9 +352,9 @@ class TransactionManagementService:
     ) -> PaginatedResult[Transaction]:
         """List transactions for an account within a date range."""
         async with self._uow:
-            account = self._load_account(account_id)
+            account = await self._load_account(account_id)
             self._verify_permission(account, requesting_user_id, PermissionLevel.VIEWER)
-            return self._uow.transactions.find_by_account_in_range(
+            return await self._uow.transactions.find_by_account_in_range(
                 account_id=account_id, date_range=date_range, page=page, page_size=page_size
             )
 
@@ -363,9 +363,9 @@ class TransactionManagementService:
     ) -> Money:
         """Calculate account balance: opening_balance + sum of transaction amounts."""
         async with self._uow:
-            account = self._load_account(account_id)
+            account = await self._load_account(account_id)
             self._verify_permission(account, requesting_user_id, PermissionLevel.VIEWER)
-            transaction_sum = self._uow.transactions.sum_amounts(account_id)
+            transaction_sum = await self._uow.transactions.sum_amounts(account_id)
             return account.opening_balance + transaction_sum
 
     async def get_transaction_count(
@@ -373,24 +373,24 @@ class TransactionManagementService:
     ) -> int:
         """Get the count of non-deleted transactions for an account."""
         async with self._uow:
-            account = self._load_account(account_id)
+            account = await self._load_account(account_id)
             self._verify_permission(account, requesting_user_id, PermissionLevel.VIEWER)
-            return self._uow.transactions.count_by_account(account_id)
+            return await self._uow.transactions.count_by_account(account_id)
 
     # -- Private helpers -------------------------------------------------------
 
-    def _load_account(self, account_id: uuid.UUID) -> Account:
+    async def _load_account(self, account_id: uuid.UUID) -> Account:
         """Load an account or raise AccountNotFoundError."""
-        account = self._uow.accounts.find_by_id(account_id, include_deleted=True)
+        account = await self._uow.accounts.find_by_id(account_id, include_deleted=True)
         if account is None:
             raise AccountNotFoundError(f"Account {account_id} not found")
         return account
 
-    def _load_transaction(
+    async def _load_transaction(
         self, transaction_id: uuid.UUID, include_deleted: bool = False
     ) -> Transaction:
         """Load a transaction or raise TransactionNotFoundError."""
-        transaction = self._uow.transactions.find_by_id(
+        transaction = await self._uow.transactions.find_by_id(
             transaction_id, include_deleted=include_deleted
         )
         if transaction is None:

@@ -87,7 +87,7 @@ def account_id() -> uuid.UUID:
     return uuid.uuid4()
 
 
-def _create_active_connection(
+async def _create_active_connection(
     uow: FakeIntegrationsUnitOfWork, user_id: uuid.UUID, account_id: uuid.UUID
 ) -> BankConnection:
     conn = BankConnection.create(
@@ -100,7 +100,7 @@ def _create_active_connection(
     )
     conn.activate(ProviderCredentials("test-token"))
     conn.collect_events()
-    uow.bank_connections.save(conn)
+    await uow.bank_connections.save(conn)
     return conn
 
 
@@ -114,7 +114,7 @@ class TestExecuteSyncWithNewTransactions:
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn = _create_active_connection(uow, user_id, account_id)
+        conn = await _create_active_connection(uow, user_id, account_id)
         adapter.set_transactions([_raw_txn(external_id="ext_1"), _raw_txn(external_id="ext_2")])
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
 
@@ -139,7 +139,7 @@ class TestExecuteSyncWithDuplicates:
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn = _create_active_connection(uow, user_id, account_id)
+        conn = await _create_active_connection(uow, user_id, account_id)
         import_port.add_existing_external_id(account_id, "ext_dup")
         adapter.set_transactions([_raw_txn(external_id="ext_dup")])
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
@@ -169,7 +169,7 @@ class TestExecuteSyncWithNeedsReview:
 
         from emerald.integrations.application.dtos.transaction_match import TransactionMatch
 
-        conn = _create_active_connection(uow, user_id, account_id)
+        conn = await _create_active_connection(uow, user_id, account_id)
         # Set up a fuzzy match (same date+amount, different description)
         import_port.add_match(
             account_id,
@@ -192,7 +192,7 @@ class TestExecuteSyncWithNeedsReview:
         assert history.transactions_staged == 1
         assert history.transactions_imported == 0
         assert len(import_port.imported) == 0
-        pendings = uow.pending_transactions.find_needs_review(conn.id)
+        pendings = await uow.pending_transactions.find_needs_review(conn.id)
         assert len(pendings) == 1
         assert pendings[0].match_status == MatchStatus.NEEDS_REVIEW
 
@@ -212,7 +212,7 @@ class TestExecuteSyncMixed:
 
         from emerald.integrations.application.dtos.transaction_match import TransactionMatch
 
-        conn = _create_active_connection(uow, user_id, account_id)
+        conn = await _create_active_connection(uow, user_id, account_id)
 
         # Transaction 1: duplicate (external_id match)
         import_port.add_existing_external_id(account_id, "ext_dup")
@@ -271,7 +271,7 @@ class TestExecuteSyncValidation:
             created_by=user_id,
         )
         conn.collect_events()
-        uow.bank_connections.save(conn)
+        await uow.bank_connections.save(conn)
 
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
 
@@ -285,9 +285,9 @@ class TestExecuteSyncValidation:
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn = _create_active_connection(uow, user_id, account_id)
+        conn = await _create_active_connection(uow, user_id, account_id)
         existing_history = SyncHistory.create(connection_id=conn.id)
-        uow.sync_history.save(existing_history)
+        await uow.sync_history.save(existing_history)
 
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
 

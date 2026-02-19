@@ -12,7 +12,7 @@ class TransactionAccessPort(Protocol):
         verify_editor_permission: Raises AuthorizationError if permission insufficient.
     """
 
-    def verify_transaction_active(self, transaction_id: uuid.UUID) -> uuid.UUID:
+    async def verify_transaction_active(self, transaction_id: uuid.UUID) -> uuid.UUID:
         """Verify transaction exists and is active.
 
         Returns the transaction's account_id.
@@ -20,7 +20,7 @@ class TransactionAccessPort(Protocol):
         """
         ...
 
-    def verify_editor_permission(self, account_id: uuid.UUID, user_id: uuid.UUID) -> None:
+    async def verify_editor_permission(self, account_id: uuid.UUID, user_id: uuid.UUID) -> None:
         """Verify user has at least EDITOR permission on the account.
 
         Raises AuthorizationError if permission is insufficient.

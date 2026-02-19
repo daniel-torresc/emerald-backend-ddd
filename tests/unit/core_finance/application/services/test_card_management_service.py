@@ -210,7 +210,7 @@ class TestUpdateCardName:
         await card_service.update_card_name(update_cmd)
 
         # Reload account from repo to check the card
-        loaded = uow.accounts.find_by_id(account.id)
+        loaded = await uow.accounts.find_by_id(account.id)
         assert loaded is not None
         updated_card = loaded.get_card(card.id)
         assert updated_card is not None
@@ -273,7 +273,7 @@ class TestRemoveCard:
         )
         await card_service.remove_card(remove_cmd)
 
-        loaded = uow.accounts.find_by_id(account.id)
+        loaded = await uow.accounts.find_by_id(account.id)
         assert loaded is not None
         # Active cards should be 0
         assert loaded.active_card_count == 0
@@ -344,7 +344,7 @@ class TestRecoverCard:
         )
         await card_service.recover_card(recover_cmd)
 
-        loaded = uow.accounts.find_by_id(account.id)
+        loaded = await uow.accounts.find_by_id(account.id)
         assert loaded is not None
         recovered_card = loaded.get_card(card.id)
         assert recovered_card is not None
@@ -417,7 +417,7 @@ class TestLinkTransactionToCard:
         card = await card_service.add_card(add_cmd)
 
         txn = _make_transaction(account.id, owner_id)
-        uow.transactions.save(txn)
+        await uow.transactions.save(txn)
 
         link_cmd = LinkTransactionToCard(
             account_id=account.id,
@@ -427,7 +427,7 @@ class TestLinkTransactionToCard:
         )
         await card_service.link_transaction_to_card(link_cmd)
 
-        loaded_txn = uow.transactions.find_by_id(txn.id)
+        loaded_txn = await uow.transactions.find_by_id(txn.id)
         assert loaded_txn is not None
         assert loaded_txn.card_id == card.id
 
@@ -438,7 +438,7 @@ class TestLinkTransactionToCard:
         account = await acct_service.create_account(acct_cmd)
 
         txn = _make_transaction(account.id, owner_id)
-        uow.transactions.save(txn)
+        await uow.transactions.save(txn)
 
         link_cmd = LinkTransactionToCard(
             account_id=account.id,
@@ -479,7 +479,7 @@ class TestLinkTransactionToCard:
         # Create a transaction belonging to a different account
         other_account_id = uuid.uuid4()
         txn = _make_transaction(other_account_id, owner_id)
-        uow.transactions.save(txn)
+        await uow.transactions.save(txn)
 
         link_cmd = LinkTransactionToCard(
             account_id=account.id,
@@ -500,7 +500,7 @@ class TestLinkTransactionToCard:
         card = await card_service.add_card(add_cmd)
 
         txn = _make_transaction(account.id, owner_id)
-        uow.transactions.save(txn)
+        await uow.transactions.save(txn)
         uow.committed = False
 
         link_cmd = LinkTransactionToCard(
@@ -530,7 +530,7 @@ class TestLinkTransactionToCard:
         await card_service.remove_card(remove_cmd)
 
         txn = _make_transaction(account.id, owner_id)
-        uow.transactions.save(txn)
+        await uow.transactions.save(txn)
 
         # Should still succeed -- historical linking allowed
         link_cmd = LinkTransactionToCard(
@@ -541,7 +541,7 @@ class TestLinkTransactionToCard:
         )
         await card_service.link_transaction_to_card(link_cmd)
 
-        loaded_txn = uow.transactions.find_by_id(txn.id)
+        loaded_txn = await uow.transactions.find_by_id(txn.id)
         assert loaded_txn is not None
         assert loaded_txn.card_id == card.id
 
@@ -562,7 +562,7 @@ class TestUnlinkTransactionFromCard:
         card = await card_service.add_card(add_cmd)
 
         txn = _make_transaction(account.id, owner_id)
-        uow.transactions.save(txn)
+        await uow.transactions.save(txn)
 
         # Link first
         link_cmd = LinkTransactionToCard(
@@ -581,7 +581,7 @@ class TestUnlinkTransactionFromCard:
         )
         await card_service.unlink_transaction_from_card(unlink_cmd)
 
-        loaded_txn = uow.transactions.find_by_id(txn.id)
+        loaded_txn = await uow.transactions.find_by_id(txn.id)
         assert loaded_txn is not None
         assert loaded_txn.card_id is None
 
@@ -609,7 +609,7 @@ class TestUnlinkTransactionFromCard:
         card = await card_service.add_card(add_cmd)
 
         txn = _make_transaction(account.id, owner_id)
-        uow.transactions.save(txn)
+        await uow.transactions.save(txn)
 
         link_cmd = LinkTransactionToCard(
             account_id=account.id,

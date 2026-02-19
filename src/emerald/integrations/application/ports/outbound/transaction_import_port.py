@@ -9,7 +9,7 @@ from emerald.integrations.application.dtos.transaction_match import TransactionM
 class TransactionImportPort(Protocol):
     """ACL boundary from Integrations → Core Finance."""
 
-    def import_transaction(
+    async def import_transaction(
         self,
         account_id: uuid.UUID,
         transaction_date: date,
@@ -22,9 +22,9 @@ class TransactionImportPort(Protocol):
         merchant: str | None = None,
     ) -> uuid.UUID: ...
 
-    def find_by_external_id(self, account_id: uuid.UUID, external_id: str) -> bool: ...
+    async def find_by_external_id(self, account_id: uuid.UUID, external_id: str) -> bool: ...
 
-    def find_by_date_and_amount(
+    async def find_by_date_and_amount(
         self,
         account_id: uuid.UUID,
         transaction_date: date,

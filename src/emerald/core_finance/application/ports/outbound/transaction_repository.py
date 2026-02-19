@@ -10,17 +10,17 @@ from emerald.shared_kernel.domain.models.value_objects.paginated_result import P
 class TransactionRepository(Protocol):
     """Port for transaction persistence."""
 
-    def save(self, transaction: Transaction) -> None: ...
+    async def save(self, transaction: Transaction) -> None: ...
 
-    def save_many(self, transactions: list[Transaction]) -> None: ...
+    async def save_many(self, transactions: list[Transaction]) -> None: ...
 
-    def find_by_id(
+    async def find_by_id(
         self,
         transaction_id: uuid.UUID,
         include_deleted: bool = False,
     ) -> Transaction | None: ...
 
-    def find_by_account(
+    async def find_by_account(
         self,
         account_id: uuid.UUID,
         include_deleted: bool = False,
@@ -28,7 +28,7 @@ class TransactionRepository(Protocol):
         page_size: int = 50,
     ) -> PaginatedResult[Transaction]: ...
 
-    def find_by_account_in_range(
+    async def find_by_account_in_range(
         self,
         account_id: uuid.UUID,
         date_range: DateRange,
@@ -37,28 +37,28 @@ class TransactionRepository(Protocol):
         page_size: int = 50,
     ) -> PaginatedResult[Transaction]: ...
 
-    def find_by_external_id(
+    async def find_by_external_id(
         self,
         account_id: uuid.UUID,
         external_id: str,
     ) -> Transaction | None: ...
 
-    def count_by_account(
+    async def count_by_account(
         self,
         account_id: uuid.UUID,
         include_deleted: bool = False,
     ) -> int: ...
 
-    def sum_amounts(
+    async def sum_amounts(
         self,
         account_id: uuid.UUID,
         exclude_split_parents: bool = True,
     ) -> Money: ...
 
-    def find_children(
+    async def find_children(
         self,
         parent_transaction_id: uuid.UUID,
         include_deleted: bool = False,
     ) -> list[Transaction]: ...
 
-    def hard_delete_children(self, parent_transaction_id: uuid.UUID) -> int: ...
+    async def hard_delete_children(self, parent_transaction_id: uuid.UUID) -> int: ...

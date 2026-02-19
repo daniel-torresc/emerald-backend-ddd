@@ -49,7 +49,7 @@ class AccountManagementService:
             opening_balance = Money(cmd.opening_balance, currency)
             iban = IBAN(cmd.iban) if cmd.iban is not None else None
 
-            if self._uow.accounts.exists_by_name_for_user(account_name, cmd.owner_user_id):
+            if await self._uow.accounts.exists_by_name_for_user(account_name, cmd.owner_user_id):
                 raise AccountNameAlreadyExistsError()
 
             account = Account.create(
@@ -62,19 +62,19 @@ class AccountManagementService:
                 iban=iban,
                 notes=cmd.notes,
             )
-            self._uow.accounts.save(account)
+            await self._uow.accounts.save(account)
             await self._uow.commit()
             return account
 
     async def rename_account(self, cmd: RenameAccount) -> None:
         """Rename an account, checking ownership and uniqueness."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_owner(account, cmd.requesting_user_id)
 
             new_name = AccountName(cmd.new_name)
             owner_user_id = account.get_owner().user_id
-            if self._uow.accounts.exists_by_name_for_user(new_name, owner_user_id):
+            if await self._uow.accounts.exists_by_name_for_user(new_name, owner_user_id):
                 raise AccountNameAlreadyExistsError()
 
             account.update_name(new_name, cmd.requesting_user_id)
@@ -83,7 +83,7 @@ class AccountManagementService:
     async def update_account_type(self, cmd: UpdateAccountType) -> None:
         """Update account type."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_owner(account, cmd.requesting_user_id)
             account.update_account_type(cmd.account_type_id, cmd.requesting_user_id)
             await self._uow.commit()
@@ -91,7 +91,7 @@ class AccountManagementService:
     async def update_financial_institution(self, cmd: UpdateFinancialInstitution) -> None:
         """Update financial institution."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_owner(account, cmd.requesting_user_id)
             account.update_financial_institution(
                 cmd.financial_institution_id, cmd.requesting_user_id
@@ -101,7 +101,7 @@ class AccountManagementService:
     async def update_account_notes(self, cmd: UpdateAccountNotes) -> None:
         """Update account notes."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_owner(account, cmd.requesting_user_id)
             account.update_notes(cmd.notes, cmd.requesting_user_id)
             await self._uow.commit()
@@ -109,10 +109,10 @@ class AccountManagementService:
     async def soft_delete_account(self, cmd: SoftDeleteAccount) -> None:
         """Soft-delete an account with retention period."""
         async with self._uow:
-            account = self._load_account(cmd.account_id, include_deleted=True)
+            account = await self._load_account(cmd.account_id, include_deleted=True)
             self._verify_owner(account, cmd.requesting_user_id)
 
-            retention = self._retention_policy_service.get_effective_retention(
+            retention = await self._retention_policy_service.get_effective_retention(
                 DeletableEntityType.FINANCIAL_ACCOUNT, cmd.requesting_user_id
             )
             account.soft_delete(cmd.requesting_user_id, retention, cmd.reason)
@@ -121,16 +121,16 @@ class AccountManagementService:
     async def recover_account(self, cmd: RecoverAccount) -> None:
         """Recover a soft-deleted account."""
         async with self._uow:
-            account = self._load_account(cmd.account_id, include_deleted=True)
+            account = await self._load_account(cmd.account_id, include_deleted=True)
             self._verify_owner(account, cmd.requesting_user_id)
             account.recover()
             await self._uow.commit()
 
     # -- Private helpers -------------------------------------------------------
 
-    def _load_account(self, account_id: uuid.UUID, include_deleted: bool = False) -> Account:
+    async def _load_account(self, account_id: uuid.UUID, include_deleted: bool = False) -> Account:
         """Load an account or raise AccountNotFoundError."""
-        account = self._uow.accounts.find_by_id(account_id, include_deleted=include_deleted)
+        account = await self._uow.accounts.find_by_id(account_id, include_deleted=include_deleted)
         if account is None:
             raise AccountNotFoundError(f"Account {account_id} not found")
         return account

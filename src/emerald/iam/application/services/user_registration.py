@@ -38,18 +38,18 @@ class UserRegistrationService:
             validate_password_strength(cmd.plaintext_password)
 
             # 3. Check uniqueness
-            if self._uow.users.exists_by_email(email_vo):
+            if await self._uow.users.exists_by_email(email_vo):
                 raise EmailAlreadyExistsError(f"Email {email_vo} is already in use")
-            if self._uow.users.exists_by_username(username_vo, include_recently_deleted=True):
+            if await self._uow.users.exists_by_username(username_vo, include_recently_deleted=True):
                 raise UsernameAlreadyExistsError(f"Username {username_vo} is already taken")
 
             # 4. Hash password
-            hashed = self._hasher.hash(cmd.plaintext_password)
+            hashed = await self._hasher.hash(cmd.plaintext_password)
             hashed_password = HashedPassword(hashed)
 
             # 5. Create user and persist
             user = User.register(email_vo, username_vo, hashed_password)
-            self._uow.users.add(user)
+            await self._uow.users.add(user)
             await self._uow.commit()
 
             return user

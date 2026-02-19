@@ -22,11 +22,13 @@ class FakeAccountRepository:
         self._accounts: dict[uuid.UUID, Account] = {}
         self.seen: set[Account] = set()
 
-    def save(self, account: Account) -> None:
+    async def save(self, account: Account) -> None:
         self._accounts[account.id] = account
         self.seen.add(account)
 
-    def find_by_id(self, account_id: uuid.UUID, include_deleted: bool = False) -> Account | None:
+    async def find_by_id(
+        self, account_id: uuid.UUID, include_deleted: bool = False
+    ) -> Account | None:
         account = self._accounts.get(account_id)
         if account is None:
             return None
@@ -35,7 +37,9 @@ class FakeAccountRepository:
             return None
         return account
 
-    def find_by_owner(self, user_id: uuid.UUID, include_deleted: bool = False) -> list[Account]:
+    async def find_by_owner(
+        self, user_id: uuid.UUID, include_deleted: bool = False
+    ) -> list[Account]:
         results: list[Account] = []
         for account in self._accounts.values():
             if account.created_by != user_id:
@@ -46,7 +50,7 @@ class FakeAccountRepository:
             results.append(account)
         return results
 
-    def exists_by_name_for_user(self, account_name: AccountName, user_id: uuid.UUID) -> bool:
+    async def exists_by_name_for_user(self, account_name: AccountName, user_id: uuid.UUID) -> bool:
         for account in self._accounts.values():
             if account.is_deleted():
                 continue
@@ -54,7 +58,7 @@ class FakeAccountRepository:
                 return True
         return False
 
-    def find_accessible_by_user(
+    async def find_accessible_by_user(
         self, user_id: uuid.UUID, include_deleted: bool = False
     ) -> list[Account]:
         results: list[Account] = []
@@ -74,15 +78,15 @@ class FakeTransactionRepository:
         self._transactions: dict[uuid.UUID, Transaction] = {}
         self.seen: set[Transaction] = set()
 
-    def save(self, transaction: Transaction) -> None:
+    async def save(self, transaction: Transaction) -> None:
         self._transactions[transaction.id] = transaction
         self.seen.add(transaction)
 
-    def save_many(self, transactions: list[Transaction]) -> None:
+    async def save_many(self, transactions: list[Transaction]) -> None:
         for txn in transactions:
-            self.save(txn)
+            await self.save(txn)
 
-    def find_by_id(
+    async def find_by_id(
         self,
         transaction_id: uuid.UUID,
         include_deleted: bool = False,
@@ -95,7 +99,7 @@ class FakeTransactionRepository:
             return None
         return txn
 
-    def find_by_account(
+    async def find_by_account(
         self,
         account_id: uuid.UUID,
         include_deleted: bool = False,
@@ -109,7 +113,7 @@ class FakeTransactionRepository:
         ]
         return self._paginate(all_txns, page, page_size)
 
-    def find_by_account_in_range(
+    async def find_by_account_in_range(
         self,
         account_id: uuid.UUID,
         date_range: DateRange,
@@ -126,7 +130,7 @@ class FakeTransactionRepository:
         ]
         return self._paginate(all_txns, page, page_size)
 
-    def find_by_external_id(
+    async def find_by_external_id(
         self,
         account_id: uuid.UUID,
         external_id: str,
@@ -137,7 +141,7 @@ class FakeTransactionRepository:
                 return txn
         return None
 
-    def count_by_account(
+    async def count_by_account(
         self,
         account_id: uuid.UUID,
         include_deleted: bool = False,
@@ -148,7 +152,7 @@ class FakeTransactionRepository:
             if t.account_id == account_id and (include_deleted or not t.is_deleted())
         )
 
-    def sum_amounts(
+    async def sum_amounts(
         self,
         account_id: uuid.UUID,
         exclude_split_parents: bool = True,
@@ -170,7 +174,7 @@ class FakeTransactionRepository:
             total += txn.amount.amount
         return Money(total, currency)
 
-    def find_children(
+    async def find_children(
         self,
         parent_transaction_id: uuid.UUID,
         include_deleted: bool = False,
@@ -182,7 +186,7 @@ class FakeTransactionRepository:
             and (include_deleted or not t.is_deleted())
         ]
 
-    def hard_delete_children(self, parent_transaction_id: uuid.UUID) -> int:
+    async def hard_delete_children(self, parent_transaction_id: uuid.UUID) -> int:
         to_remove = [
             tid
             for tid, t in self._transactions.items()

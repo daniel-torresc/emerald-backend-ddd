@@ -12,7 +12,7 @@ from emerald.shared_kernel.domain.models.value_objects.trash_item import TrashIt
 class TrashQueryPort(Protocol):
     """Port for querying trash items and cascade summaries."""
 
-    def list_trash(
+    async def list_trash(
         self,
         user_id: uuid.UUID,
         entity_type: DeletableEntityType | None = None,
@@ -22,6 +22,6 @@ class TrashQueryPort(Protocol):
         page_size: int = 20,
     ) -> PaginatedResult[TrashItem]: ...
 
-    def get_cascade_summary(
+    async def get_cascade_summary(
         self, entity_id: uuid.UUID, entity_type: DeletableEntityType
     ) -> CascadeSummary: ...

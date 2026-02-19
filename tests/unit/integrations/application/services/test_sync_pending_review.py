@@ -68,7 +68,7 @@ def account_id() -> uuid.UUID:
     return uuid.uuid4()
 
 
-def _create_active_connection(
+async def _create_active_connection(
     uow: FakeIntegrationsUnitOfWork, user_id: uuid.UUID, account_id: uuid.UUID
 ) -> BankConnection:
     conn = BankConnection.create(
@@ -81,7 +81,7 @@ def _create_active_connection(
     )
     conn.activate(ProviderCredentials("test-token"))
     conn.collect_events()
-    uow.bank_connections.save(conn)
+    await uow.bank_connections.save(conn)
     return conn
 
 
@@ -113,9 +113,9 @@ class TestApprovePending:
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn = _create_active_connection(uow, user_id, account_id)
+        conn = await _create_active_connection(uow, user_id, account_id)
         pending = _create_pending(conn.id, account_id)
-        uow.pending_transactions.save(pending)
+        await uow.pending_transactions.save(pending)
 
         cmd = ApprovePendingTransaction(pending_id=pending.id, approved_by=user_id)
 
@@ -127,7 +127,7 @@ class TestApprovePending:
         assert import_port.imported[0]["account_id"] == account_id
         assert import_port.imported[0]["external_id"] == "ext_pending_123"
 
-        updated_pending = uow.pending_transactions.find_by_id(pending.id)
+        updated_pending = await uow.pending_transactions.find_by_id(pending.id)
         assert updated_pending is not None
         assert updated_pending.match_status == MatchStatus.USER_APPROVED
         assert updated_pending.imported_transaction_id == txn_id
@@ -149,9 +149,9 @@ class TestApprovePending:
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn = _create_active_connection(uow, user_id, account_id)
+        conn = await _create_active_connection(uow, user_id, account_id)
         pending = _create_pending(conn.id, account_id)
-        uow.pending_transactions.save(pending)
+        await uow.pending_transactions.save(pending)
 
         other_user = uuid.uuid4()
         cmd = ApprovePendingTransaction(pending_id=pending.id, approved_by=other_user)
@@ -168,15 +168,15 @@ class TestRejectPending:
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn = _create_active_connection(uow, user_id, account_id)
+        conn = await _create_active_connection(uow, user_id, account_id)
         pending = _create_pending(conn.id, account_id)
-        uow.pending_transactions.save(pending)
+        await uow.pending_transactions.save(pending)
 
         cmd = RejectPendingTransaction(pending_id=pending.id, rejected_by=user_id)
 
         await service.reject_pending(cmd)
 
-        updated = uow.pending_transactions.find_by_id(pending.id)
+        updated = await uow.pending_transactions.find_by_id(pending.id)
         assert updated is not None
         assert updated.match_status == MatchStatus.USER_REJECTED
         assert uow.committed is True

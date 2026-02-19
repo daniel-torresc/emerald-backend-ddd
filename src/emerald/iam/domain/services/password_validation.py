@@ -33,11 +33,13 @@ def validate_password_strength(plaintext: str) -> None:
         raise PasswordTooWeakError(f"Password must contain: {rules}")
 
 
-def validate_not_in_history(plaintext: str, history: list[str], hasher: PasswordHasher) -> None:
+async def validate_not_in_history(
+    plaintext: str, history: list[str], hasher: PasswordHasher
+) -> None:
     """Check password is not in recent history.
 
     Raises PasswordReusedError if plaintext matches any stored hash.
     """
     for hashed in history:
-        if hasher.verify(plaintext, hashed):
+        if await hasher.verify(plaintext, hashed):
             raise PasswordReusedError("Password matches a recently used password")

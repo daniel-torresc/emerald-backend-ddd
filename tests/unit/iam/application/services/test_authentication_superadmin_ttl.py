@@ -78,7 +78,7 @@ async def test_superadmin_login_gets_15_minute_refresh_ttl_regular_portal():
         username=Username("superadmin"),
         password=HashedPassword("hashed:Password1!"),
     )
-    uow.users.add(superadmin)
+    await uow.users.add(superadmin)
 
     await svc.login(
         LoginUser(email="sa@example.com", password="Password1!", portal_context="REGULAR")
@@ -98,7 +98,7 @@ async def test_superadmin_login_gets_15_minute_refresh_ttl_admin_portal():
         username=Username("superadmin"),
         password=HashedPassword("hashed:Password1!"),
     )
-    uow.users.add(superadmin)
+    await uow.users.add(superadmin)
 
     await svc.login(
         LoginUser(email="sa@example.com", password="Password1!", portal_context="ADMIN")
@@ -118,7 +118,7 @@ async def test_regular_user_login_gets_portal_context_ttl_regular():
         username=Username("regularuser"),
         password=HashedPassword("hashed:Password1!"),
     )
-    uow.users.add(user)
+    await uow.users.add(user)
 
     await svc.login(
         LoginUser(email="user@example.com", password="Password1!", portal_context="REGULAR")
@@ -140,7 +140,7 @@ async def test_admin_login_on_admin_portal_gets_4_hour_ttl():
         username=Username("adminuser"),
         password=HashedPassword("hashed:Password1!"),
     )
-    uow.users.add(admin)
+    await uow.users.add(admin)
 
     await svc.login(
         LoginUser(email="admin@example.com", password="Password1!", portal_context="ADMIN")
@@ -162,7 +162,7 @@ async def test_admin_login_on_regular_portal_gets_7_day_ttl():
         username=Username("adminuser"),
         password=HashedPassword("hashed:Password1!"),
     )
-    uow.users.add(admin)
+    await uow.users.add(admin)
 
     await svc.login(
         LoginUser(email="admin@example.com", password="Password1!", portal_context="REGULAR")
@@ -188,7 +188,7 @@ async def test_superadmin_refresh_gets_15_minute_refresh_ttl():
         username=Username("superadmin"),
         password=HashedPassword("hashed:Password1!"),
     )
-    uow.users.add(superadmin)
+    await uow.users.add(superadmin)
 
     login_result = await svc.login(
         LoginUser(email="sa@example.com", password="Password1!", portal_context="REGULAR")
@@ -197,8 +197,8 @@ async def test_superadmin_refresh_gets_15_minute_refresh_ttl():
     refresh_result = await svc.refresh(RefreshAccessToken(refresh_token=login_result.refresh_token))
 
     # Find the new (non-revoked) refresh token
-    new_hash = token_service.hash_token(refresh_result.refresh_token)
-    new_token = uow.refresh_tokens.find_by_hash(new_hash)
+    new_hash = await token_service.hash_token(refresh_result.refresh_token)
+    new_token = await uow.refresh_tokens.find_by_hash(new_hash)
     assert new_token is not None
     expected_max = datetime.now(UTC) + REFRESH_TOKEN_TTL_SUPERADMIN + timedelta(seconds=5)
     expected_min = datetime.now(UTC) + REFRESH_TOKEN_TTL_SUPERADMIN - timedelta(seconds=5)
@@ -212,7 +212,7 @@ async def test_regular_user_refresh_keeps_portal_context_ttl():
         username=Username("regularuser"),
         password=HashedPassword("hashed:Password1!"),
     )
-    uow.users.add(user)
+    await uow.users.add(user)
 
     login_result = await svc.login(
         LoginUser(email="user@example.com", password="Password1!", portal_context="REGULAR")
@@ -220,8 +220,8 @@ async def test_regular_user_refresh_keeps_portal_context_ttl():
 
     refresh_result = await svc.refresh(RefreshAccessToken(refresh_token=login_result.refresh_token))
 
-    new_hash = token_service.hash_token(refresh_result.refresh_token)
-    new_token = uow.refresh_tokens.find_by_hash(new_hash)
+    new_hash = await token_service.hash_token(refresh_result.refresh_token)
+    new_token = await uow.refresh_tokens.find_by_hash(new_hash)
     assert new_token is not None
     regular_ttl = PortalContext.REGULAR.refresh_ttl  # 7 days
     expected_max = datetime.now(UTC) + regular_ttl + timedelta(seconds=5)
@@ -236,7 +236,7 @@ async def test_superadmin_refresh_on_admin_portal_still_gets_15_minute_ttl():
         username=Username("superadmin"),
         password=HashedPassword("hashed:Password1!"),
     )
-    uow.users.add(superadmin)
+    await uow.users.add(superadmin)
 
     login_result = await svc.login(
         LoginUser(email="sa@example.com", password="Password1!", portal_context="ADMIN")
@@ -244,8 +244,8 @@ async def test_superadmin_refresh_on_admin_portal_still_gets_15_minute_ttl():
 
     refresh_result = await svc.refresh(RefreshAccessToken(refresh_token=login_result.refresh_token))
 
-    new_hash = token_service.hash_token(refresh_result.refresh_token)
-    new_token = uow.refresh_tokens.find_by_hash(new_hash)
+    new_hash = await token_service.hash_token(refresh_result.refresh_token)
+    new_token = await uow.refresh_tokens.find_by_hash(new_hash)
     assert new_token is not None
     expected_max = datetime.now(UTC) + REFRESH_TOKEN_TTL_SUPERADMIN + timedelta(seconds=5)
     expected_min = datetime.now(UTC) + REFRESH_TOKEN_TTL_SUPERADMIN - timedelta(seconds=5)
@@ -260,7 +260,7 @@ async def test_admin_refresh_on_admin_portal_gets_4_hour_ttl():
         username=Username("adminuser"),
         password=HashedPassword("hashed:Password1!"),
     )
-    uow.users.add(admin)
+    await uow.users.add(admin)
 
     login_result = await svc.login(
         LoginUser(email="admin@example.com", password="Password1!", portal_context="ADMIN")
@@ -268,8 +268,8 @@ async def test_admin_refresh_on_admin_portal_gets_4_hour_ttl():
 
     refresh_result = await svc.refresh(RefreshAccessToken(refresh_token=login_result.refresh_token))
 
-    new_hash = token_service.hash_token(refresh_result.refresh_token)
-    new_token = uow.refresh_tokens.find_by_hash(new_hash)
+    new_hash = await token_service.hash_token(refresh_result.refresh_token)
+    new_token = await uow.refresh_tokens.find_by_hash(new_hash)
     assert new_token is not None
     admin_ttl = PortalContext.ADMIN.refresh_ttl  # 4 hours
     expected_max = datetime.now(UTC) + admin_ttl + timedelta(seconds=5)

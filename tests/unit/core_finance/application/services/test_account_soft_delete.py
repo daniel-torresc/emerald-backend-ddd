@@ -123,7 +123,7 @@ class TestSoftDeleteAccount:
         await service.soft_delete_account(
             SoftDeleteAccount(account_id=account.id, requesting_user_id=uid)
         )
-        assert uow.accounts.find_by_id(account.id) is None
+        assert await uow.accounts.find_by_id(account.id) is None
 
     async def test_soft_deleted_account_found_with_include_deleted(self) -> None:
         service, uow = _make_service()
@@ -132,5 +132,5 @@ class TestSoftDeleteAccount:
         await service.soft_delete_account(
             SoftDeleteAccount(account_id=account.id, requesting_user_id=uid)
         )
-        found = uow.accounts.find_by_id(account.id, include_deleted=True)
+        found = await uow.accounts.find_by_id(account.id, include_deleted=True)
         assert found is not None

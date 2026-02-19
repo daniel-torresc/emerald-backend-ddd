@@ -54,7 +54,7 @@ class CardManagementService:
     async def add_card(self, cmd: AddCard) -> Card:
         """Add a new card to an account."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_editor(account, cmd.requesting_user_id)
 
             card_number = CardNumber(cmd.card_number)
@@ -79,7 +79,7 @@ class CardManagementService:
                 notes=cmd.notes,
             )
             account.add_card(card)
-            self._uow.accounts.save(account)
+            await self._uow.accounts.save(account)
             await self._uow.commit()
             return card
 
@@ -88,35 +88,35 @@ class CardManagementService:
     async def update_card_name(self, cmd: UpdateCardName) -> None:
         """Update a card's display name."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_editor(account, cmd.requesting_user_id)
             account.update_card_name(cmd.card_id, cmd.card_name)
-            self._uow.accounts.save(account)
+            await self._uow.accounts.save(account)
             await self._uow.commit()
 
     async def update_card_network(self, cmd: UpdateCardNetwork) -> None:
         """Update a card's network."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_editor(account, cmd.requesting_user_id)
             network = CardNetwork[cmd.card_network] if cmd.card_network is not None else None
             account.update_card_network(cmd.card_id, network)
-            self._uow.accounts.save(account)
+            await self._uow.accounts.save(account)
             await self._uow.commit()
 
     async def update_card_expiry(self, cmd: UpdateCardExpiry) -> None:
         """Update a card's expiration date."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_editor(account, cmd.requesting_user_id)
             account.update_card_expiry(cmd.card_id, cmd.expiry_month, cmd.expiry_year)
-            self._uow.accounts.save(account)
+            await self._uow.accounts.save(account)
             await self._uow.commit()
 
     async def update_card_credit_limit(self, cmd: UpdateCardCreditLimit) -> None:
         """Update a card's credit limit."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_editor(account, cmd.requesting_user_id)
 
             credit_limit: Money | None = None
@@ -125,25 +125,25 @@ class CardManagementService:
                 credit_limit = Money(cmd.credit_limit_amount, currency)
 
             account.update_card_credit_limit(cmd.card_id, credit_limit)
-            self._uow.accounts.save(account)
+            await self._uow.accounts.save(account)
             await self._uow.commit()
 
     async def update_card_issuing_institution(self, cmd: UpdateCardIssuingInstitution) -> None:
         """Update a card's issuing institution."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_editor(account, cmd.requesting_user_id)
             account.update_card_issuing_institution(cmd.card_id, cmd.issuing_institution)
-            self._uow.accounts.save(account)
+            await self._uow.accounts.save(account)
             await self._uow.commit()
 
     async def update_card_notes(self, cmd: UpdateCardNotes) -> None:
         """Update a card's notes."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_editor(account, cmd.requesting_user_id)
             account.update_card_notes(cmd.card_id, cmd.notes)
-            self._uow.accounts.save(account)
+            await self._uow.accounts.save(account)
             await self._uow.commit()
 
     # -- Card Lifecycle --------------------------------------------------------
@@ -151,23 +151,23 @@ class CardManagementService:
     async def remove_card(self, cmd: RemoveCard) -> None:
         """Soft-delete a card."""
         async with self._uow:
-            account = self._load_account(cmd.account_id, include_deleted=True)
+            account = await self._load_account(cmd.account_id, include_deleted=True)
             self._verify_editor(account, cmd.requesting_user_id)
 
-            retention = self._retention_policy_service.get_effective_retention(
+            retention = await self._retention_policy_service.get_effective_retention(
                 DeletableEntityType.CARD, cmd.requesting_user_id
             )
             account.remove_card(cmd.card_id, cmd.requesting_user_id, retention, cmd.reason)
-            self._uow.accounts.save(account)
+            await self._uow.accounts.save(account)
             await self._uow.commit()
 
     async def recover_card(self, cmd: RecoverCard) -> None:
         """Recover a soft-deleted card."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_owner(account, cmd.requesting_user_id)
             account.recover_card(cmd.card_id)
-            self._uow.accounts.save(account)
+            await self._uow.accounts.save(account)
             await self._uow.commit()
 
     # -- Card-Transaction Linking ----------------------------------------------
@@ -175,7 +175,7 @@ class CardManagementService:
     async def link_transaction_to_card(self, cmd: LinkTransactionToCard) -> None:
         """Link a transaction to a card in the same account."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_editor(account, cmd.requesting_user_id)
 
             # Verify card exists in account (include deleted for historical linking)
@@ -184,7 +184,7 @@ class CardManagementService:
                 raise CardNotFoundError(f"Card {cmd.card_id} not found in account {cmd.account_id}")
 
             # Load and validate transaction
-            transaction = self._uow.transactions.find_by_id(cmd.transaction_id)
+            transaction = await self._uow.transactions.find_by_id(cmd.transaction_id)
             if transaction is None:
                 raise TransactionNotFoundError(f"Transaction {cmd.transaction_id} not found")
             if transaction.account_id != account.id:
@@ -195,16 +195,16 @@ class CardManagementService:
                 raise TransactionDeletedError(f"Transaction {cmd.transaction_id} is deleted")
 
             transaction.update_card_id(cmd.card_id)
-            self._uow.transactions.save(transaction)
+            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     async def unlink_transaction_from_card(self, cmd: UnlinkTransactionFromCard) -> None:
         """Unlink a transaction from its card."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_editor(account, cmd.requesting_user_id)
 
-            transaction = self._uow.transactions.find_by_id(cmd.transaction_id)
+            transaction = await self._uow.transactions.find_by_id(cmd.transaction_id)
             if transaction is None:
                 raise TransactionNotFoundError(f"Transaction {cmd.transaction_id} not found")
             if transaction.account_id != account.id:
@@ -215,14 +215,14 @@ class CardManagementService:
                 raise TransactionDeletedError(f"Transaction {cmd.transaction_id} is deleted")
 
             transaction.update_card_id(None)
-            self._uow.transactions.save(transaction)
+            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     # -- Private helpers -------------------------------------------------------
 
-    def _load_account(self, account_id: uuid.UUID, include_deleted: bool = False) -> Account:
+    async def _load_account(self, account_id: uuid.UUID, include_deleted: bool = False) -> Account:
         """Load an account or raise AccountNotFoundError."""
-        account = self._uow.accounts.find_by_id(account_id, include_deleted=include_deleted)
+        account = await self._uow.accounts.find_by_id(account_id, include_deleted=include_deleted)
         if account is None:
             raise AccountNotFoundError(f"Account {account_id} not found")
         return account

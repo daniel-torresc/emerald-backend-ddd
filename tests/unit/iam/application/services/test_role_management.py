@@ -80,8 +80,8 @@ async def test_promote_to_admin_happy_path():
     uow, svc = _setup()
     superadmin = _make_superadmin()
     target = _make_user()
-    uow.users.add(superadmin)
-    uow.users.add(target)
+    await uow.users.add(superadmin)
+    await uow.users.add(target)
 
     cmd = PromoteToAdmin(
         user_id=str(target.id),
@@ -98,8 +98,8 @@ async def test_promote_to_admin_with_multiple_permissions():
     uow, svc = _setup()
     superadmin = _make_superadmin()
     target = _make_user()
-    uow.users.add(superadmin)
-    uow.users.add(target)
+    await uow.users.add(superadmin)
+    await uow.users.add(target)
 
     cmd = PromoteToAdmin(
         user_id=str(target.id),
@@ -115,7 +115,7 @@ async def test_promote_to_admin_with_multiple_permissions():
 async def test_promote_to_admin_self_promotion_raises():
     uow, svc = _setup()
     superadmin = _make_superadmin()
-    uow.users.add(superadmin)
+    await uow.users.add(superadmin)
 
     cmd = PromoteToAdmin(
         user_id=str(superadmin.id),
@@ -130,7 +130,7 @@ async def test_promote_to_admin_self_promotion_raises():
 async def test_promote_to_admin_actor_not_found_raises():
     uow, svc = _setup()
     target = _make_user()
-    uow.users.add(target)
+    await uow.users.add(target)
 
     cmd = PromoteToAdmin(
         user_id=str(target.id),
@@ -145,7 +145,7 @@ async def test_promote_to_admin_actor_not_found_raises():
 async def test_promote_to_admin_target_not_found_raises():
     uow, svc = _setup()
     superadmin = _make_superadmin()
-    uow.users.add(superadmin)
+    await uow.users.add(superadmin)
 
     cmd = PromoteToAdmin(
         user_id=str(uuid.uuid4()),
@@ -161,8 +161,8 @@ async def test_promote_to_admin_non_superadmin_actor_raises():
     uow, svc = _setup()
     admin_actor = _make_admin()
     target = _make_user()
-    uow.users.add(admin_actor)
-    uow.users.add(target)
+    await uow.users.add(admin_actor)
+    await uow.users.add(target)
 
     cmd = PromoteToAdmin(
         user_id=str(target.id),
@@ -178,8 +178,8 @@ async def test_promote_to_admin_user_actor_raises():
     uow, svc = _setup()
     user_actor = _make_user()
     target = _make_user()
-    uow.users.add(user_actor)
-    uow.users.add(target)
+    await uow.users.add(user_actor)
+    await uow.users.add(target)
 
     cmd = PromoteToAdmin(
         user_id=str(target.id),
@@ -195,8 +195,8 @@ async def test_promote_to_admin_target_not_user_raises():
     uow, svc = _setup()
     superadmin = _make_superadmin()
     already_admin = _make_admin()
-    uow.users.add(superadmin)
-    uow.users.add(already_admin)
+    await uow.users.add(superadmin)
+    await uow.users.add(already_admin)
 
     cmd = PromoteToAdmin(
         user_id=str(already_admin.id),
@@ -212,8 +212,8 @@ async def test_promote_to_admin_empty_permissions_raises():
     uow, svc = _setup()
     superadmin = _make_superadmin()
     target = _make_user()
-    uow.users.add(superadmin)
-    uow.users.add(target)
+    await uow.users.add(superadmin)
+    await uow.users.add(target)
 
     cmd = PromoteToAdmin(
         user_id=str(target.id),
@@ -229,8 +229,8 @@ async def test_promote_to_admin_commits_uow():
     uow, svc = _setup()
     superadmin = _make_superadmin()
     target = _make_user()
-    uow.users.add(superadmin)
-    uow.users.add(target)
+    await uow.users.add(superadmin)
+    await uow.users.add(target)
 
     cmd = PromoteToAdmin(
         user_id=str(target.id),
@@ -251,8 +251,8 @@ async def test_demote_to_user_happy_path():
     uow, svc = _setup()
     superadmin = _make_superadmin()
     admin_target = _make_admin()
-    uow.users.add(superadmin)
-    uow.users.add(admin_target)
+    await uow.users.add(superadmin)
+    await uow.users.add(admin_target)
 
     cmd = DemoteToUser(
         user_id=str(admin_target.id),
@@ -267,7 +267,7 @@ async def test_demote_to_user_happy_path():
 async def test_demote_to_user_self_demotion_raises():
     uow, svc = _setup()
     superadmin = _make_superadmin()
-    uow.users.add(superadmin)
+    await uow.users.add(superadmin)
 
     cmd = DemoteToUser(
         user_id=str(superadmin.id),
@@ -281,7 +281,7 @@ async def test_demote_to_user_self_demotion_raises():
 async def test_demote_to_user_actor_not_found_raises():
     uow, svc = _setup()
     admin_target = _make_admin()
-    uow.users.add(admin_target)
+    await uow.users.add(admin_target)
 
     cmd = DemoteToUser(
         user_id=str(admin_target.id),
@@ -295,7 +295,7 @@ async def test_demote_to_user_actor_not_found_raises():
 async def test_demote_to_user_target_not_found_raises():
     uow, svc = _setup()
     superadmin = _make_superadmin()
-    uow.users.add(superadmin)
+    await uow.users.add(superadmin)
 
     cmd = DemoteToUser(
         user_id=str(uuid.uuid4()),
@@ -310,8 +310,8 @@ async def test_demote_superadmin_raises():
     uow, svc = _setup()
     superadmin_actor = _make_superadmin()
     superadmin_target = _make_superadmin()
-    uow.users.add(superadmin_actor)
-    uow.users.add(superadmin_target)
+    await uow.users.add(superadmin_actor)
+    await uow.users.add(superadmin_target)
 
     cmd = DemoteToUser(
         user_id=str(superadmin_target.id),
@@ -326,8 +326,8 @@ async def test_demote_regular_user_raises():
     uow, svc = _setup()
     superadmin = _make_superadmin()
     regular_user = _make_user()
-    uow.users.add(superadmin)
-    uow.users.add(regular_user)
+    await uow.users.add(superadmin)
+    await uow.users.add(regular_user)
 
     cmd = DemoteToUser(
         user_id=str(regular_user.id),
@@ -342,8 +342,8 @@ async def test_demote_non_superadmin_actor_raises():
     uow, svc = _setup()
     admin_actor = _make_admin()
     admin_target = _make_admin()
-    uow.users.add(admin_actor)
-    uow.users.add(admin_target)
+    await uow.users.add(admin_actor)
+    await uow.users.add(admin_target)
 
     cmd = DemoteToUser(
         user_id=str(admin_target.id),
@@ -358,8 +358,8 @@ async def test_demote_to_user_commits_uow():
     uow, svc = _setup()
     superadmin = _make_superadmin()
     admin_target = _make_admin()
-    uow.users.add(superadmin)
-    uow.users.add(admin_target)
+    await uow.users.add(superadmin)
+    await uow.users.add(admin_target)
 
     cmd = DemoteToUser(
         user_id=str(admin_target.id),
@@ -379,8 +379,8 @@ async def test_grant_permission_superadmin_grants():
     uow, svc = _setup()
     superadmin = _make_superadmin()
     admin_target = _make_admin(permissions=frozenset({MASTER_DATA}))
-    uow.users.add(superadmin)
-    uow.users.add(admin_target)
+    await uow.users.add(superadmin)
+    await uow.users.add(admin_target)
 
     cmd = GrantAdminPermission(
         user_id=str(admin_target.id),
@@ -397,8 +397,8 @@ async def test_grant_permission_admin_with_full_admin_grants():
     uow, svc = _setup()
     full_admin_actor = _make_admin(permissions=frozenset({FULL}))
     admin_target = _make_admin(permissions=frozenset({MASTER_DATA}))
-    uow.users.add(full_admin_actor)
-    uow.users.add(admin_target)
+    await uow.users.add(full_admin_actor)
+    await uow.users.add(admin_target)
 
     cmd = GrantAdminPermission(
         user_id=str(admin_target.id),
@@ -415,8 +415,8 @@ async def test_grant_permission_admin_with_matching_permission_grants():
     uow, svc = _setup()
     admin_actor = _make_admin(permissions=frozenset({MASTER_DATA, USER_SUPPORT}))
     admin_target = _make_admin(permissions=frozenset({MASTER_DATA}))
-    uow.users.add(admin_actor)
-    uow.users.add(admin_target)
+    await uow.users.add(admin_actor)
+    await uow.users.add(admin_target)
 
     cmd = GrantAdminPermission(
         user_id=str(admin_target.id),
@@ -432,7 +432,7 @@ async def test_grant_permission_admin_with_matching_permission_grants():
 async def test_grant_permission_self_grant_raises():
     uow, svc = _setup()
     admin = _make_admin(permissions=frozenset({MASTER_DATA}))
-    uow.users.add(admin)
+    await uow.users.add(admin)
 
     cmd = GrantAdminPermission(
         user_id=str(admin.id),
@@ -447,7 +447,7 @@ async def test_grant_permission_self_grant_raises():
 async def test_grant_permission_actor_not_found_raises():
     uow, svc = _setup()
     admin_target = _make_admin(permissions=frozenset({MASTER_DATA}))
-    uow.users.add(admin_target)
+    await uow.users.add(admin_target)
 
     cmd = GrantAdminPermission(
         user_id=str(admin_target.id),
@@ -462,7 +462,7 @@ async def test_grant_permission_actor_not_found_raises():
 async def test_grant_permission_target_not_found_raises():
     uow, svc = _setup()
     superadmin = _make_superadmin()
-    uow.users.add(superadmin)
+    await uow.users.add(superadmin)
 
     cmd = GrantAdminPermission(
         user_id=str(uuid.uuid4()),
@@ -478,8 +478,8 @@ async def test_grant_permission_admin_without_permission_raises():
     uow, svc = _setup()
     admin_actor = _make_admin(permissions=frozenset({MASTER_DATA}))
     admin_target = _make_admin(permissions=frozenset({MASTER_DATA}))
-    uow.users.add(admin_actor)
-    uow.users.add(admin_target)
+    await uow.users.add(admin_actor)
+    await uow.users.add(admin_target)
 
     cmd = GrantAdminPermission(
         user_id=str(admin_target.id),
@@ -495,8 +495,8 @@ async def test_grant_permission_user_actor_raises():
     uow, svc = _setup()
     user_actor = _make_user()
     admin_target = _make_admin(permissions=frozenset({MASTER_DATA}))
-    uow.users.add(user_actor)
-    uow.users.add(admin_target)
+    await uow.users.add(user_actor)
+    await uow.users.add(admin_target)
 
     cmd = GrantAdminPermission(
         user_id=str(admin_target.id),
@@ -512,8 +512,8 @@ async def test_grant_permission_to_non_admin_raises():
     uow, svc = _setup()
     superadmin = _make_superadmin()
     regular_user = _make_user()
-    uow.users.add(superadmin)
-    uow.users.add(regular_user)
+    await uow.users.add(superadmin)
+    await uow.users.add(regular_user)
 
     cmd = GrantAdminPermission(
         user_id=str(regular_user.id),
@@ -529,8 +529,8 @@ async def test_grant_permission_commits_uow():
     uow, svc = _setup()
     superadmin = _make_superadmin()
     admin_target = _make_admin(permissions=frozenset({MASTER_DATA}))
-    uow.users.add(superadmin)
-    uow.users.add(admin_target)
+    await uow.users.add(superadmin)
+    await uow.users.add(admin_target)
 
     cmd = GrantAdminPermission(
         user_id=str(admin_target.id),
@@ -551,8 +551,8 @@ async def test_revoke_permission_happy_path():
     uow, svc = _setup()
     superadmin = _make_superadmin()
     admin_target = _make_admin(permissions=frozenset({MASTER_DATA, USER_SUPPORT}))
-    uow.users.add(superadmin)
-    uow.users.add(admin_target)
+    await uow.users.add(superadmin)
+    await uow.users.add(admin_target)
 
     cmd = RevokeAdminPermission(
         user_id=str(admin_target.id),
@@ -569,7 +569,7 @@ async def test_revoke_permission_happy_path():
 async def test_revoke_permission_self_revoke_raises():
     uow, svc = _setup()
     admin = _make_admin(permissions=frozenset({MASTER_DATA, USER_SUPPORT}))
-    uow.users.add(admin)
+    await uow.users.add(admin)
 
     cmd = RevokeAdminPermission(
         user_id=str(admin.id),
@@ -585,8 +585,8 @@ async def test_revoke_last_permission_raises():
     uow, svc = _setup()
     superadmin = _make_superadmin()
     admin_target = _make_admin(permissions=frozenset({MASTER_DATA}))
-    uow.users.add(superadmin)
-    uow.users.add(admin_target)
+    await uow.users.add(superadmin)
+    await uow.users.add(admin_target)
 
     cmd = RevokeAdminPermission(
         user_id=str(admin_target.id),
@@ -602,8 +602,8 @@ async def test_revoke_permission_non_superadmin_actor_raises():
     uow, svc = _setup()
     admin_actor = _make_admin(permissions=frozenset({MASTER_DATA, USER_SUPPORT}))
     admin_target = _make_admin(permissions=frozenset({MASTER_DATA, USER_SUPPORT}))
-    uow.users.add(admin_actor)
-    uow.users.add(admin_target)
+    await uow.users.add(admin_actor)
+    await uow.users.add(admin_target)
 
     cmd = RevokeAdminPermission(
         user_id=str(admin_target.id),
@@ -618,7 +618,7 @@ async def test_revoke_permission_non_superadmin_actor_raises():
 async def test_revoke_permission_actor_not_found_raises():
     uow, svc = _setup()
     admin_target = _make_admin(permissions=frozenset({MASTER_DATA, USER_SUPPORT}))
-    uow.users.add(admin_target)
+    await uow.users.add(admin_target)
 
     cmd = RevokeAdminPermission(
         user_id=str(admin_target.id),
@@ -633,7 +633,7 @@ async def test_revoke_permission_actor_not_found_raises():
 async def test_revoke_permission_target_not_found_raises():
     uow, svc = _setup()
     superadmin = _make_superadmin()
-    uow.users.add(superadmin)
+    await uow.users.add(superadmin)
 
     cmd = RevokeAdminPermission(
         user_id=str(uuid.uuid4()),
@@ -649,8 +649,8 @@ async def test_revoke_permission_from_non_admin_raises():
     uow, svc = _setup()
     superadmin = _make_superadmin()
     regular_user = _make_user()
-    uow.users.add(superadmin)
-    uow.users.add(regular_user)
+    await uow.users.add(superadmin)
+    await uow.users.add(regular_user)
 
     cmd = RevokeAdminPermission(
         user_id=str(regular_user.id),
@@ -666,8 +666,8 @@ async def test_revoke_permission_commits_uow():
     uow, svc = _setup()
     superadmin = _make_superadmin()
     admin_target = _make_admin(permissions=frozenset({MASTER_DATA, USER_SUPPORT}))
-    uow.users.add(superadmin)
-    uow.users.add(admin_target)
+    await uow.users.add(superadmin)
+    await uow.users.add(admin_target)
 
     cmd = RevokeAdminPermission(
         user_id=str(admin_target.id),

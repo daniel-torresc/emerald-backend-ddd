@@ -100,7 +100,7 @@ def _make_input(**overrides: Any) -> TransactionInput:
     return TransactionInput(**defaults)
 
 
-def _create_transaction(
+async def _create_transaction(
     uow: FakeCoreFinanceUnitOfWork,
     account_id: uuid.UUID,
     user_id: uuid.UUID,
@@ -121,7 +121,7 @@ def _create_transaction(
     }
     defaults.update(overrides)
     txn = Transaction.create(**defaults)
-    uow.transactions.save(txn)
+    await uow.transactions.save(txn)
     return txn
 
 
@@ -146,11 +146,11 @@ class TestRequestValidation:
         svc, acct_svc, _, uow = _make_services()
         acct_id, user_id = await _create_account(acct_svc)
         # soft-delete the account
-        account = uow.accounts.find_by_id(acct_id, include_deleted=True)
+        account = await uow.accounts.find_by_id(acct_id, include_deleted=True)
         assert account is not None
         retention = _retention()
         account.soft_delete(deleted_by=user_id, retention=retention)
-        uow.accounts.save(account)
+        await uow.accounts.save(account)
 
         cmd = BulkCreateTransactions(
             account_id=acct_id,
@@ -297,7 +297,7 @@ class TestBulkCreate:
             source_id="file-001",
         )
         result = await svc.bulk_create_transactions(cmd)
-        txn = uow.transactions.find_by_id(result.successes[0].entity_id)
+        txn = await uow.transactions.find_by_id(result.successes[0].entity_id)
         assert txn is not None
         assert txn.account_id == acct_id
         assert txn.amount == Money(Decimal("-50.00"), Currency.USD)
@@ -352,7 +352,7 @@ class TestBulkCreate:
         acct_id, user_id = await _create_account(acct_svc)
 
         # Create existing transaction with external_id
-        _create_transaction(uow, acct_id, user_id, external_id="existing-ext")
+        await _create_transaction(uow, acct_id, user_id, external_id="existing-ext")
 
         cmd = BulkCreateTransactions(
             account_id=acct_id,
@@ -368,8 +368,8 @@ class TestBulkCreate:
     async def test_all_items_invalid(self) -> None:
         svc, acct_svc, _, uow = _make_services()
         acct_id, user_id = await _create_account(acct_svc)
-        _create_transaction(uow, acct_id, user_id, external_id="dup1")
-        _create_transaction(uow, acct_id, user_id, external_id="dup2")
+        await _create_transaction(uow, acct_id, user_id, external_id="dup1")
+        await _create_transaction(uow, acct_id, user_id, external_id="dup2")
 
         cmd = BulkCreateTransactions(
             account_id=acct_id,
@@ -396,7 +396,7 @@ class TestBulkCreate:
             import_source_type="BULK_IMPORT",
         )
         result = await svc.bulk_create_transactions(cmd)
-        txn = uow.transactions.find_by_id(result.successes[0].entity_id)
+        txn = await uow.transactions.find_by_id(result.successes[0].entity_id)
         assert txn is not None
         entity_events = txn.collect_events()
         from emerald.core_finance.domain.events.transaction_events import TransactionCreated
@@ -415,7 +415,7 @@ class TestBulkCreate:
             import_source_type="BULK_IMPORT",
         )
         result = await svc.bulk_create_transactions(cmd)
-        txn = uow.transactions.find_by_id(result.successes[0].entity_id)
+        txn = await uow.transactions.find_by_id(result.successes[0].entity_id)
         assert txn is not None
         assert txn.review_status == ReviewStatus.REVIEWED
 
@@ -430,7 +430,7 @@ class TestBulkCreate:
             import_source_type="BULK_IMPORT",
         )
         result = await svc.bulk_create_transactions(cmd)
-        txn = uow.transactions.find_by_id(result.successes[0].entity_id)
+        txn = await uow.transactions.find_by_id(result.successes[0].entity_id)
         assert txn is not None
         assert txn.created_by == user_id
 
@@ -444,7 +444,7 @@ class TestBulkUpdate:
     async def test_successful_review_status_update(self) -> None:
         svc, acct_svc, _, uow = _make_services()
         acct_id, user_id = await _create_account(acct_svc)
-        txn = _create_transaction(uow, acct_id, user_id)
+        txn = await _create_transaction(uow, acct_id, user_id)
 
         cmd = BulkUpdateTransactions(
             account_id=acct_id,
@@ -455,14 +455,14 @@ class TestBulkUpdate:
         result = await svc.bulk_update_transactions(cmd)
 
         assert result.success_count == 1
-        updated = uow.transactions.find_by_id(txn.id)
+        updated = await uow.transactions.find_by_id(txn.id)
         assert updated is not None
         assert updated.review_status == ReviewStatus.REVIEWED
 
     async def test_successful_user_description_update(self) -> None:
         svc, acct_svc, _, uow = _make_services()
         acct_id, user_id = await _create_account(acct_svc)
-        txn = _create_transaction(uow, acct_id, user_id)
+        txn = await _create_transaction(uow, acct_id, user_id)
 
         cmd = BulkUpdateTransactions(
             account_id=acct_id,
@@ -473,14 +473,14 @@ class TestBulkUpdate:
         result = await svc.bulk_update_transactions(cmd)
 
         assert result.success_count == 1
-        updated = uow.transactions.find_by_id(txn.id)
+        updated = await uow.transactions.find_by_id(txn.id)
         assert updated is not None
         assert updated.user_description == "New desc"
 
     async def test_successful_merchant_update(self) -> None:
         svc, acct_svc, _, uow = _make_services()
         acct_id, user_id = await _create_account(acct_svc)
-        txn = _create_transaction(uow, acct_id, user_id)
+        txn = await _create_transaction(uow, acct_id, user_id)
 
         cmd = BulkUpdateTransactions(
             account_id=acct_id,
@@ -491,14 +491,14 @@ class TestBulkUpdate:
         result = await svc.bulk_update_transactions(cmd)
 
         assert result.success_count == 1
-        updated = uow.transactions.find_by_id(txn.id)
+        updated = await uow.transactions.find_by_id(txn.id)
         assert updated is not None
         assert updated.merchant == "New Merchant"
 
     async def test_clear_merchant_with_none(self) -> None:
         svc, acct_svc, _, uow = _make_services()
         acct_id, user_id = await _create_account(acct_svc)
-        txn = _create_transaction(uow, acct_id, user_id, merchant="Old Merchant")
+        txn = await _create_transaction(uow, acct_id, user_id, merchant="Old Merchant")
 
         cmd = BulkUpdateTransactions(
             account_id=acct_id,
@@ -509,14 +509,14 @@ class TestBulkUpdate:
         result = await svc.bulk_update_transactions(cmd)
 
         assert result.success_count == 1
-        updated = uow.transactions.find_by_id(txn.id)
+        updated = await uow.transactions.find_by_id(txn.id)
         assert updated is not None
         assert updated.merchant is None
 
     async def test_mixed_found_and_not_found(self) -> None:
         svc, acct_svc, _, uow = _make_services()
         acct_id, user_id = await _create_account(acct_svc)
-        txn = _create_transaction(uow, acct_id, user_id)
+        txn = await _create_transaction(uow, acct_id, user_id)
         missing_id = uuid.uuid4()
 
         cmd = BulkUpdateTransactions(
@@ -535,9 +535,9 @@ class TestBulkUpdate:
     async def test_deleted_transaction_fails(self) -> None:
         svc, acct_svc, _, uow = _make_services()
         acct_id, user_id = await _create_account(acct_svc)
-        txn = _create_transaction(uow, acct_id, user_id)
+        txn = await _create_transaction(uow, acct_id, user_id)
         txn.soft_delete(user_id, _retention())
-        uow.transactions.save(txn)
+        await uow.transactions.save(txn)
 
         cmd = BulkUpdateTransactions(
             account_id=acct_id,
@@ -560,8 +560,8 @@ class TestBulkDelete:
     async def test_successful_bulk_delete(self) -> None:
         svc, acct_svc, _, uow = _make_services()
         acct_id, user_id = await _create_account(acct_svc)
-        txn1 = _create_transaction(uow, acct_id, user_id)
-        txn2 = _create_transaction(uow, acct_id, user_id)
+        txn1 = await _create_transaction(uow, acct_id, user_id)
+        txn2 = await _create_transaction(uow, acct_id, user_id)
 
         cmd = BulkDeleteTransactions(
             account_id=acct_id,
@@ -572,15 +572,17 @@ class TestBulkDelete:
 
         assert result.success_count == 2
         assert result.failure_count == 0
-        assert uow.transactions.find_by_id(txn1.id) is None  # deleted (not found without flag)
-        assert uow.transactions.find_by_id(txn1.id, include_deleted=True) is not None
+        assert (
+            await uow.transactions.find_by_id(txn1.id) is None
+        )  # deleted (not found without flag)
+        assert await uow.transactions.find_by_id(txn1.id, include_deleted=True) is not None
 
     async def test_already_deleted_fails(self) -> None:
         svc, acct_svc, _, uow = _make_services()
         acct_id, user_id = await _create_account(acct_svc)
-        txn = _create_transaction(uow, acct_id, user_id)
+        txn = await _create_transaction(uow, acct_id, user_id)
         txn.soft_delete(user_id, _retention())
-        uow.transactions.save(txn)
+        await uow.transactions.save(txn)
 
         cmd = BulkDeleteTransactions(
             account_id=acct_id,
@@ -611,7 +613,7 @@ class TestBulkDelete:
         acct_id, user_id = await _create_account(acct_svc)
 
         # Create parent and split it
-        parent = _create_transaction(
+        parent = await _create_transaction(
             uow,
             acct_id,
             user_id,
@@ -626,9 +628,9 @@ class TestBulkDelete:
             ],
             user_id,
         )
-        uow.transactions.save(parent)
+        await uow.transactions.save(parent)
         for child in children:
-            uow.transactions.save(child)
+            await uow.transactions.save(child)
 
         cmd = BulkDeleteTransactions(
             account_id=acct_id,
@@ -642,7 +644,7 @@ class TestBulkDelete:
         assert result.total_count == 1
         # Children also deleted
         for child in children:
-            c = uow.transactions.find_by_id(child.id, include_deleted=True)
+            c = await uow.transactions.find_by_id(child.id, include_deleted=True)
             assert c is not None
             assert c.is_deleted()
 
@@ -656,9 +658,9 @@ class TestBulkRecover:
     async def test_successful_bulk_recover(self) -> None:
         svc, acct_svc, _, uow = _make_services()
         acct_id, user_id = await _create_account(acct_svc)
-        txn = _create_transaction(uow, acct_id, user_id)
+        txn = await _create_transaction(uow, acct_id, user_id)
         txn.soft_delete(user_id, _retention())
-        uow.transactions.save(txn)
+        await uow.transactions.save(txn)
 
         cmd = BulkRecoverTransactions(
             account_id=acct_id,
@@ -668,23 +670,23 @@ class TestBulkRecover:
         result = await svc.bulk_recover_transactions(cmd)
 
         assert result.success_count == 1
-        recovered = uow.transactions.find_by_id(txn.id)
+        recovered = await uow.transactions.find_by_id(txn.id)
         assert recovered is not None
         assert not recovered.is_deleted()
 
     async def test_requires_owner_permission(self) -> None:
         svc, acct_svc, _, uow = _make_services()
         acct_id, owner_id = await _create_account(acct_svc)
-        txn = _create_transaction(uow, acct_id, owner_id)
+        txn = await _create_transaction(uow, acct_id, owner_id)
         txn.soft_delete(owner_id, _retention())
-        uow.transactions.save(txn)
+        await uow.transactions.save(txn)
 
         # Share with editor
         editor_id = uuid.uuid4()
-        account = uow.accounts.find_by_id(acct_id)
+        account = await uow.accounts.find_by_id(acct_id)
         assert account is not None
         account.share_with(editor_id, PermissionLevel.EDITOR, granted_by=owner_id)
-        uow.accounts.save(account)
+        await uow.accounts.save(account)
 
         cmd = BulkRecoverTransactions(
             account_id=acct_id,
@@ -697,7 +699,7 @@ class TestBulkRecover:
     async def test_non_deleted_fails(self) -> None:
         svc, acct_svc, _, uow = _make_services()
         acct_id, user_id = await _create_account(acct_svc)
-        txn = _create_transaction(uow, acct_id, user_id)
+        txn = await _create_transaction(uow, acct_id, user_id)
 
         cmd = BulkRecoverTransactions(
             account_id=acct_id,
@@ -714,7 +716,7 @@ class TestBulkRecover:
         acct_id, user_id = await _create_account(acct_svc)
 
         # Create parent and split
-        parent = _create_transaction(
+        parent = await _create_transaction(
             uow,
             acct_id,
             user_id,
@@ -729,17 +731,17 @@ class TestBulkRecover:
             ],
             user_id,
         )
-        uow.transactions.save(parent)
+        await uow.transactions.save(parent)
         for child in children:
-            uow.transactions.save(child)
+            await uow.transactions.save(child)
 
         # Delete all
         retention = _retention()
         parent.soft_delete(user_id, retention)
-        uow.transactions.save(parent)
+        await uow.transactions.save(parent)
         for child in children:
             child.soft_delete(user_id, retention)
-            uow.transactions.save(child)
+            await uow.transactions.save(child)
 
         # Try to recover just a child
         cmd = BulkRecoverTransactions(
@@ -756,7 +758,7 @@ class TestBulkRecover:
         svc, acct_svc, _, uow = _make_services()
         acct_id, user_id = await _create_account(acct_svc)
 
-        parent = _create_transaction(
+        parent = await _create_transaction(
             uow,
             acct_id,
             user_id,
@@ -771,17 +773,17 @@ class TestBulkRecover:
             ],
             user_id,
         )
-        uow.transactions.save(parent)
+        await uow.transactions.save(parent)
         for child in children:
-            uow.transactions.save(child)
+            await uow.transactions.save(child)
 
         # Delete all
         retention = _retention()
         for child in children:
             child.soft_delete(user_id, retention)
-            uow.transactions.save(child)
+            await uow.transactions.save(child)
         parent.soft_delete(user_id, retention)
-        uow.transactions.save(parent)
+        await uow.transactions.save(parent)
 
         # Recover parent
         cmd = BulkRecoverTransactions(
@@ -796,7 +798,7 @@ class TestBulkRecover:
         assert result.total_count == 1
         # Children also recovered
         for child in children:
-            c = uow.transactions.find_by_id(child.id)
+            c = await uow.transactions.find_by_id(child.id)
             assert c is not None
             assert not c.is_deleted()
 
@@ -817,15 +819,15 @@ class TestBulkRecover:
     async def test_deleted_account_raises(self) -> None:
         svc, acct_svc, _, uow = _make_services()
         acct_id, user_id = await _create_account(acct_svc)
-        txn = _create_transaction(uow, acct_id, user_id)
+        txn = await _create_transaction(uow, acct_id, user_id)
         txn.soft_delete(user_id, _retention())
-        uow.transactions.save(txn)
+        await uow.transactions.save(txn)
 
         # Delete account
-        account = uow.accounts.find_by_id(acct_id, include_deleted=True)
+        account = await uow.accounts.find_by_id(acct_id, include_deleted=True)
         assert account is not None
         account.soft_delete(deleted_by=user_id, retention=_retention())
-        uow.accounts.save(account)
+        await uow.accounts.save(account)
 
         cmd = BulkRecoverTransactions(
             account_id=acct_id,

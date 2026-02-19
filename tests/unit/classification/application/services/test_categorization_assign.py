@@ -39,13 +39,13 @@ def _make_deps() -> tuple[
     return service, uow, port
 
 
-def _create_taxonomy(
+async def _create_taxonomy(
     uow: FakeClassificationUnitOfWork, owner_id: uuid.UUID = _OWNER_ID
 ) -> Taxonomy:
     taxonomy = Taxonomy.create(owner_id=owner_id, name=TaxonomyName("Category"))
     # Drain creation events
     taxonomy.collect_events()
-    uow.taxonomies.save(taxonomy)
+    await uow.taxonomies.save(taxonomy)
     return taxonomy
 
 
@@ -83,7 +83,7 @@ def _make_cmd(**overrides: Any) -> AssignTerm:
 class TestAssignTermHappyPath:
     async def test_assign_creates_assignment(self) -> None:
         service, uow, port = _make_deps()
-        taxonomy = _create_taxonomy(uow)
+        taxonomy = await _create_taxonomy(uow)
         term_id = _add_term(taxonomy)
         tx_id = _setup_transaction(port)
 
@@ -97,20 +97,20 @@ class TestAssignTermHappyPath:
 
     async def test_assign_persists_to_repository(self) -> None:
         service, uow, port = _make_deps()
-        taxonomy = _create_taxonomy(uow)
+        taxonomy = await _create_taxonomy(uow)
         term_id = _add_term(taxonomy)
         tx_id = _setup_transaction(port)
 
         cmd = _make_cmd(transaction_id=tx_id, term_id=term_id)
         assignment = await service.assign_term(cmd)
 
-        found = uow.assignments.find_by_transaction_and_taxonomy(tx_id, taxonomy.id)
+        found = await uow.assignments.find_by_transaction_and_taxonomy(tx_id, taxonomy.id)
         assert found is not None
         assert found.id == assignment.id
 
     async def test_assign_commits_uow(self) -> None:
         service, uow, port = _make_deps()
-        taxonomy = _create_taxonomy(uow)
+        taxonomy = await _create_taxonomy(uow)
         term_id = _add_term(taxonomy)
         tx_id = _setup_transaction(port)
 
@@ -123,7 +123,7 @@ class TestAssignTermHappyPath:
 class TestAssignTermReassignment:
     async def test_reassignment_replaces_old_assignment(self) -> None:
         service, uow, port = _make_deps()
-        taxonomy = _create_taxonomy(uow)
+        taxonomy = await _create_taxonomy(uow)
         term_a_id = _add_term(taxonomy, "Food")
         term_b_id = _add_term(taxonomy, "Transport")
         tx_id = _setup_transaction(port)
@@ -135,7 +135,7 @@ class TestAssignTermReassignment:
         )
 
         # Only one assignment for this transaction + taxonomy
-        assignments = uow.assignments.find_by_transaction(tx_id)
+        assignments = await uow.assignments.find_by_transaction(tx_id)
         assert len(assignments) == 1
         assert assignments[0].term_id == term_b_id
         assert assignments[0].id == new_assignment.id
@@ -147,11 +147,11 @@ class TestAssignTermMultiTaxonomy:
 
         tax_a = Taxonomy.create(owner_id=_OWNER_ID, name=TaxonomyName("Category"))
         tax_a.collect_events()
-        uow.taxonomies.save(tax_a)
+        await uow.taxonomies.save(tax_a)
 
         tax_b = Taxonomy.create(owner_id=_OWNER_ID, name=TaxonomyName("Project"))
         tax_b.collect_events()
-        uow.taxonomies.save(tax_b)
+        await uow.taxonomies.save(tax_b)
 
         term_a_id = _add_term(tax_a, "Food")
         term_b_id = _add_term(tax_b, "Personal")
@@ -161,7 +161,7 @@ class TestAssignTermMultiTaxonomy:
         await service.assign_term(_make_cmd(transaction_id=tx_id, term_id=term_a_id))
         await service.assign_term(_make_cmd(transaction_id=tx_id, term_id=term_b_id))
 
-        assignments = uow.assignments.find_by_transaction(tx_id)
+        assignments = await uow.assignments.find_by_transaction(tx_id)
         assert len(assignments) == 2
         taxonomy_ids = {a.taxonomy_id for a in assignments}
         assert taxonomy_ids == {tax_a.id, tax_b.id}
@@ -170,7 +170,7 @@ class TestAssignTermMultiTaxonomy:
 class TestAssignTermSplitChildIndependence:
     async def test_parent_and_child_categorized_independently(self) -> None:
         service, uow, port = _make_deps()
-        taxonomy = _create_taxonomy(uow)
+        taxonomy = await _create_taxonomy(uow)
         term_food = _add_term(taxonomy, "Food")
         term_transport = _add_term(taxonomy, "Transport")
 
@@ -180,8 +180,8 @@ class TestAssignTermSplitChildIndependence:
         await service.assign_term(_make_cmd(transaction_id=parent_tx, term_id=term_food))
         await service.assign_term(_make_cmd(transaction_id=child_tx, term_id=term_transport))
 
-        parent_assignments = uow.assignments.find_by_transaction(parent_tx)
-        child_assignments = uow.assignments.find_by_transaction(child_tx)
+        parent_assignments = await uow.assignments.find_by_transaction(parent_tx)
+        child_assignments = await uow.assignments.find_by_transaction(child_tx)
 
         assert len(parent_assignments) == 1
         assert parent_assignments[0].term_id == term_food
@@ -192,7 +192,7 @@ class TestAssignTermSplitChildIndependence:
 class TestAssignTermErrors:
     async def test_transaction_not_active_raises(self) -> None:
         service, uow, port = _make_deps()
-        taxonomy = _create_taxonomy(uow)
+        taxonomy = await _create_taxonomy(uow)
         term_id = _add_term(taxonomy)
 
         cmd = _make_cmd(term_id=term_id)
@@ -202,7 +202,7 @@ class TestAssignTermErrors:
 
     async def test_no_editor_permission_raises(self) -> None:
         service, uow, port = _make_deps()
-        taxonomy = _create_taxonomy(uow)
+        taxonomy = await _create_taxonomy(uow)
         term_id = _add_term(taxonomy)
         tx_id = uuid.uuid4()
         port.add_active_transaction(tx_id, _ACCOUNT_ID)
@@ -223,7 +223,7 @@ class TestAssignTermErrors:
 
     async def test_term_not_found_raises(self) -> None:
         service, uow, port = _make_deps()
-        taxonomy = _create_taxonomy(uow)
+        taxonomy = await _create_taxonomy(uow)
         tx_id = _setup_transaction(port)
 
         # Use a random term_id that doesn't exist in taxonomy.
@@ -240,7 +240,7 @@ class TestAssignTermErrors:
 
     async def test_taxonomy_soft_deleted_raises(self) -> None:
         service, uow, port = _make_deps()
-        taxonomy = _create_taxonomy(uow)
+        taxonomy = await _create_taxonomy(uow)
         _add_term(taxonomy, "Food")
         tx_id = _setup_transaction(port)
 

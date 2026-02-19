@@ -74,7 +74,7 @@ class AuthenticationService:
 
     # -- Private Helpers -------------------------------------------------------
 
-    def _issue_tokens(
+    async def _issue_tokens(
         self,
         user: User,
         portal_context: PortalContext,
@@ -82,17 +82,17 @@ class AuthenticationService:
     ) -> LoginResult:
         """Shared token issuance logic for login and social login flows."""
         # Enforce session limit
-        active_count = self._uow.refresh_tokens.count_active_families(user.id)
+        active_count = await self._uow.refresh_tokens.count_active_families(user.id)
         if active_count >= MAX_CONCURRENT_SESSIONS:
-            active_families = self._uow.refresh_tokens.find_active_families_by_user(user.id)
+            active_families = await self._uow.refresh_tokens.find_active_families_by_user(user.id)
             if active_families:
-                self._uow.refresh_tokens.revoke_family(active_families[0])
+                await self._uow.refresh_tokens.revoke_family(active_families[0])
 
         # Create token family
         family_id = uuid.uuid4()
 
         # Generate refresh token
-        raw_refresh, refresh_hash = self._token_service.generate_refresh_token()
+        raw_refresh, refresh_hash = await self._token_service.generate_refresh_token()
 
         # Create RefreshToken entity
         now = datetime.now(UTC)
@@ -123,10 +123,10 @@ class AuthenticationService:
         )
 
         # Sign access token
-        access_token_str = self._token_service.sign_access_token(claims)
+        access_token_str = await self._token_service.sign_access_token(claims)
 
         # Persist
-        self._uow.refresh_tokens.add(refresh_token)
+        await self._uow.refresh_tokens.add(refresh_token)
 
         return LoginResult(
             access_token=access_token_str,
@@ -144,7 +144,7 @@ class AuthenticationService:
             portal_context = PortalContext(cmd.portal_context)
 
             # 2. Find user by email
-            user = self._uow.users.find_by_email(EmailAddress(cmd.email))
+            user = await self._uow.users.find_by_email(EmailAddress(cmd.email))
             if user is None:
                 raise AuthenticationFailedError()
 
@@ -152,7 +152,7 @@ class AuthenticationService:
             user.validate_can_authenticate()
 
             # 4. Verify password
-            if user.password is None or not self._hasher.verify(
+            if user.password is None or not await self._hasher.verify(
                 cmd.password, user.password.hashed_value
             ):
                 raise AuthenticationFailedError()
@@ -161,7 +161,7 @@ class AuthenticationService:
             user.record_login()
 
             # 6. Issue tokens
-            result = self._issue_tokens(user, portal_context)
+            result = await self._issue_tokens(user, portal_context)
 
             await self._uow.commit()
             return result
@@ -179,7 +179,7 @@ class AuthenticationService:
             email = EmailAddress(claims.email)
 
             # 3. Look up user by email
-            user = self._uow.users.find_by_email(email)
+            user = await self._uow.users.find_by_email(email)
 
             if user is not None:
                 return await self._handle_existing_user_social_login(user, claims)
@@ -221,7 +221,7 @@ class AuthenticationService:
 
         # Issue tokens
         portal_context = PortalContext("REGULAR")
-        result = self._issue_tokens(user, portal_context)
+        result = await self._issue_tokens(user, portal_context)
 
         await self._uow.commit()
         return result
@@ -239,11 +239,11 @@ class AuthenticationService:
             auth_provider=auth_provider,
         )
 
-        self._uow.users.add(user)
+        await self._uow.users.add(user)
 
         # Issue tokens
         portal_context = PortalContext("REGULAR")
-        result = self._issue_tokens(user, portal_context, is_new_registration=True)
+        result = await self._issue_tokens(user, portal_context, is_new_registration=True)
 
         await self._uow.commit()
         return result
@@ -253,7 +253,7 @@ class AuthenticationService:
     async def link_provider(self, user_id: uuid.UUID, claims: OidcClaims) -> None:
         """Link a social provider to an authenticated user's account."""
         async with self._uow:
-            user = self._uow.users.find_by_id(user_id)
+            user = await self._uow.users.find_by_id(user_id)
             if user is None:
                 raise AuthenticationFailedError()
 
@@ -275,7 +275,7 @@ class AuthenticationService:
         """Remove a linked provider from a user's account."""
         async with self._uow:
             user_id = uuid.UUID(cmd.user_id)
-            user = self._uow.users.find_by_id(user_id)
+            user = await self._uow.users.find_by_id(user_id)
             if user is None:
                 raise AuthenticationFailedError()
 
@@ -290,7 +290,7 @@ class AuthenticationService:
         """Set username for a socially registered user (onboarding)."""
         async with self._uow:
             user_id = uuid.UUID(cmd.user_id)
-            user = self._uow.users.find_by_id(user_id)
+            user = await self._uow.users.find_by_id(user_id)
             if user is None:
                 raise AuthenticationFailedError()
 
@@ -300,7 +300,7 @@ class AuthenticationService:
             username = Username(cmd.username)
 
             # Check uniqueness (including 90-day deleted window)
-            if self._uow.users.exists_by_username(username, include_recently_deleted=True):
+            if await self._uow.users.exists_by_username(username, include_recently_deleted=True):
                 raise UsernameAlreadyExistsError()
 
             user.update_username(username)
@@ -313,10 +313,10 @@ class AuthenticationService:
         """Refresh an access token using a refresh token with rotation."""
         async with self._uow:
             # 1. Hash the presented token
-            token_hash = self._token_service.hash_token(cmd.refresh_token)
+            token_hash = await self._token_service.hash_token(cmd.refresh_token)
 
             # 2. Look up by hash
-            token = self._uow.refresh_tokens.find_by_hash(token_hash)
+            token = await self._uow.refresh_tokens.find_by_hash(token_hash)
             if token is None:
                 raise InvalidTokenError()
 
@@ -326,7 +326,7 @@ class AuthenticationService:
 
             # 4. Check revoked -> THEFT DETECTED
             if token.is_revoked():
-                self._uow.refresh_tokens.revoke_family(token.family_id)
+                await self._uow.refresh_tokens.revoke_family(token.family_id)
                 await self._uow.commit()
                 raise InvalidTokenError()
 
@@ -334,11 +334,11 @@ class AuthenticationService:
             token.revoke()
 
             # 6. Generate new refresh token in same family
-            raw_refresh, refresh_hash = self._token_service.generate_refresh_token()
+            raw_refresh, refresh_hash = await self._token_service.generate_refresh_token()
             now = datetime.now(UTC)
 
             # 7. Look up user for current claims
-            user = self._uow.users.find_by_id(token.user_id)
+            user = await self._uow.users.find_by_id(token.user_id)
             if user is None:
                 raise InvalidTokenError()
 
@@ -370,10 +370,10 @@ class AuthenticationService:
             )
 
             # 9. Sign new access token
-            access_token_str = self._token_service.sign_access_token(claims)
+            access_token_str = await self._token_service.sign_access_token(claims)
 
             # 10. Persist new refresh token
-            self._uow.refresh_tokens.add(new_refresh_token)
+            await self._uow.refresh_tokens.add(new_refresh_token)
 
             await self._uow.commit()
 
@@ -388,8 +388,8 @@ class AuthenticationService:
     async def logout(self, cmd: LogoutSession) -> None:
         """Revoke a single session's refresh token."""
         async with self._uow:
-            token_hash = self._token_service.hash_token(cmd.refresh_token)
-            token = self._uow.refresh_tokens.find_by_hash(token_hash)
+            token_hash = await self._token_service.hash_token(cmd.refresh_token)
+            token = await self._uow.refresh_tokens.find_by_hash(token_hash)
 
             if token is not None and token.is_active():
                 token.revoke()
@@ -400,7 +400,7 @@ class AuthenticationService:
         """Revoke all sessions for a user."""
         async with self._uow:
             user_id = uuid.UUID(cmd.user_id)
-            self._uow.refresh_tokens.revoke_all_for_user(user_id)
+            await self._uow.refresh_tokens.revoke_all_for_user(user_id)
             await self._uow.commit()
 
     # -- Password Reset --------------------------------------------------------
@@ -408,7 +408,7 @@ class AuthenticationService:
     async def request_password_reset(self, cmd: RequestPasswordReset) -> str | None:
         """Request a password reset token. Returns raw token or None."""
         async with self._uow:
-            user = self._uow.users.find_by_email(EmailAddress(cmd.email))
+            user = await self._uow.users.find_by_email(EmailAddress(cmd.email))
             if user is None:
                 return None
 
@@ -416,10 +416,10 @@ class AuthenticationService:
                 return None
 
             # Invalidate existing reset tokens
-            self._uow.password_reset_tokens.invalidate_existing_for_user(user.id)
+            await self._uow.password_reset_tokens.invalidate_existing_for_user(user.id)
 
             # Generate reset token (reuses same generation mechanism)
-            raw_token, token_hash = self._token_service.generate_refresh_token()
+            raw_token, token_hash = await self._token_service.generate_refresh_token()
 
             # Create PasswordResetToken entity
             reset_token = PasswordResetToken(
@@ -428,7 +428,7 @@ class AuthenticationService:
             )
 
             # Persist
-            self._uow.password_reset_tokens.add(reset_token)
+            await self._uow.password_reset_tokens.add(reset_token)
 
             await self._uow.commit()
             return raw_token
@@ -437,8 +437,8 @@ class AuthenticationService:
         """Submit a new password using a reset token."""
         async with self._uow:
             # 1. Hash and find token
-            token_hash = self._token_service.hash_token(cmd.reset_token)
-            reset_token = self._uow.password_reset_tokens.find_by_hash(token_hash)
+            token_hash = await self._token_service.hash_token(cmd.reset_token)
+            reset_token = await self._uow.password_reset_tokens.find_by_hash(token_hash)
 
             if reset_token is None:
                 raise InvalidTokenError()
@@ -453,15 +453,15 @@ class AuthenticationService:
             validate_password_strength(cmd.new_password)
 
             # 3. Find user
-            user = self._uow.users.find_by_id(reset_token.user_id)
+            user = await self._uow.users.find_by_id(reset_token.user_id)
             if user is None:
                 raise InvalidTokenError()
 
             # 4. Validate not in history
-            validate_not_in_history(cmd.new_password, user.password_history, self._hasher)
+            await validate_not_in_history(cmd.new_password, user.password_history, self._hasher)
 
             # 5. Hash new password
-            new_hash = self._hasher.hash(cmd.new_password)
+            new_hash = await self._hasher.hash(cmd.new_password)
             old_hash = user.password.hashed_value if user.password else ""
 
             # 6. Reset password on user
@@ -471,7 +471,7 @@ class AuthenticationService:
             reset_token.mark_used()
 
             # 8. Revoke all refresh tokens
-            self._uow.refresh_tokens.revoke_all_for_user(user.id)
+            await self._uow.refresh_tokens.revoke_all_for_user(user.id)
 
             await self._uow.commit()
 
@@ -481,10 +481,10 @@ class AuthenticationService:
         """Verify an access token and return the authenticated identity."""
         async with self._uow:
             # 1. Verify token
-            claims = self._token_service.verify_access_token(token)
+            claims = await self._token_service.verify_access_token(token)
 
             # 2. Look up user
-            user = self._uow.users.find_by_id(claims.sub)
+            user = await self._uow.users.find_by_id(claims.sub)
             if user is None:
                 raise InvalidTokenError()
 

@@ -8,10 +8,10 @@ class PasswordHasher(Protocol):
     (e.g., Argon2id).
     """
 
-    def hash(self, plaintext: str) -> str:
+    async def hash(self, plaintext: str) -> str:
         """Hash a plaintext password, return hash string."""
         ...
 
-    def verify(self, plaintext: str, hashed: str) -> bool:
+    async def verify(self, plaintext: str, hashed: str) -> bool:
         """Verify plaintext against a stored hash."""
         ...

@@ -48,7 +48,7 @@ class TestCreateTaxonomy:
         cmd = _make_cmd()
         taxonomy = await service.create_taxonomy(cmd)
 
-        found = uow.taxonomies.find_by_id(taxonomy.id)
+        found = await uow.taxonomies.find_by_id(taxonomy.id)
         assert found is not None
         assert found.id == taxonomy.id
 

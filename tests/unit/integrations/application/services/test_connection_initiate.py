@@ -71,7 +71,7 @@ class TestInitiateConnection:
 
         assert connection.status == ConnectionStatus.PENDING
         assert uow.committed is True
-        stored = uow.bank_connections.find_by_id(connection.id)
+        stored = await uow.bank_connections.find_by_id(connection.id)
         assert stored is not None
 
     async def test_returns_connection_with_correct_attributes(

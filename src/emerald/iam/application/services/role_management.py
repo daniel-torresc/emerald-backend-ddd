@@ -32,11 +32,11 @@ class RoleManagementService:
             if actor_id == target_id:
                 raise InsufficientPermissionsError("Cannot promote yourself")
 
-            actor = self._uow.users.find_by_id(actor_id)
+            actor = await self._uow.users.find_by_id(actor_id)
             if actor is None:
                 raise NotFoundError("Actor user not found")
 
-            target = self._uow.users.find_by_id(target_id)
+            target = await self._uow.users.find_by_id(target_id)
             if target is None:
                 raise NotFoundError("Target user not found")
 
@@ -53,11 +53,11 @@ class RoleManagementService:
             if actor_id == target_id:
                 raise InsufficientPermissionsError("Cannot demote yourself")
 
-            actor = self._uow.users.find_by_id(actor_id)
+            actor = await self._uow.users.find_by_id(actor_id)
             if actor is None:
                 raise NotFoundError("Actor user not found")
 
-            target = self._uow.users.find_by_id(target_id)
+            target = await self._uow.users.find_by_id(target_id)
             if target is None:
                 raise NotFoundError("Target user not found")
 
@@ -73,7 +73,7 @@ class RoleManagementService:
             if actor_id == target_id:
                 raise InsufficientPermissionsError("Cannot grant permissions to yourself")
 
-            actor = self._uow.users.find_by_id(actor_id)
+            actor = await self._uow.users.find_by_id(actor_id)
             if actor is None:
                 raise NotFoundError("Actor user not found")
 
@@ -83,7 +83,7 @@ class RoleManagementService:
             permission = AdminPermission(AdminPermissionType(cmd.permission))
             has_perm = actor.has_admin_permission(permission)
 
-            target = self._uow.users.find_by_id(target_id)
+            target = await self._uow.users.find_by_id(target_id)
             if target is None:
                 raise NotFoundError("Target user not found")
 
@@ -99,11 +99,11 @@ class RoleManagementService:
             if actor_id == target_id:
                 raise InsufficientPermissionsError("Cannot revoke permissions from yourself")
 
-            actor = self._uow.users.find_by_id(actor_id)
+            actor = await self._uow.users.find_by_id(actor_id)
             if actor is None:
                 raise NotFoundError("Actor user not found")
 
-            target = self._uow.users.find_by_id(target_id)
+            target = await self._uow.users.find_by_id(target_id)
             if target is None:
                 raise NotFoundError("Target user not found")
 

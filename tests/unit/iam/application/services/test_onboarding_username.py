@@ -54,7 +54,7 @@ class TestSetOnboardingUsername:
     ) -> None:
         """Social-only user (username=None) -> set username succeeds."""
         user = _make_social_user()
-        uow.users.add(user)
+        await uow.users.add(user)
         user.collect_events()
 
         cmd = SetOnboardingUsername(user_id=str(user.id), username="mynewname")
@@ -80,10 +80,10 @@ class TestSetOnboardingUsername:
             id=uuid.uuid4(),
             created_by=uuid.uuid4(),
         )
-        uow.users.add(existing)
+        await uow.users.add(existing)
 
         user = _make_social_user()
-        uow.users.add(user)
+        await uow.users.add(user)
 
         cmd = SetOnboardingUsername(user_id=str(user.id), username="takenname")
 
@@ -95,7 +95,7 @@ class TestSetOnboardingUsername:
     ) -> None:
         """Too short username -> InvalidUsernameError."""
         user = _make_social_user()
-        uow.users.add(user)
+        await uow.users.add(user)
 
         cmd = SetOnboardingUsername(user_id=str(user.id), username="a")
 
@@ -116,7 +116,7 @@ class TestSetOnboardingUsername:
     ) -> None:
         """User with existing username -> update_username still works."""
         user = _make_social_user(username=Username("oldname"))
-        uow.users.add(user)
+        await uow.users.add(user)
         user.collect_events()
 
         cmd = SetOnboardingUsername(user_id=str(user.id), username="newname123")

@@ -44,7 +44,7 @@ class BankConnectionService:
         """Create a new bank connection in PENDING status."""
         async with self._uow:
             provider_name = ProviderName(cmd.provider_name)
-            existing = self._uow.bank_connections.find_by_account_and_provider(
+            existing = await self._uow.bank_connections.find_by_account_and_provider(
                 cmd.account_id, provider_name
             )
             if existing is not None:
@@ -58,14 +58,14 @@ class BankConnectionService:
                 external_account_id=cmd.external_account_id,
                 created_by=cmd.user_id,
             )
-            self._uow.bank_connections.save(connection)
+            await self._uow.bank_connections.save(connection)
             await self._uow.commit()
             return connection
 
     async def activate_connection(self, cmd: ActivateBankConnection) -> None:
         """Activate a bank connection with credentials."""
         async with self._uow:
-            connection = self._load_connection(cmd.connection_id)
+            connection = await self._load_connection(cmd.connection_id)
             credentials = ProviderCredentials(cmd.credentials_token)
             connection.activate(credentials)
             await self._uow.commit()
@@ -73,15 +73,15 @@ class BankConnectionService:
     async def disconnect_connection(self, cmd: DisconnectBankConnection) -> None:
         """Disconnect a bank connection and hard-delete pending transactions."""
         async with self._uow:
-            connection = self._load_connection(cmd.connection_id)
+            connection = await self._load_connection(cmd.connection_id)
             connection.disconnect(cmd.disconnected_by)
-            self._uow.pending_transactions.delete_by_connection(cmd.connection_id)
+            await self._uow.pending_transactions.delete_by_connection(cmd.connection_id)
             await self._uow.commit()
 
     async def reconnect_connection(self, cmd: ReconnectBankConnection) -> None:
         """Reconnect a bank connection with new credentials."""
         async with self._uow:
-            connection = self._load_connection(cmd.connection_id)
+            connection = await self._load_connection(cmd.connection_id)
             credentials = ProviderCredentials(cmd.credentials_token)
             connection.reconnect(credentials)
             await self._uow.commit()
@@ -89,7 +89,7 @@ class BankConnectionService:
     async def update_sync_frequency(self, cmd: UpdateSyncFrequency) -> None:
         """Update the sync frequency for a connection."""
         async with self._uow:
-            connection = self._load_connection(cmd.connection_id)
+            connection = await self._load_connection(cmd.connection_id)
             if connection.user_id != cmd.updated_by:
                 raise InvalidConnectionStateError(
                     "Only the connection owner can update sync frequency"
@@ -100,43 +100,43 @@ class BankConnectionService:
     async def soft_delete_connection(self, cmd: SoftDeleteBankConnection) -> None:
         """Soft-delete a bank connection."""
         async with self._uow:
-            connection = self._load_connection(cmd.connection_id, include_deleted=True)
-            retention = self._retention.get_effective_retention(
+            connection = await self._load_connection(cmd.connection_id, include_deleted=True)
+            retention = await self._retention.get_effective_retention(
                 DeletableEntityType.BANK_CONNECTION, cmd.deleted_by
             )
             connection.soft_delete(cmd.deleted_by, retention, cmd.reason)
-            self._uow.pending_transactions.delete_by_connection(cmd.connection_id)
+            await self._uow.pending_transactions.delete_by_connection(cmd.connection_id)
             await self._uow.commit()
 
     async def get_connections_for_user(self, user_id: uuid.UUID) -> list[BankConnection]:
         """Get all connections for a user."""
         async with self._uow:
-            return self._uow.bank_connections.find_by_user(user_id)
+            return await self._uow.bank_connections.find_by_user(user_id)
 
     async def get_connections_for_account(self, account_id: uuid.UUID) -> list[BankConnection]:
         """Get all connections for an account."""
         async with self._uow:
-            return self._uow.bank_connections.find_by_account(account_id)
+            return await self._uow.bank_connections.find_by_account(account_id)
 
     async def get_sync_history(
         self, connection_id: uuid.UUID, limit: int = 10
     ) -> list[SyncHistory]:
         """Get sync history for a connection."""
         async with self._uow:
-            return self._uow.sync_history.find_by_connection(connection_id, limit=limit)
+            return await self._uow.sync_history.find_by_connection(connection_id, limit=limit)
 
     async def get_pending_for_review(self, connection_id: uuid.UUID) -> list[PendingTransaction]:
         """Get pending transactions needing review for a connection."""
         async with self._uow:
-            return self._uow.pending_transactions.find_needs_review(connection_id)
+            return await self._uow.pending_transactions.find_needs_review(connection_id)
 
     # -- Private helpers -------------------------------------------------------
 
-    def _load_connection(
+    async def _load_connection(
         self, connection_id: uuid.UUID, include_deleted: bool = False
     ) -> BankConnection:
         """Load a bank connection or raise BankConnectionNotFoundError."""
-        connection = self._uow.bank_connections.find_by_id(
+        connection = await self._uow.bank_connections.find_by_id(
             connection_id, include_deleted=include_deleted
         )
         if connection is None:

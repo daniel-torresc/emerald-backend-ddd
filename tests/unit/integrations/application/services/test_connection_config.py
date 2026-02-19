@@ -49,7 +49,7 @@ def account_id() -> uuid.UUID:
     return uuid.uuid4()
 
 
-def _create_connection(
+async def _create_connection(
     uow: FakeIntegrationsUnitOfWork,
     user_id: uuid.UUID,
     account_id: uuid.UUID,
@@ -64,7 +64,7 @@ def _create_connection(
     )
     conn.activate(ProviderCredentials("test-token"))
     conn.collect_events()
-    uow.bank_connections.save(conn)
+    await uow.bank_connections.save(conn)
     return conn
 
 
@@ -76,12 +76,12 @@ class TestUpdateSyncFrequency:
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn = _create_connection(uow, user_id, account_id)
+        conn = await _create_connection(uow, user_id, account_id)
         cmd = UpdateSyncFrequency(connection_id=conn.id, hours=12, updated_by=user_id)
 
         await service.update_sync_frequency(cmd)
 
-        updated = uow.bank_connections.find_by_id(conn.id)
+        updated = await uow.bank_connections.find_by_id(conn.id)
         assert updated is not None
         assert updated.sync_frequency_hours == 12
         assert uow.committed is True
@@ -93,7 +93,7 @@ class TestUpdateSyncFrequency:
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn = _create_connection(uow, user_id, account_id)
+        conn = await _create_connection(uow, user_id, account_id)
         other_user = uuid.uuid4()
         cmd = UpdateSyncFrequency(connection_id=conn.id, hours=12, updated_by=other_user)
 
@@ -107,7 +107,7 @@ class TestUpdateSyncFrequency:
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn = _create_connection(uow, user_id, account_id)
+        conn = await _create_connection(uow, user_id, account_id)
 
         cmd_too_low = UpdateSyncFrequency(connection_id=conn.id, hours=0, updated_by=user_id)
         with pytest.raises(InvalidSyncFrequencyError):
