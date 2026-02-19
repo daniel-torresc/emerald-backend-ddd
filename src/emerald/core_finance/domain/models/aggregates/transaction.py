@@ -16,6 +16,7 @@ from emerald.core_finance.domain.events.transaction_events import (
     TransactionCardLinked,
     TransactionCardUnlinked,
     TransactionCreated,
+    TransactionMarkedForReview,
     TransactionRecovered,
     TransactionReviewed,
     TransactionSoftDeleted,
@@ -165,6 +166,7 @@ class Transaction(SoftDeletableMixin, AuditableMixin, AggregateRoot):
             parent_transaction_id=parent_transaction_id,
             external_id=external_id,
             created_by=created_by,
+            version=1,
         )
         txn._register_event(
             TransactionCreated(
@@ -332,6 +334,13 @@ class Transaction(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         self.review_status = ReviewStatus.TO_REVIEW
         self._set_updated_by(updated_by)
         self._touch()
+        self._register_event(
+            TransactionMarkedForReview(
+                aggregate_id=self.id,
+                account_id=self._account_id,
+                updated_by=updated_by,
+            )
+        )
 
     # -- Lifecycle overrides ---------------------------------------------------
 

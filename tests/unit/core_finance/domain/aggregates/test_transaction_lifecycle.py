@@ -140,13 +140,13 @@ class TestTransactionRecover:
 class TestLifecycleVersionTracking:
     def test_soft_delete_does_not_increment_version(self) -> None:
         tx = _make_transaction()
-        assert tx.version == 0
+        assert tx.version == 1
         tx.soft_delete(uuid.uuid4(), _default_retention())
-        assert tx.version == 0
+        assert tx.version == 1
 
     def test_recover_does_not_increment_version(self) -> None:
         tx = _make_transaction()
         tx.soft_delete(uuid.uuid4(), _default_retention())
         tx.collect_events()
         tx.recover()
-        assert tx.version == 0
+        assert tx.version == 1

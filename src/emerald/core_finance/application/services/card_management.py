@@ -73,6 +73,7 @@ class CardManagementService:
                 card_number=card_number,
                 expiry_month=cmd.expiry_month,
                 expiry_year=cmd.expiry_year,
+                created_by=cmd.requesting_user_id,
                 card_network=card_network,
                 credit_limit=credit_limit,
                 issuing_institution=cmd.issuing_institution,
@@ -90,7 +91,7 @@ class CardManagementService:
         async with self._uow:
             account = await self._load_account(cmd.account_id)
             self._verify_editor(account, cmd.requesting_user_id)
-            account.update_card_name(cmd.card_id, cmd.card_name)
+            account.update_card_name(cmd.card_id, cmd.card_name, cmd.requesting_user_id)
             await self._uow.accounts.save(account)
             await self._uow.commit()
 
@@ -100,7 +101,7 @@ class CardManagementService:
             account = await self._load_account(cmd.account_id)
             self._verify_editor(account, cmd.requesting_user_id)
             network = CardNetwork[cmd.card_network] if cmd.card_network is not None else None
-            account.update_card_network(cmd.card_id, network)
+            account.update_card_network(cmd.card_id, network, cmd.requesting_user_id)
             await self._uow.accounts.save(account)
             await self._uow.commit()
 
@@ -109,7 +110,9 @@ class CardManagementService:
         async with self._uow:
             account = await self._load_account(cmd.account_id)
             self._verify_editor(account, cmd.requesting_user_id)
-            account.update_card_expiry(cmd.card_id, cmd.expiry_month, cmd.expiry_year)
+            account.update_card_expiry(
+                cmd.card_id, cmd.expiry_month, cmd.expiry_year, cmd.requesting_user_id
+            )
             await self._uow.accounts.save(account)
             await self._uow.commit()
 
@@ -124,7 +127,7 @@ class CardManagementService:
                 currency = Currency[cmd.credit_limit_currency]
                 credit_limit = Money(cmd.credit_limit_amount, currency)
 
-            account.update_card_credit_limit(cmd.card_id, credit_limit)
+            account.update_card_credit_limit(cmd.card_id, credit_limit, cmd.requesting_user_id)
             await self._uow.accounts.save(account)
             await self._uow.commit()
 
@@ -133,7 +136,9 @@ class CardManagementService:
         async with self._uow:
             account = await self._load_account(cmd.account_id)
             self._verify_editor(account, cmd.requesting_user_id)
-            account.update_card_issuing_institution(cmd.card_id, cmd.issuing_institution)
+            account.update_card_issuing_institution(
+                cmd.card_id, cmd.issuing_institution, cmd.requesting_user_id
+            )
             await self._uow.accounts.save(account)
             await self._uow.commit()
 
@@ -142,7 +147,7 @@ class CardManagementService:
         async with self._uow:
             account = await self._load_account(cmd.account_id)
             self._verify_editor(account, cmd.requesting_user_id)
-            account.update_card_notes(cmd.card_id, cmd.notes)
+            account.update_card_notes(cmd.card_id, cmd.notes, cmd.requesting_user_id)
             await self._uow.accounts.save(account)
             await self._uow.commit()
 

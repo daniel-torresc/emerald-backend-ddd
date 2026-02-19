@@ -101,13 +101,12 @@ class AuthenticationService:
             if user.system_role == SystemRole.SUPERADMIN
             else portal_context.refresh_ttl
         )
-        refresh_token = RefreshToken(
+        refresh_token = RefreshToken.create(
             user_id=user.id,
             token_hash=refresh_hash,
             family_id=family_id,
             portal_context=portal_context,
             expires_at=now + refresh_ttl,
-            created_at=now,
         )
 
         # Build AccessTokenClaims
@@ -348,13 +347,12 @@ class AuthenticationService:
                 if user.system_role == SystemRole.SUPERADMIN
                 else token.portal_context.refresh_ttl
             )
-            new_refresh_token = RefreshToken(
+            new_refresh_token = RefreshToken.create(
                 user_id=token.user_id,
                 token_hash=refresh_hash,
                 family_id=token.family_id,
                 portal_context=token.portal_context,
                 expires_at=now + refresh_ttl,
-                created_at=now,
             )
 
             # 8. Build new AccessTokenClaims
@@ -422,7 +420,7 @@ class AuthenticationService:
             raw_token, token_hash = await self._token_service.generate_refresh_token()
 
             # Create PasswordResetToken entity
-            reset_token = PasswordResetToken(
+            reset_token = PasswordResetToken.create(
                 user_id=user.id,
                 token_hash=token_hash,
             )

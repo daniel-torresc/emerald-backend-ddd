@@ -52,6 +52,9 @@ def _make_account(owner_id: uuid.UUID | None = None, **overrides: Any) -> Accoun
     return account
 
 
+_ACTOR = uuid.uuid4()
+
+
 def _make_card(account_id: uuid.UUID, **overrides: Any) -> Card:
     defaults: dict[str, Any] = {
         "account_id": account_id,
@@ -60,6 +63,7 @@ def _make_card(account_id: uuid.UUID, **overrides: Any) -> Card:
         "card_number": CardNumber("4111111111111111"),
         "expiry_month": 12,
         "expiry_year": 2030,
+        "created_by": _ACTOR,
     }
     defaults.update(overrides)
     return Card.create(**defaults)
@@ -284,7 +288,7 @@ class TestUpdateCardMethods:
         account.add_card(card)
         account.collect_events()
 
-        account.update_card_name(card.id, "New Name")
+        account.update_card_name(card.id, "New Name", _ACTOR)
         assert card.card_name == "New Name"
         events = account.collect_events()
         assert len(events) == 1
@@ -298,7 +302,7 @@ class TestUpdateCardMethods:
         account.add_card(card)
         account.collect_events()
 
-        account.update_card_network(card.id, CardNetwork.VISA)
+        account.update_card_network(card.id, CardNetwork.VISA, _ACTOR)
         assert card.card_network == CardNetwork.VISA
         events = account.collect_events()
         assert len(events) == 1
@@ -312,7 +316,7 @@ class TestUpdateCardMethods:
         account.add_card(card)
         account.collect_events()
 
-        account.update_card_expiry(card.id, 6, 2028)
+        account.update_card_expiry(card.id, 6, 2028, _ACTOR)
         assert card.expiry_month == 6
         assert card.expiry_year == 2028
         events = account.collect_events()
@@ -328,7 +332,7 @@ class TestUpdateCardMethods:
         account.collect_events()
 
         new_limit = Money(Decimal("3000.00"), Currency.USD)
-        account.update_card_credit_limit(card.id, new_limit)
+        account.update_card_credit_limit(card.id, new_limit, _ACTOR)
         assert card.credit_limit == new_limit
         events = account.collect_events()
         assert len(events) == 1
@@ -344,7 +348,7 @@ class TestUpdateCardMethods:
 
         eur_limit = Money(Decimal("3000.00"), Currency.EUR)
         with pytest.raises(CurrencyMismatchError):
-            account.update_card_credit_limit(card.id, eur_limit)
+            account.update_card_credit_limit(card.id, eur_limit, _ACTOR)
 
     def test_update_card_issuing_institution(self) -> None:
         account = _make_account()
@@ -352,7 +356,7 @@ class TestUpdateCardMethods:
         account.add_card(card)
         account.collect_events()
 
-        account.update_card_issuing_institution(card.id, "Chase Bank")
+        account.update_card_issuing_institution(card.id, "Chase Bank", _ACTOR)
         assert card.issuing_institution == "Chase Bank"
         events = account.collect_events()
         assert len(events) == 1
@@ -366,7 +370,7 @@ class TestUpdateCardMethods:
         account.add_card(card)
         account.collect_events()
 
-        account.update_card_notes(card.id, "Primary card for groceries")
+        account.update_card_notes(card.id, "Primary card for groceries", _ACTOR)
         assert card.notes == "Primary card for groceries"
         events = account.collect_events()
         assert len(events) == 1
@@ -383,7 +387,7 @@ class TestUpdateCardMethods:
         account.collect_events()
 
         with pytest.raises(CardNotFoundError):
-            account.update_card_name(card.id, "Should Fail")
+            account.update_card_name(card.id, "Should Fail", _ACTOR)
 
 
 # ---------------------------------------------------------------------------

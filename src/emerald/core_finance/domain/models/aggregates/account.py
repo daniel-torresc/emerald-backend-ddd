@@ -3,7 +3,11 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from emerald.core_finance.domain.constants import MAX_CARDS_PER_ACCOUNT, MAX_SHARES_PER_ACCOUNT
+from emerald.core_finance.domain.constants import (
+    MAX_ACCOUNT_NOTES_LENGTH,
+    MAX_CARDS_PER_ACCOUNT,
+    MAX_SHARES_PER_ACCOUNT,
+)
 from emerald.core_finance.domain.events.account_events import (
     AccountCreated,
     AccountRecovered,
@@ -58,8 +62,6 @@ from emerald.shared_kernel.domain.models.base.soft_deletable import SoftDeletabl
 from emerald.shared_kernel.domain.models.value_objects.currency import Currency
 from emerald.shared_kernel.domain.models.value_objects.money import Money
 from emerald.shared_kernel.domain.models.value_objects.retention_period import RetentionPeriod
-
-_MAX_NOTES_LENGTH = 500
 
 
 class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
@@ -124,9 +126,9 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
                 f"Opening balance currency {opening_balance.currency.code} "
                 f"does not match account currency {currency.code}"
             )
-        if notes is not None and len(notes) > _MAX_NOTES_LENGTH:
+        if notes is not None and len(notes) > MAX_ACCOUNT_NOTES_LENGTH:
             raise InvalidAccountNotesError(
-                f"Account notes must not exceed {_MAX_NOTES_LENGTH} characters"
+                f"Account notes must not exceed {MAX_ACCOUNT_NOTES_LENGTH} characters"
             )
 
         account_id = uuid.uuid4()
@@ -206,9 +208,9 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
 
     def update_notes(self, notes: str | None, updated_by: uuid.UUID) -> None:
         """Update account notes."""
-        if notes is not None and len(notes) > _MAX_NOTES_LENGTH:
+        if notes is not None and len(notes) > MAX_ACCOUNT_NOTES_LENGTH:
             raise InvalidAccountNotesError(
-                f"Account notes must not exceed {_MAX_NOTES_LENGTH} characters"
+                f"Account notes must not exceed {MAX_ACCOUNT_NOTES_LENGTH} characters"
             )
         self.notes = notes
         self._touch()
@@ -514,10 +516,10 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
 
     # -- Card update methods ---------------------------------------------------
 
-    def update_card_name(self, card_id: uuid.UUID, name: str) -> None:
+    def update_card_name(self, card_id: uuid.UUID, name: str, updated_by: uuid.UUID) -> None:
         """Update a card's display name."""
         card = self._get_active_card(card_id)
-        card.update_name(name)
+        card.update_name(name, updated_by)
         self._register_event(
             CardUpdated(
                 aggregate_id=self.id,
@@ -528,10 +530,12 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         )
         self._touch()
 
-    def update_card_network(self, card_id: uuid.UUID, network: CardNetwork | None) -> None:
+    def update_card_network(
+        self, card_id: uuid.UUID, network: CardNetwork | None, updated_by: uuid.UUID
+    ) -> None:
         """Update a card's network."""
         card = self._get_active_card(card_id)
-        card.update_network(network)
+        card.update_network(network, updated_by)
         self._register_event(
             CardUpdated(
                 aggregate_id=self.id,
@@ -542,10 +546,12 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         )
         self._touch()
 
-    def update_card_expiry(self, card_id: uuid.UUID, month: int, year: int) -> None:
+    def update_card_expiry(
+        self, card_id: uuid.UUID, month: int, year: int, updated_by: uuid.UUID
+    ) -> None:
         """Update a card's expiration date."""
         card = self._get_active_card(card_id)
-        card.update_expiry(month, year)
+        card.update_expiry(month, year, updated_by)
         self._register_event(
             CardUpdated(
                 aggregate_id=self.id,
@@ -556,7 +562,9 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         )
         self._touch()
 
-    def update_card_credit_limit(self, card_id: uuid.UUID, credit_limit: Money | None) -> None:
+    def update_card_credit_limit(
+        self, card_id: uuid.UUID, credit_limit: Money | None, updated_by: uuid.UUID
+    ) -> None:
         """Update a card's credit limit. Validates currency match."""
         card = self._get_active_card(card_id)
         if credit_limit is not None and credit_limit.currency != self._currency:
@@ -564,7 +572,7 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
                 f"Credit limit currency {credit_limit.currency.code} "
                 f"does not match account currency {self._currency.code}"
             )
-        card.update_credit_limit(credit_limit)
+        card.update_credit_limit(credit_limit, updated_by)
         self._register_event(
             CardUpdated(
                 aggregate_id=self.id,
@@ -575,10 +583,12 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         )
         self._touch()
 
-    def update_card_issuing_institution(self, card_id: uuid.UUID, institution: str | None) -> None:
+    def update_card_issuing_institution(
+        self, card_id: uuid.UUID, institution: str | None, updated_by: uuid.UUID
+    ) -> None:
         """Update a card's issuing institution."""
         card = self._get_active_card(card_id)
-        card.update_issuing_institution(institution)
+        card.update_issuing_institution(institution, updated_by)
         self._register_event(
             CardUpdated(
                 aggregate_id=self.id,
@@ -589,10 +599,12 @@ class Account(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         )
         self._touch()
 
-    def update_card_notes(self, card_id: uuid.UUID, notes: str | None) -> None:
+    def update_card_notes(
+        self, card_id: uuid.UUID, notes: str | None, updated_by: uuid.UUID
+    ) -> None:
         """Update a card's notes."""
         card = self._get_active_card(card_id)
-        card.update_notes(notes)
+        card.update_notes(notes, updated_by)
         self._register_event(
             CardUpdated(
                 aggregate_id=self.id,

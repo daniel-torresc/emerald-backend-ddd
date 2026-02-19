@@ -383,15 +383,15 @@ class TestSplitVersionTracking:
     def test_split_increments_version(self) -> None:
         tx = _make_transaction()
         tx.collect_events()
-        assert tx.version == 0
+        assert tx.version == 1
         splits = _make_splits_for(tx.amount, [Decimal("-50.00"), Decimal("-35.00")])
         tx.split(splits, uuid.uuid4())
-        assert tx.version == 1
+        assert tx.version == 2
 
     def test_join_splits_increments_version(self) -> None:
         tx = _make_transaction()
         splits = _make_splits_for(tx.amount, [Decimal("-50.00"), Decimal("-35.00")])
         tx.split(splits, uuid.uuid4())
-        assert tx.version == 1
-        tx.join_splits(child_count=2)
         assert tx.version == 2
+        tx.join_splits(child_count=2)
+        assert tx.version == 3

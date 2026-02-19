@@ -18,13 +18,14 @@ from emerald.core_finance.domain.exceptions.card_exceptions import (
 from emerald.core_finance.domain.models.value_objects.card_network import CardNetwork
 from emerald.core_finance.domain.models.value_objects.card_number import CardNumber
 from emerald.core_finance.domain.models.value_objects.card_type import CardType
+from emerald.shared_kernel.domain.models.base.auditable import AuditableMixin
 from emerald.shared_kernel.domain.models.base.entity import Entity
 from emerald.shared_kernel.domain.models.base.soft_deletable import SoftDeletableMixin
 from emerald.shared_kernel.domain.models.base.timestamped import TimestampedMixin
 from emerald.shared_kernel.domain.models.value_objects.money import Money
 
 
-class Card(SoftDeletableMixin, TimestampedMixin, Entity):
+class Card(SoftDeletableMixin, AuditableMixin, TimestampedMixin, Entity):
     """A payment card linked to a financial account (child entity of Account)."""
 
     def __init__(
@@ -79,6 +80,7 @@ class Card(SoftDeletableMixin, TimestampedMixin, Entity):
         card_number: CardNumber,
         expiry_month: int,
         expiry_year: int,
+        created_by: uuid.UUID,
         card_network: CardNetwork | None = None,
         credit_limit: Money | None = None,
         issuing_institution: str | None = None,
@@ -106,46 +108,53 @@ class Card(SoftDeletableMixin, TimestampedMixin, Entity):
             credit_limit=credit_limit,
             issuing_institution=issuing_institution,
             notes=notes,
+            created_by=created_by,
         )
 
     # -- Update methods --------------------------------------------------------
 
-    def update_name(self, card_name: str) -> None:
+    def update_name(self, card_name: str, updated_by: uuid.UUID) -> None:
         """Update card display name."""
         self.card_name = self._validate_name(card_name)
+        self._set_updated_by(updated_by)
         self._touch()
 
-    def update_network(self, card_network: CardNetwork | None) -> None:
+    def update_network(self, card_network: CardNetwork | None, updated_by: uuid.UUID) -> None:
         """Update card network."""
         self.card_network = card_network
+        self._set_updated_by(updated_by)
         self._touch()
 
-    def update_expiry(self, month: int, year: int) -> None:
+    def update_expiry(self, month: int, year: int, updated_by: uuid.UUID) -> None:
         """Update expiration date."""
         self._validate_expiry(month, year)
         self.expiry_month = month
         self.expiry_year = year
+        self._set_updated_by(updated_by)
         self._touch()
 
-    def update_credit_limit(self, credit_limit: Money | None) -> None:
+    def update_credit_limit(self, credit_limit: Money | None, updated_by: uuid.UUID) -> None:
         """Update credit limit. Currency match validated by Account."""
         if credit_limit is not None:
             self._validate_credit_limit(credit_limit)
         self.credit_limit = credit_limit
+        self._set_updated_by(updated_by)
         self._touch()
 
-    def update_issuing_institution(self, institution: str | None) -> None:
+    def update_issuing_institution(self, institution: str | None, updated_by: uuid.UUID) -> None:
         """Update issuing institution name."""
         if institution is not None:
             institution = self._validate_issuing_institution(institution)
         self.issuing_institution = institution
+        self._set_updated_by(updated_by)
         self._touch()
 
-    def update_notes(self, notes: str | None) -> None:
+    def update_notes(self, notes: str | None, updated_by: uuid.UUID) -> None:
         """Update card notes."""
         if notes is not None:
             notes = self._validate_notes(notes)
         self.notes = notes
+        self._set_updated_by(updated_by)
         self._touch()
 
     # -- Private validation helpers --------------------------------------------

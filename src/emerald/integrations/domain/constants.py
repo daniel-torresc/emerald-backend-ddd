@@ -17,6 +17,7 @@ MAX_PROVIDER_NAME_LENGTH = 50
 
 # Normalized transaction limits
 MAX_DESCRIPTION_LENGTH = 500
+# Aligned with core_finance MAX_MERCHANT_LENGTH by convention (not by import).
 MAX_MERCHANT_LENGTH = 200
 
 # Deduplication

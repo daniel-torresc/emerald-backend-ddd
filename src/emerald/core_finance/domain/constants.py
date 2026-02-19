@@ -1,6 +1,7 @@
 """Domain constants for the Core Finance bounded context."""
 
 MAX_SHARES_PER_ACCOUNT: int = 20
+MAX_ACCOUNT_NOTES_LENGTH: int = 500
 
 # Transaction string field limits
 MAX_ORIGINAL_DESCRIPTION_LENGTH: int = 500

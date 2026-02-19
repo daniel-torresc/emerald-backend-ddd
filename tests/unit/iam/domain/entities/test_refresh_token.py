@@ -45,6 +45,48 @@ class TestRefreshTokenConstruction:
         assert token.id == custom_id
 
 
+class TestRefreshTokenCreateFactory:
+    def test_create_generates_uuid(self):
+        token = RefreshToken.create(
+            user_id=uuid.uuid4(),
+            token_hash="hashed:value",
+            family_id=uuid.uuid4(),
+            portal_context=PortalContext.REGULAR,
+            expires_at=datetime.now(UTC) + timedelta(hours=1),
+        )
+        assert isinstance(token.id, uuid.UUID)
+
+    def test_create_sets_created_at(self):
+        before = datetime.now(UTC)
+        token = RefreshToken.create(
+            user_id=uuid.uuid4(),
+            token_hash="hashed:value",
+            family_id=uuid.uuid4(),
+            portal_context=PortalContext.REGULAR,
+            expires_at=datetime.now(UTC) + timedelta(hours=1),
+        )
+        after = datetime.now(UTC)
+        assert before <= token.created_at <= after
+
+    def test_create_sets_all_fields(self):
+        user_id = uuid.uuid4()
+        family_id = uuid.uuid4()
+        expires = datetime.now(UTC) + timedelta(hours=2)
+        token = RefreshToken.create(
+            user_id=user_id,
+            token_hash="hashed:abc",
+            family_id=family_id,
+            portal_context=PortalContext.ADMIN,
+            expires_at=expires,
+        )
+        assert token.user_id == user_id
+        assert token.token_hash == "hashed:abc"
+        assert token.family_id == family_id
+        assert token.portal_context == PortalContext.ADMIN
+        assert token.expires_at == expires
+        assert token.revoked_at is None
+
+
 class TestRefreshTokenRevoke:
     def test_revoke_sets_revoked_at(self):
         token = _make_token()

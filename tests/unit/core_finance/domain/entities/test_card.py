@@ -22,6 +22,8 @@ from emerald.shared_kernel.domain.models.value_objects.retention_period import (
     RetentionUnit,
 )
 
+_ACTOR = uuid.uuid4()
+
 
 def _make_card(**overrides: Any) -> Card:
     defaults: dict[str, Any] = {
@@ -31,6 +33,7 @@ def _make_card(**overrides: Any) -> Card:
         "card_number": CardNumber("4111111111111111"),
         "expiry_month": 12,
         "expiry_year": 2030,
+        "created_by": _ACTOR,
     }
     defaults.update(overrides)
     return Card.create(**defaults)
@@ -53,6 +56,7 @@ class TestCardCreate:
         assert card.credit_limit is None
         assert card.issuing_institution is None
         assert card.notes is None
+        assert card.created_by == _ACTOR
 
     def test_creates_with_all_optional_fields(self) -> None:
         limit = Money(Decimal("5000.00"), Currency.USD)
@@ -137,74 +141,116 @@ class TestCardCreateValidation:
             _make_card(notes="A" * 501)
 
 
+class TestCardAuditTrail:
+    def test_created_by_set_on_create(self) -> None:
+        card = _make_card()
+        assert card.created_by == _ACTOR
+
+    def test_updated_by_set_after_update_name(self) -> None:
+        card = _make_card()
+        actor = uuid.uuid4()
+        card.update_name("New Name", actor)
+        assert card.updated_by == actor
+
+    def test_updated_by_set_after_update_network(self) -> None:
+        card = _make_card()
+        actor = uuid.uuid4()
+        card.update_network(CardNetwork.VISA, actor)
+        assert card.updated_by == actor
+
+    def test_updated_by_set_after_update_expiry(self) -> None:
+        card = _make_card()
+        actor = uuid.uuid4()
+        card.update_expiry(1, 2031, actor)
+        assert card.updated_by == actor
+
+    def test_updated_by_set_after_update_credit_limit(self) -> None:
+        card = _make_card()
+        actor = uuid.uuid4()
+        card.update_credit_limit(Money(Decimal("5000.00"), Currency.USD), actor)
+        assert card.updated_by == actor
+
+    def test_updated_by_set_after_update_issuing_institution(self) -> None:
+        card = _make_card()
+        actor = uuid.uuid4()
+        card.update_issuing_institution("Chase", actor)
+        assert card.updated_by == actor
+
+    def test_updated_by_set_after_update_notes(self) -> None:
+        card = _make_card()
+        actor = uuid.uuid4()
+        card.update_notes("Some notes", actor)
+        assert card.updated_by == actor
+
+
 class TestCardUpdateName:
     def test_updates_name(self) -> None:
         card = _make_card()
-        card.update_name("New Name")
+        card.update_name("New Name", _ACTOR)
         assert card.card_name == "New Name"
 
     def test_empty_name_raises(self) -> None:
         card = _make_card()
         with pytest.raises(InvalidCardDataError, match="empty"):
-            card.update_name("")
+            card.update_name("", _ACTOR)
 
     def test_name_exceeding_max_raises(self) -> None:
         card = _make_card()
         with pytest.raises(InvalidCardDataError, match="exceed"):
-            card.update_name("A" * 101)
+            card.update_name("A" * 101, _ACTOR)
 
     def test_trims_name(self) -> None:
         card = _make_card()
-        card.update_name("  Trimmed  ")
+        card.update_name("  Trimmed  ", _ACTOR)
         assert card.card_name == "Trimmed"
 
     def test_touches_updated_at(self) -> None:
         card = _make_card()
         old_updated_at = card.updated_at
-        card.update_name("New Name")
+        card.update_name("New Name", _ACTOR)
         assert card.updated_at >= old_updated_at
 
 
 class TestCardUpdateNetwork:
     def test_accepts_card_network(self) -> None:
         card = _make_card()
-        card.update_network(CardNetwork.MASTERCARD)
+        card.update_network(CardNetwork.MASTERCARD, _ACTOR)
         assert card.card_network == CardNetwork.MASTERCARD
 
     def test_accepts_none(self) -> None:
         card = _make_card(card_network=CardNetwork.VISA)
-        card.update_network(None)
+        card.update_network(None, _ACTOR)
         assert card.card_network is None
 
     def test_touches_updated_at(self) -> None:
         card = _make_card()
         old_updated_at = card.updated_at
-        card.update_network(CardNetwork.VISA)
+        card.update_network(CardNetwork.VISA, _ACTOR)
         assert card.updated_at >= old_updated_at
 
 
 class TestCardUpdateExpiry:
     def test_updates_expiry(self) -> None:
         card = _make_card(expiry_month=6, expiry_year=2028)
-        card.update_expiry(11, 2031)
+        card.update_expiry(11, 2031, _ACTOR)
         assert card.expiry_month == 11
         assert card.expiry_year == 2031
 
     def test_invalid_month_raises(self) -> None:
         card = _make_card()
         with pytest.raises(InvalidCardDataError, match="month"):
-            card.update_expiry(0, 2030)
+            card.update_expiry(0, 2030, _ACTOR)
 
     def test_invalid_year_raises(self) -> None:
         card = _make_card()
         too_old_year = datetime.now(UTC).year - 11
         with pytest.raises(InvalidCardDataError, match="year"):
-            card.update_expiry(6, too_old_year)
+            card.update_expiry(6, too_old_year, _ACTOR)
 
     def test_touches_updated_at(self) -> None:
         card = _make_card()
         old_updated_at = card.updated_at
-        card.update_expiry(1, 2031)
+        card.update_expiry(1, 2031, _ACTOR)
         assert card.updated_at >= old_updated_at
 
 
@@ -212,79 +258,79 @@ class TestCardUpdateCreditLimit:
     def test_updates_with_money(self) -> None:
         card = _make_card()
         limit = Money(Decimal("10000.00"), Currency.USD)
-        card.update_credit_limit(limit)
+        card.update_credit_limit(limit, _ACTOR)
         assert card.credit_limit == limit
 
     def test_clears_with_none(self) -> None:
         card = _make_card(credit_limit=Money(Decimal("5000.00"), Currency.USD))
-        card.update_credit_limit(None)
+        card.update_credit_limit(None, _ACTOR)
         assert card.credit_limit is None
 
     def test_positive_validation_raises(self) -> None:
         card = _make_card()
         with pytest.raises(InvalidCreditLimitError, match="positive"):
-            card.update_credit_limit(Money(Decimal("0"), Currency.USD))
+            card.update_credit_limit(Money(Decimal("0"), Currency.USD), _ACTOR)
 
     def test_touches_updated_at(self) -> None:
         card = _make_card()
         old_updated_at = card.updated_at
-        card.update_credit_limit(Money(Decimal("3000.00"), Currency.USD))
+        card.update_credit_limit(Money(Decimal("3000.00"), Currency.USD), _ACTOR)
         assert card.updated_at >= old_updated_at
 
 
 class TestCardUpdateIssuingInstitution:
     def test_updates_institution(self) -> None:
         card = _make_card()
-        card.update_issuing_institution("Wells Fargo")
+        card.update_issuing_institution("Wells Fargo", _ACTOR)
         assert card.issuing_institution == "Wells Fargo"
 
     def test_clears_with_none(self) -> None:
         card = _make_card(issuing_institution="Chase Bank")
-        card.update_issuing_institution(None)
+        card.update_issuing_institution(None, _ACTOR)
         assert card.issuing_institution is None
 
     def test_exceeding_max_raises(self) -> None:
         card = _make_card()
         with pytest.raises(InvalidCardDataError, match="exceed"):
-            card.update_issuing_institution("A" * 201)
+            card.update_issuing_institution("A" * 201, _ACTOR)
 
     def test_trims_institution(self) -> None:
         card = _make_card()
-        card.update_issuing_institution("  Wells Fargo  ")
+        card.update_issuing_institution("  Wells Fargo  ", _ACTOR)
         assert card.issuing_institution == "Wells Fargo"
 
     def test_touches_updated_at(self) -> None:
         card = _make_card()
         old_updated_at = card.updated_at
-        card.update_issuing_institution("Bank of America")
+        card.update_issuing_institution("Bank of America", _ACTOR)
         assert card.updated_at >= old_updated_at
 
 
 class TestCardUpdateNotes:
     def test_updates_notes(self) -> None:
         card = _make_card()
-        card.update_notes("My notes")
+        card.update_notes("My notes", _ACTOR)
         assert card.notes == "My notes"
 
     def test_clears_with_none(self) -> None:
         card = _make_card(notes="Old notes")
-        card.update_notes(None)
+        card.update_notes(None, _ACTOR)
         assert card.notes is None
 
     def test_exceeding_max_raises(self) -> None:
         card = _make_card()
         with pytest.raises(InvalidCardDataError, match="exceed"):
-            card.update_notes("A" * 501)
+            card.update_notes("A" * 501, _ACTOR)
 
     def test_trims_notes(self) -> None:
         card = _make_card()
-        card.update_notes("  My notes  ")
+        card.update_notes("  My notes  ", _ACTOR)
         assert card.notes == "My notes"
 
     def test_touches_updated_at(self) -> None:
         card = _make_card()
         old_updated_at = card.updated_at
-        card.update_notes("New notes")
+        card.update_notes("New notes", _ACTOR)
         assert card.updated_at >= old_updated_at
 
 

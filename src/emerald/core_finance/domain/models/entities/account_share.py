@@ -14,6 +14,9 @@ class AccountShare(Entity):
 
     Managed inside the Account aggregate — not an aggregate root.
     Uses explicit fields rather than mixins for revocation tracking.
+
+    Design note: intentionally lacks a ``create()`` factory method because it is a
+    child entity created exclusively by its parent aggregate (``Account.share_with()``).
     """
 
     def __init__(

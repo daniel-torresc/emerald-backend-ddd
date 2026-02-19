@@ -32,6 +32,7 @@ from emerald.iam.application.services import (
     SuperadminProvisioningService,
     UserRegistrationService,
 )
+from emerald.iam.domain.constants import MAX_PASSWORD_HISTORY
 from emerald.iam.domain.events import (
     AdminPermissionGranted,
     AdminPermissionRevoked,
@@ -43,7 +44,9 @@ from emerald.iam.domain.events import (
     UserDemotedToUser,
     UserEmailChanged,
     UserEvent,
+    UserFullNameUpdated,
     UserLoggedIn,
+    UserPreferencesUpdated,
     UserPromotedToAdmin,
     UserRecovered,
     UserRegistered,
@@ -130,6 +133,8 @@ __all__ = [
     "UserPreferences",
     "UserStatus",
     "Username",
+    # Domain Constants
+    "MAX_PASSWORD_HISTORY",
     # Domain Services
     "validate_not_in_history",
     "validate_password_strength",
@@ -144,7 +149,9 @@ __all__ = [
     "UserDemotedToUser",
     "UserEmailChanged",
     "UserEvent",
+    "UserFullNameUpdated",
     "UserLoggedIn",
+    "UserPreferencesUpdated",
     "UserPromotedToAdmin",
     "UserRecovered",
     "UserRegistered",

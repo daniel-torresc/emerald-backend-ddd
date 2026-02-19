@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import uuid
 from datetime import UTC, datetime
 
@@ -6,7 +8,12 @@ from emerald.shared_kernel.domain.models.base.entity import Entity
 
 
 class RefreshToken(Entity):
-    """Server-side refresh token for obtaining new access tokens. Stored hashed."""
+    """Server-side refresh token for obtaining new access tokens. Stored hashed.
+
+    Design note: intentionally does NOT use TimestampedMixin. Refresh tokens are
+    lightweight entities with a create-then-revoke lifecycle — they do not need
+    ``updated_at`` tracking.
+    """
 
     def __init__(
         self,
@@ -28,6 +35,26 @@ class RefreshToken(Entity):
         self.expires_at = expires_at
         self.created_at = created_at if created_at is not None else datetime.now(UTC)
         self.revoked_at = revoked_at
+
+    @classmethod
+    def create(
+        cls,
+        user_id: uuid.UUID,
+        token_hash: str,
+        family_id: uuid.UUID,
+        portal_context: PortalContext,
+        expires_at: datetime,
+    ) -> RefreshToken:
+        """Create a new RefreshToken with auto-generated id and created_at."""
+        return cls(
+            id=uuid.uuid4(),
+            user_id=user_id,
+            token_hash=token_hash,
+            family_id=family_id,
+            portal_context=portal_context,
+            expires_at=expires_at,
+            created_at=datetime.now(UTC),
+        )
 
     def revoke(self) -> None:
         """Revoke this token. Irreversible."""

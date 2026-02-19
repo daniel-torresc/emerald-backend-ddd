@@ -6,6 +6,7 @@ from decimal import Decimal
 from typing import Any
 
 from emerald.core_finance.domain.events.transaction_events import (
+    TransactionMarkedForReview,
     TransactionReviewed,
 )
 from emerald.core_finance.domain.models.aggregates.transaction import Transaction
@@ -90,6 +91,20 @@ class TestMarkForReview:
         tx.mark_for_review(uuid.uuid4())
         assert tx.review_status == ReviewStatus.TO_REVIEW
 
+    def test_emits_transaction_marked_for_review(self) -> None:
+        tx = _make_transaction()
+        tx.mark_as_reviewed(uuid.uuid4())
+        tx.collect_events()
+        actor = uuid.uuid4()
+        tx.mark_for_review(actor)
+        events = tx.collect_events()
+        assert len(events) == 1
+        event = events[0]
+        assert isinstance(event, TransactionMarkedForReview)
+        assert event.aggregate_id == tx.id
+        assert event.account_id == tx.account_id
+        assert event.updated_by == actor
+
     def test_already_to_review_is_noop(self) -> None:
         tx = _make_transaction()
         assert tx.review_status == ReviewStatus.TO_REVIEW
@@ -110,13 +125,13 @@ class TestMarkForReview:
 class TestReviewVersionTracking:
     def test_mark_as_reviewed_increments_version(self) -> None:
         tx = _make_transaction()
-        assert tx.version == 0
-        tx.mark_as_reviewed(uuid.uuid4())
         assert tx.version == 1
+        tx.mark_as_reviewed(uuid.uuid4())
+        assert tx.version == 2
 
     def test_mark_as_reviewed_idempotent_no_version_increment(self) -> None:
         tx = _make_transaction()
         tx.mark_as_reviewed(uuid.uuid4())
-        assert tx.version == 1
+        assert tx.version == 2
         tx.mark_as_reviewed(uuid.uuid4())
-        assert tx.version == 1
+        assert tx.version == 2
