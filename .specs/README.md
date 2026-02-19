@@ -189,6 +189,15 @@ Per the roadmap, Phase 1 covers specs **001 through 015** plus **016** (audit lo
 
 Specs 017-020 (multi-currency, search, notifications, export) can be implemented incrementally alongside or after Phase 1 core.
 
+### Pre-Infrastructure Cleanup (Specs 032-035)
+
+| #   | Spec | Layer | Summary | Dependencies |
+|-----|------|-------|---------|--------------|
+| 032 | [Async Repository Ports](./spec-032-async-repository-ports/) | Domain/Application | Convert all sync repository/port Protocol methods to async | 021 |
+| 033 | [Domain Event Dispatch](./spec-033-domain-event-dispatch/) | Application | Event collection in UoW, dispatcher protocol, handler registration | 001-015 |
+| 034 | [Cascade Completeness](./spec-034-cascade-completeness/) | Application | Account→Transaction cascade, hard-delete cascades, cascade audit | 033 |
+| 035 | [Domain Model Consistency](./spec-035-domain-model-consistency/) | Domain | Version init, embedded constants, missing events, frozen VOs, error codes | 001-015 |
+
 ## Phase 3 (Infrastructure) Coverage
 
 Specs **021 through 031** implement the full infrastructure layer:
