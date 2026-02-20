@@ -9,7 +9,9 @@ from emerald.iam.domain.events import (
     EmailVerified,
     PasswordChanged,
     UserEmailChanged,
+    UserFullNameUpdated,
     UserLoggedIn,
+    UserPreferencesUpdated,
     UserRecovered,
     UserRegistered,
     UserSoftDeleted,
@@ -229,6 +231,25 @@ class TestProfileUpdates:
         user.update_full_name(None)
         assert user.full_name is None
 
+    def test_update_full_name_emits_event(self):
+        user = _make_active_user()
+        user.update_full_name("John Doe")
+        events = user.collect_events()
+        assert len(events) == 1
+        assert isinstance(events[0], UserFullNameUpdated)
+        assert events[0].new_name == "John Doe"
+        assert events[0].aggregate_id == user.id
+
+    def test_update_full_name_clear_emits_event_with_none(self):
+        user = _make_active_user()
+        user.update_full_name("John Doe")
+        user.collect_events()
+        user.update_full_name(None)
+        events = user.collect_events()
+        assert len(events) == 1
+        assert isinstance(events[0], UserFullNameUpdated)
+        assert events[0].new_name is None
+
     def test_update_full_name_from_suspended_raises(self):
         user = _make_active_user()
         user.suspend()
@@ -245,6 +266,19 @@ class TestProfileUpdates:
         )
         user.update_preferences(prefs)
         assert user.preferences == prefs
+
+    def test_update_preferences_emits_event(self):
+        user = _make_active_user()
+        from emerald.shared_kernel.domain.models import Currency
+
+        prefs = UserPreferences(
+            timezone="America/New_York", locale="es-MX", display_currency=Currency.EUR
+        )
+        user.update_preferences(prefs)
+        events = user.collect_events()
+        assert len(events) == 1
+        assert isinstance(events[0], UserPreferencesUpdated)
+        assert events[0].aggregate_id == user.id
 
     def test_update_preferences_from_suspended_raises(self):
         user = _make_active_user()
@@ -694,13 +728,13 @@ class TestUserVersionControl:
             username=Username("testuser"),
             hashed_password=HashedPassword("hash123"),
         )
-        assert user.version == 0
+        assert user.version == 1
 
     def test_verify_email_increments_version(self):
         user = _make_user()
-        assert user.version == 0
-        user.verify_email()
         assert user.version == 1
+        user.verify_email()
+        assert user.version == 2
 
     def test_multiple_mutations_increment_version_each_time(self):
         user = _make_active_user()  # verify_email already bumped to 1

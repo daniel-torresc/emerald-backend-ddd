@@ -13,10 +13,10 @@ from emerald.iam.domain.models.value_objects.email_address import EmailAddress
 from emerald.iam.domain.models.value_objects.hashed_password import HashedPassword
 from emerald.iam.domain.models.value_objects.system_role import SystemRole
 from emerald.iam.domain.models.value_objects.username import Username
-from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasher, FakeTokenService
+from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasherPort, FakeTokenPort
 
 
-def _create_active_user(uow: FakeIamUnitOfWork) -> User:
+async def _create_active_user(uow: FakeIamUnitOfWork) -> User:
     user = User.register(
         EmailAddress("test@example.com"),
         Username("testuser"),
@@ -24,22 +24,22 @@ def _create_active_user(uow: FakeIamUnitOfWork) -> User:
     )
     user.verify_email()
     user.collect_events()
-    uow.users.add(user)
+    await uow.users.add(user)
     return user
 
 
 @pytest.fixture
 def auth_env():
     uow = FakeIamUnitOfWork()
-    hasher = FakePasswordHasher()
-    token_service = FakeTokenService()
+    hasher = FakePasswordHasherPort()
+    token_service = FakeTokenPort()
     service = AuthenticationService(uow, hasher, token_service)
     return service, uow, hasher, token_service
 
 
 async def test_verify_valid_token_returns_authenticated_identity(auth_env):
     service, uow, _, _ = auth_env
-    _create_active_user(uow)
+    await _create_active_user(uow)
 
     login_result = await service.login(
         LoginUser(email="test@example.com", password="Password123!", portal_context="REGULAR")
@@ -73,7 +73,7 @@ async def test_verify_user_not_found_raises_invalid_token(auth_env):
         exp=now + timedelta(minutes=15),
         jti=uuid.uuid4(),
     )
-    fake_token = token_service.sign_access_token(claims)
+    fake_token = await token_service.sign_access_token(claims)
 
     with pytest.raises(InvalidTokenError):
         await service.verify_access_token(fake_token)
@@ -81,7 +81,7 @@ async def test_verify_user_not_found_raises_invalid_token(auth_env):
 
 async def test_verify_display_name_uses_full_name(auth_env):
     service, uow, _, _ = auth_env
-    user = _create_active_user(uow)
+    user = await _create_active_user(uow)
     user.update_full_name("John Doe")
     user.collect_events()
 
@@ -96,7 +96,7 @@ async def test_verify_display_name_uses_full_name(auth_env):
 
 async def test_verify_display_name_falls_back_to_username(auth_env):
     service, uow, _, _ = auth_env
-    _create_active_user(uow)
+    await _create_active_user(uow)
     # full_name is None by default after register
 
     login_result = await service.login(

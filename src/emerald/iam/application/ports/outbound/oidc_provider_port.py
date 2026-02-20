@@ -4,14 +4,14 @@ from emerald.iam.domain.models.value_objects.auth_provider import ProviderType
 from emerald.iam.domain.models.value_objects.oidc_claims import OidcClaims
 
 
-class OidcProvider(Protocol):
+class OidcProviderPort(Protocol):
     """Application port for OIDC provider interactions.
 
     Infrastructure implements this with provider-specific OAuth clients,
     PKCE management, JWKS verification, and state handling.
     """
 
-    def generate_authorization_url(
+    async def generate_authorization_url(
         self,
         provider_type: ProviderType,
         redirect_uri: str,
@@ -20,7 +20,7 @@ class OidcProvider(Protocol):
         """Generate the full authorization URL for the given provider."""
         ...
 
-    def exchange_code_for_claims(
+    async def exchange_code_for_claims(
         self,
         provider_type: ProviderType,
         code: str,

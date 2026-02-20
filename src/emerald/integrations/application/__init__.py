@@ -13,8 +13,8 @@ from emerald.integrations.application.dtos import (
 from emerald.integrations.application.ports import (
     AbstractIntegrationsUnitOfWork,
     BankConnectionRepository,
-    BankProviderAdapter,
-    BankProviderAdapterRegistry,
+    BankProviderPort,
+    BankProviderRegistryPort,
     PendingTransactionRepository,
     SyncHistoryRepository,
     TransactionImportPort,
@@ -41,8 +41,8 @@ __all__ = [
     # Ports
     "AbstractIntegrationsUnitOfWork",
     "BankConnectionRepository",
-    "BankProviderAdapter",
-    "BankProviderAdapterRegistry",
+    "BankProviderPort",
+    "BankProviderRegistryPort",
     "PendingTransactionRepository",
     "SyncHistoryRepository",
     "TransactionImportPort",

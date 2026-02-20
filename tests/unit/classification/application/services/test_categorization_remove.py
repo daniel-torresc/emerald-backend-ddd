@@ -36,14 +36,14 @@ def _make_deps() -> tuple[
     return service, uow, port
 
 
-def _setup(
+async def _setup(
     uow: FakeClassificationUnitOfWork,
     port: FakeTransactionAccessPort,
 ) -> tuple[uuid.UUID, uuid.UUID, uuid.UUID]:
     """Set up a taxonomy + term + active transaction. Returns (tx_id, term_id, taxonomy_id)."""
     taxonomy = Taxonomy.create(owner_id=_OWNER_ID, name=TaxonomyName("Category"))
     taxonomy.collect_events()
-    uow.taxonomies.save(taxonomy)
+    await uow.taxonomies.save(taxonomy)
 
     term = taxonomy.add_term(name=TermName("Food"))
     taxonomy.collect_events()
@@ -58,7 +58,7 @@ def _setup(
 class TestRemoveAssignment:
     async def test_remove_existing_assignment(self) -> None:
         service, uow, port = _make_deps()
-        tx_id, term_id, taxonomy_id = _setup(uow, port)
+        tx_id, term_id, taxonomy_id = await _setup(uow, port)
 
         # First assign
         await service.assign_term(
@@ -71,11 +71,11 @@ class TestRemoveAssignment:
         )
 
         # Verify deleted
-        assert uow.assignments.find_by_transaction(tx_id) == []
+        assert await uow.assignments.find_by_transaction(tx_id) == []
 
     async def test_remove_nonexistent_raises(self) -> None:
         service, uow, port = _make_deps()
-        tx_id, _, taxonomy_id = _setup(uow, port)
+        tx_id, _, taxonomy_id = await _setup(uow, port)
         # No assignment exists
 
         with pytest.raises(AssignmentNotFoundError):

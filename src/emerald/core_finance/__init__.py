@@ -7,7 +7,6 @@ from emerald.core_finance.application import (
     BulkCreateTransactions,
     BulkDeleteTransactions,
     BulkRecoverTransactions,
-    BulkTransactionService,
     BulkUpdateTransactions,
     CardManagementService,
     CreateAccount,
@@ -26,6 +25,7 @@ from emerald.core_finance.application import (
     SoftDeleteAccount,
     SoftDeleteTransaction,
     SplitTransaction,
+    TransactionBulkManagementService,
     TransactionManagementService,
     TransactionRepository,
     TransferAccountOwnership,
@@ -123,6 +123,7 @@ from emerald.core_finance.domain import (
     TransactionDeletedError,
     TransactionEvent,
     TransactionInput,
+    TransactionMarkedForReview,
     TransactionNotFoundError,
     TransactionRecovered,
     TransactionReviewed,
@@ -133,6 +134,7 @@ from emerald.core_finance.domain import (
     UserReference,
     _UnsetType,
 )
+from emerald.core_finance.domain.constants import MAX_ACCOUNT_NOTES_LENGTH
 from emerald.core_finance.domain.models import AccountName, AccountShare, PermissionLevel
 
 __all__ = [
@@ -142,6 +144,8 @@ __all__ = [
     # Entities
     "AccountShare",
     "Card",
+    # Domain Constants
+    "MAX_ACCOUNT_NOTES_LENGTH",
     # Value Objects
     "AccountName",
     "BulkFailure",
@@ -180,6 +184,7 @@ __all__ = [
     "TransactionCardLinked",
     "TransactionCardUnlinked",
     "TransactionCreated",
+    "TransactionMarkedForReview",
     "TransactionRecovered",
     "TransactionReviewed",
     "TransactionSoftDeleted",
@@ -275,7 +280,7 @@ __all__ = [
     # Services
     "AccountManagementService",
     "AccountSharingService",
-    "BulkTransactionService",
+    "TransactionBulkManagementService",
     "CardManagementService",
     "TransactionManagementService",
 ]

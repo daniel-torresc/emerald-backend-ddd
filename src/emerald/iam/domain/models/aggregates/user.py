@@ -4,6 +4,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from emerald.iam.domain.constants import MAX_PASSWORD_HISTORY
 from emerald.iam.domain.events.role_events import (
     AdminPermissionGranted,
     AdminPermissionRevoked,
@@ -18,7 +19,9 @@ from emerald.iam.domain.events.user_events import (
     EmailVerified,
     PasswordChanged,
     UserEmailChanged,
+    UserFullNameUpdated,
     UserLoggedIn,
+    UserPreferencesUpdated,
     UserRecovered,
     UserRegistered,
     UserSoftDeleted,
@@ -60,8 +63,6 @@ from emerald.shared_kernel.domain.models.base.aggregate_root import AggregateRoo
 from emerald.shared_kernel.domain.models.base.auditable import AuditableMixin
 from emerald.shared_kernel.domain.models.base.soft_deletable import SoftDeletableMixin
 from emerald.shared_kernel.domain.models.value_objects.retention_period import RetentionPeriod
-
-_MAX_PASSWORD_HISTORY = 5
 
 
 class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
@@ -126,6 +127,7 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
             preferences=UserPreferences(),
             id=user_id,
             created_by=user_id,
+            version=1,
         )
         user._register_event(
             UserRegistered(
@@ -157,6 +159,7 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
             full_name=full_name,
             id=user_id,
             created_by=user_id,
+            version=1,
         )
         user._register_event(
             UserRegisteredViaSocialProvider(
@@ -191,6 +194,7 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
             system_role=SystemRole.SUPERADMIN,
             id=user_id,
             created_by=user_id,
+            version=1,
         )
         user._register_event(SuperadminProvisioned(aggregate_id=user.id))
         return user
@@ -242,12 +246,14 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         self._require_status(UserStatus.ACTIVE, "update_full_name")
         self.full_name = name
         self._touch()
+        self._register_event(UserFullNameUpdated(aggregate_id=self.id, new_name=name))
 
     def update_preferences(self, preferences: UserPreferences) -> None:
         """Update display settings."""
         self._require_status(UserStatus.ACTIVE, "update_preferences")
         self.preferences = preferences
         self._touch()
+        self._register_event(UserPreferencesUpdated(aggregate_id=self.id))
 
     # -- Password Management ---------------------------------------------------
 
@@ -255,8 +261,8 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
         """Change password, archiving the old hash in history."""
         self._require_status(UserStatus.ACTIVE, "change_password")
         self.password_history.append(old_hash_to_archive)
-        if len(self.password_history) > _MAX_PASSWORD_HISTORY:
-            self.password_history = self.password_history[-_MAX_PASSWORD_HISTORY:]
+        if len(self.password_history) > MAX_PASSWORD_HISTORY:
+            self.password_history = self.password_history[-MAX_PASSWORD_HISTORY:]
         self.password = new_hashed
         self._touch()
         self._register_event(PasswordChanged(aggregate_id=self.id))
@@ -269,8 +275,8 @@ class User(SoftDeletableMixin, AuditableMixin, AggregateRoot):
                 f"(requires {UserStatus.ACTIVE.value} or {UserStatus.SUSPENDED.value})"
             )
         self.password_history.append(old_hash_to_archive)
-        if len(self.password_history) > _MAX_PASSWORD_HISTORY:
-            self.password_history = self.password_history[-_MAX_PASSWORD_HISTORY:]
+        if len(self.password_history) > MAX_PASSWORD_HISTORY:
+            self.password_history = self.password_history[-MAX_PASSWORD_HISTORY:]
         self.password = new_hashed
         self._touch()
         self._register_event(PasswordChanged(aggregate_id=self.id))

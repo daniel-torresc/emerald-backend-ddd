@@ -46,6 +46,51 @@ class TestPasswordResetTokenConstruction:
         assert token.id == custom_id
 
 
+class TestPasswordResetTokenCreateFactory:
+    def test_create_generates_uuid(self):
+        token = PasswordResetToken.create(
+            user_id=uuid.uuid4(),
+            token_hash="hashed:value",
+        )
+        assert isinstance(token.id, uuid.UUID)
+
+    def test_create_sets_created_at(self):
+        before = datetime.now(UTC)
+        token = PasswordResetToken.create(
+            user_id=uuid.uuid4(),
+            token_hash="hashed:value",
+        )
+        after = datetime.now(UTC)
+        assert before <= token.created_at <= after
+
+    def test_create_defaults_expiration(self):
+        token = PasswordResetToken.create(
+            user_id=uuid.uuid4(),
+            token_hash="hashed:value",
+        )
+        expected = token.created_at + PASSWORD_RESET_TOKEN_TTL
+        assert token.expires_at == expected
+
+    def test_create_accepts_custom_expires_at(self):
+        custom_expiry = datetime.now(UTC) + timedelta(minutes=30)
+        token = PasswordResetToken.create(
+            user_id=uuid.uuid4(),
+            token_hash="hashed:value",
+            expires_at=custom_expiry,
+        )
+        assert token.expires_at == custom_expiry
+
+    def test_create_sets_all_fields(self):
+        user_id = uuid.uuid4()
+        token = PasswordResetToken.create(
+            user_id=user_id,
+            token_hash="hashed:abc",
+        )
+        assert token.user_id == user_id
+        assert token.token_hash == "hashed:abc"
+        assert token.used_at is None
+
+
 class TestPasswordResetTokenMarkUsed:
     def test_mark_used_sets_used_at(self):
         token = _make_reset_token()

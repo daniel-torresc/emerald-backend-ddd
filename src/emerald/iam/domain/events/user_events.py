@@ -77,5 +77,17 @@ class UserRecovered(UserEvent):
 
 
 @dataclass(frozen=True)
+class UserFullNameUpdated(UserEvent):
+    """Emitted when a user updates their full name."""
+
+    new_name: str | None
+
+
+@dataclass(frozen=True)
+class UserPreferencesUpdated(UserEvent):
+    """Emitted when a user updates their display preferences."""
+
+
+@dataclass(frozen=True)
 class UserLoggedIn(UserEvent):
     """Emitted when a user logs in."""

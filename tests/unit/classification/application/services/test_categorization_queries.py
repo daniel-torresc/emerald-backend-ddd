@@ -26,10 +26,10 @@ def _make_deps() -> tuple[
     return service, uow, port
 
 
-def _create_taxonomy(uow: FakeClassificationUnitOfWork, name: str = "Category") -> Taxonomy:
+async def _create_taxonomy(uow: FakeClassificationUnitOfWork, name: str = "Category") -> Taxonomy:
     taxonomy = Taxonomy.create(owner_id=_OWNER_ID, name=TaxonomyName(name))
     taxonomy.collect_events()
-    uow.taxonomies.save(taxonomy)
+    await uow.taxonomies.save(taxonomy)
     return taxonomy
 
 
@@ -56,8 +56,8 @@ async def _setup_and_assign(
 class TestGetAssignments:
     async def test_returns_all_for_transaction(self) -> None:
         service, uow, port = _make_deps()
-        tax_a = _create_taxonomy(uow, "Category")
-        tax_b = _create_taxonomy(uow, "Project")
+        tax_a = await _create_taxonomy(uow, "Category")
+        tax_b = await _create_taxonomy(uow, "Project")
         term_a = _add_term(tax_a, "Food")
         term_b = _add_term(tax_b, "Personal")
 
@@ -83,7 +83,7 @@ class TestGetAssignments:
 class TestGetAssignmentForTaxonomy:
     async def test_returns_specific_assignment(self) -> None:
         service, uow, port = _make_deps()
-        taxonomy = _create_taxonomy(uow)
+        taxonomy = await _create_taxonomy(uow)
         term_id = _add_term(taxonomy, "Food")
         tx_id = await _setup_and_assign(service, port, term_id)
 
@@ -99,7 +99,7 @@ class TestGetAssignmentForTaxonomy:
 class TestGetTransactionsByTerm:
     async def test_single_term(self) -> None:
         service, uow, port = _make_deps()
-        taxonomy = _create_taxonomy(uow)
+        taxonomy = await _create_taxonomy(uow)
         term_id = _add_term(taxonomy, "Food")
 
         tx_a = await _setup_and_assign(service, port, term_id)
@@ -110,7 +110,7 @@ class TestGetTransactionsByTerm:
 
     async def test_include_descendants(self) -> None:
         service, uow, port = _make_deps()
-        taxonomy = _create_taxonomy(uow)
+        taxonomy = await _create_taxonomy(uow)
         parent_id = _add_term(taxonomy, "Food")
         child_id = _add_term(taxonomy, "Groceries", parent_id=parent_id)
         grandchild_id = _add_term(taxonomy, "Organic", parent_id=child_id)
@@ -124,7 +124,7 @@ class TestGetTransactionsByTerm:
 
     async def test_include_descendants_deduplicates(self) -> None:
         service, uow, port = _make_deps()
-        taxonomy = _create_taxonomy(uow)
+        taxonomy = await _create_taxonomy(uow)
         parent_id = _add_term(taxonomy, "Food")
         _add_term(taxonomy, "Groceries", parent_id=parent_id)
 
@@ -148,7 +148,7 @@ class TestGetTransactionsByTerm:
 
     async def test_without_descendants(self) -> None:
         service, uow, port = _make_deps()
-        taxonomy = _create_taxonomy(uow)
+        taxonomy = await _create_taxonomy(uow)
         parent_id = _add_term(taxonomy, "Food")
         child_id = _add_term(taxonomy, "Groceries", parent_id=parent_id)
 

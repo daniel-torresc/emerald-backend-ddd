@@ -23,10 +23,10 @@ from emerald.shared_kernel.domain.models.value_objects.retention_period import (
     RetentionPeriod,
     RetentionUnit,
 )
-from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasher, FakeTokenService
+from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasherPort, FakeTokenPort
 
 
-def _create_active_user(uow: FakeIamUnitOfWork) -> User:
+async def _create_active_user(uow: FakeIamUnitOfWork) -> User:
     user = User.register(
         EmailAddress("test@example.com"),
         Username("testuser"),
@@ -34,22 +34,22 @@ def _create_active_user(uow: FakeIamUnitOfWork) -> User:
     )
     user.verify_email()
     user.collect_events()  # Clear registration events
-    uow.users.add(user)
+    await uow.users.add(user)
     return user
 
 
 @pytest.fixture
 def auth_env():
     uow = FakeIamUnitOfWork()
-    hasher = FakePasswordHasher()
-    token_service = FakeTokenService()
+    hasher = FakePasswordHasherPort()
+    token_service = FakeTokenPort()
     service = AuthenticationService(uow, hasher, token_service)
     return service, uow, hasher, token_service
 
 
 async def test_login_valid_credentials_returns_login_result(auth_env):
     service, uow, _, _ = auth_env
-    _create_active_user(uow)
+    await _create_active_user(uow)
 
     result = await service.login(
         LoginUser(email="test@example.com", password="Password123!", portal_context="REGULAR")
@@ -63,7 +63,7 @@ async def test_login_valid_credentials_returns_login_result(auth_env):
 
 async def test_login_invalid_password_raises_authentication_failed(auth_env):
     service, uow, _, _ = auth_env
-    _create_active_user(uow)
+    await _create_active_user(uow)
 
     with pytest.raises(AuthenticationFailedError):
         await service.login(
@@ -88,7 +88,7 @@ async def test_login_pending_verification_raises_email_not_verified(auth_env):
         HashedPassword("hashed:Password123!"),
     )
     user.collect_events()
-    uow.users.add(user)
+    await uow.users.add(user)
 
     with pytest.raises(EmailNotVerifiedError):
         await service.login(
@@ -100,7 +100,7 @@ async def test_login_pending_verification_raises_email_not_verified(auth_env):
 
 async def test_login_suspended_raises_account_suspended(auth_env):
     service, uow, _, _ = auth_env
-    user = _create_active_user(uow)
+    user = await _create_active_user(uow)
     user.suspend("policy violation")
     user.collect_events()
 
@@ -112,7 +112,7 @@ async def test_login_suspended_raises_account_suspended(auth_env):
 
 async def test_login_deleted_raises_authentication_failed(auth_env):
     service, uow, _, _ = auth_env
-    user = _create_active_user(uow)
+    user = await _create_active_user(uow)
     user.soft_delete(
         deleted_by=user.id,
         retention=RetentionPeriod(duration=90, unit=RetentionUnit.DAYS),
@@ -127,7 +127,7 @@ async def test_login_deleted_raises_authentication_failed(auth_env):
 
 async def test_login_records_last_login_at(auth_env):
     service, uow, _, _ = auth_env
-    user = _create_active_user(uow)
+    user = await _create_active_user(uow)
     assert user.last_login_at is None
 
     await service.login(
@@ -139,7 +139,7 @@ async def test_login_records_last_login_at(auth_env):
 
 async def test_login_emits_user_logged_in(auth_env):
     service, uow, _, _ = auth_env
-    user = _create_active_user(uow)
+    user = await _create_active_user(uow)
 
     await service.login(
         LoginUser(email="test@example.com", password="Password123!", portal_context="REGULAR")
@@ -151,7 +151,7 @@ async def test_login_emits_user_logged_in(auth_env):
 
 async def test_login_emits_login_failed_on_failure(auth_env):
     service, uow, _, _ = auth_env
-    _create_active_user(uow)
+    await _create_active_user(uow)
 
     with pytest.raises(AuthenticationFailedError):
         await service.login(
@@ -161,7 +161,7 @@ async def test_login_emits_login_failed_on_failure(auth_env):
 
 async def test_login_at_max_sessions_revokes_oldest_family(auth_env):
     service, uow, _, _ = auth_env
-    user = _create_active_user(uow)
+    user = await _create_active_user(uow)
 
     # Create 5 active families (at the max)
     now = datetime.now(UTC)
@@ -177,7 +177,7 @@ async def test_login_at_max_sessions_revokes_oldest_family(auth_env):
             expires_at=now + timedelta(days=7),
             created_at=now + timedelta(seconds=i),  # incremental so ordering is deterministic
         )
-        uow.refresh_tokens.add(token)
+        await uow.refresh_tokens.add(token)
 
     # Login creates a 6th session, which should revoke the oldest family
     result = await service.login(
@@ -186,7 +186,7 @@ async def test_login_at_max_sessions_revokes_oldest_family(auth_env):
 
     assert result is not None
     # Oldest family (family_ids[0]) should have been revoked
-    active_families = uow.refresh_tokens.find_active_families_by_user(user.id)
+    active_families = await uow.refresh_tokens.find_active_families_by_user(user.id)
     assert family_ids[0] not in active_families
     # Should still be at MAX_CONCURRENT_SESSIONS (5 old - 1 revoked + 1 new = 5)
     assert len(active_families) == MAX_CONCURRENT_SESSIONS
@@ -194,7 +194,7 @@ async def test_login_at_max_sessions_revokes_oldest_family(auth_env):
 
 async def test_login_commits_uow(auth_env):
     service, uow, _, _ = auth_env
-    _create_active_user(uow)
+    await _create_active_user(uow)
 
     await service.login(
         LoginUser(email="test@example.com", password="Password123!", portal_context="REGULAR")
@@ -205,7 +205,7 @@ async def test_login_commits_uow(auth_env):
 
 async def test_login_admin_portal_context(auth_env):
     service, uow, _, _ = auth_env
-    _create_active_user(uow)
+    await _create_active_user(uow)
 
     result = await service.login(
         LoginUser(email="test@example.com", password="Password123!", portal_context="ADMIN")
@@ -217,7 +217,7 @@ async def test_login_admin_portal_context(auth_env):
 
 async def test_login_regular_portal_context(auth_env):
     service, uow, _, _ = auth_env
-    _create_active_user(uow)
+    await _create_active_user(uow)
 
     result = await service.login(
         LoginUser(email="test@example.com", password="Password123!", portal_context="REGULAR")

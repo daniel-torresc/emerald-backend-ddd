@@ -1,5 +1,5 @@
-from emerald.iam.domain.ports.password_hasher import PasswordHasher
+from emerald.iam.domain.ports.password_hasher_port import PasswordHasherPort
 
 __all__ = [
-    "PasswordHasher",
+    "PasswordHasherPort",
 ]

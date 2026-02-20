@@ -47,7 +47,7 @@ def _make_service() -> tuple[TransactionManagementService, FakeCoreFinanceUnitOf
     return service, uow
 
 
-def _make_account(
+async def _make_account(
     uow: FakeCoreFinanceUnitOfWork,
     owner_id: uuid.UUID | None = None,
     currency: Currency = Currency.USD,
@@ -62,7 +62,7 @@ def _make_account(
         account_type_id=uuid.uuid4(),
         financial_institution_id=uuid.uuid4(),
     )
-    uow.accounts.save(account)
+    await uow.accounts.save(account)
     account.collect_events()
     return account, owner_id
 
@@ -92,7 +92,7 @@ async def _create_transaction(
 class TestGetTransaction:
     async def test_get_success(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
 
         result = await service.get_transaction(
@@ -105,7 +105,7 @@ class TestGetTransaction:
 
     async def test_get_not_found(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
 
         with pytest.raises(TransactionNotFoundError):
             await service.get_transaction(
@@ -116,7 +116,7 @@ class TestGetTransaction:
 
     async def test_get_viewer_ok(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
         viewer_id = uuid.uuid4()
         account.share_with(
@@ -137,7 +137,7 @@ class TestGetTransaction:
 class TestListTransactions:
     async def test_returns_paginated_result(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         await _create_transaction(service, account, owner_id, original_description="Txn 1")
         await _create_transaction(service, account, owner_id, original_description="Txn 2")
         await _create_transaction(service, account, owner_id, original_description="Txn 3")
@@ -152,7 +152,7 @@ class TestListTransactions:
 
     async def test_viewer_ok(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         await _create_transaction(service, account, owner_id)
         viewer_id = uuid.uuid4()
         account.share_with(
@@ -170,7 +170,7 @@ class TestListTransactions:
 
     async def test_pagination_works(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         for i in range(5):
             await _create_transaction(
                 service,
@@ -211,7 +211,7 @@ class TestListTransactions:
 class TestListTransactionsInRange:
     async def test_filters_by_date_range(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         await _create_transaction(
             service,
             account,
@@ -258,7 +258,7 @@ class TestListTransactionsInRange:
 class TestCalculateBalance:
     async def test_opening_balance_plus_transactions(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         # opening_balance = 1000.00
         await _create_transaction(service, account, owner_id, amount=Decimal("500.00"))
         await _create_transaction(service, account, owner_id, amount=Decimal("-200.00"))
@@ -272,7 +272,7 @@ class TestCalculateBalance:
 
     async def test_viewer_ok(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         await _create_transaction(service, account, owner_id, amount=Decimal("100.00"))
         viewer_id = uuid.uuid4()
         account.share_with(
@@ -290,7 +290,7 @@ class TestCalculateBalance:
 
     async def test_no_transactions_returns_opening_balance(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
 
         balance = await service.calculate_balance(
             account_id=account.id,
@@ -302,7 +302,7 @@ class TestCalculateBalance:
 class TestGetTransactionCount:
     async def test_returns_correct_count(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         await _create_transaction(service, account, owner_id)
         await _create_transaction(service, account, owner_id)
         await _create_transaction(service, account, owner_id)
@@ -315,7 +315,7 @@ class TestGetTransactionCount:
 
     async def test_excludes_deleted(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn1 = await _create_transaction(service, account, owner_id)
         await _create_transaction(service, account, owner_id)
 
@@ -323,7 +323,7 @@ class TestGetTransactionCount:
         retention = RetentionPeriod(duration=30, unit=RetentionUnit.DAYS)
         txn1.soft_delete(deleted_by=owner_id, retention=retention)
         txn1.collect_events()
-        uow.transactions.save(txn1)
+        await uow.transactions.save(txn1)
 
         count = await service.get_transaction_count(
             account_id=account.id,
@@ -333,7 +333,7 @@ class TestGetTransactionCount:
 
     async def test_returns_zero_when_empty(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
 
         count = await service.get_transaction_count(
             account_id=account.id,

@@ -18,7 +18,7 @@ from emerald.iam.domain.models.value_objects.hashed_password import HashedPasswo
 from emerald.iam.domain.models.value_objects.system_role import SystemRole
 from emerald.iam.domain.models.value_objects.user_status import UserStatus
 from emerald.iam.domain.models.value_objects.username import Username
-from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasher
+from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasherPort
 
 
 def _make_user(**overrides: Any) -> User:
@@ -41,9 +41,9 @@ def _make_superadmin(**overrides: Any) -> User:
     return user
 
 
-def _setup() -> tuple[FakeIamUnitOfWork, FakePasswordHasher, SuperadminProvisioningService]:
+def _setup() -> tuple[FakeIamUnitOfWork, FakePasswordHasherPort, SuperadminProvisioningService]:
     uow = FakeIamUnitOfWork()
-    hasher = FakePasswordHasher()
+    hasher = FakePasswordHasherPort()
     svc = SuperadminProvisioningService(uow, hasher)
     return uow, hasher, svc
 
@@ -123,7 +123,7 @@ async def test_provision_superadmin_user_persisted():
     )
     user = await svc.provision_superadmin(cmd)
 
-    stored = uow.users.find_by_id(user.id)
+    stored = await uow.users.find_by_id(user.id)
     assert stored is not None
     assert stored.system_role == SystemRole.SUPERADMIN
 
@@ -147,7 +147,7 @@ async def test_provision_superadmin_already_exists_raises():
         email=EmailAddress("existing@example.com"),
         username=Username("existing"),
     )
-    uow.users.add(existing)
+    await uow.users.add(existing)
 
     cmd = ProvisionSuperadmin(
         email="superadmin@example.com",
@@ -162,7 +162,7 @@ async def test_provision_superadmin_already_exists_raises():
 async def test_provision_superadmin_duplicate_email_raises():
     uow, _, svc = _setup()
     existing = _make_user(email=EmailAddress("taken@example.com"))
-    uow.users.add(existing)
+    await uow.users.add(existing)
 
     cmd = ProvisionSuperadmin(
         email="taken@example.com",
@@ -177,7 +177,7 @@ async def test_provision_superadmin_duplicate_email_raises():
 async def test_provision_superadmin_duplicate_username_raises():
     uow, _, svc = _setup()
     existing = _make_user(username=Username("superadmin"))
-    uow.users.add(existing)
+    await uow.users.add(existing)
 
     cmd = ProvisionSuperadmin(
         email="superadmin@example.com",

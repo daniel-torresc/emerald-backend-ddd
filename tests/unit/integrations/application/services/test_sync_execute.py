@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import json
 import uuid
+from datetime import date
+from decimal import Decimal
 
 import pytest
 
@@ -16,35 +17,36 @@ from emerald.integrations.domain.exceptions.connection_exceptions import (
 from emerald.integrations.domain.models.aggregates.bank_connection import BankConnection
 from emerald.integrations.domain.models.entities.sync_history import SyncHistory
 from emerald.integrations.domain.models.value_objects.match_status import MatchStatus
+from emerald.integrations.domain.models.value_objects.normalized_transaction import (
+    NormalizedTransaction,
+)
 from emerald.integrations.domain.models.value_objects.provider_credentials import (
     ProviderCredentials,
 )
 from emerald.integrations.domain.models.value_objects.provider_name import ProviderName
 from emerald.integrations.domain.models.value_objects.sync_status import SyncStatus
 from tests.unit.integrations.fakes import (
-    FakeBankProviderAdapter,
+    FakeBankProviderPort,
     FakeIntegrationsUnitOfWork,
     FakeProviderRegistry,
     FakeTransactionImportPort,
 )
 
 
-def _raw_txn(
+def _make_normalized(
     *,
     external_id: str = "ext_123",
     amount: str = "-50.00",
     description: str = "Coffee Shop",
     transaction_date: str = "2024-01-15",
     currency_code: str = "USD",
-) -> str:
-    return json.dumps(
-        {
-            "transaction_date": transaction_date,
-            "amount": amount,
-            "currency_code": currency_code,
-            "description": description,
-            "external_id": external_id,
-        }
+) -> NormalizedTransaction:
+    return NormalizedTransaction(
+        transaction_date=date.fromisoformat(transaction_date),
+        amount=Decimal(amount),
+        currency_code=currency_code,
+        description=description,
+        external_id=external_id,
     )
 
 
@@ -59,12 +61,12 @@ def import_port() -> FakeTransactionImportPort:
 
 
 @pytest.fixture()
-def adapter() -> FakeBankProviderAdapter:
-    return FakeBankProviderAdapter()
+def adapter() -> FakeBankProviderPort:
+    return FakeBankProviderPort()
 
 
 @pytest.fixture()
-def registry(adapter: FakeBankProviderAdapter) -> FakeProviderRegistry:
+def registry(adapter: FakeBankProviderPort) -> FakeProviderRegistry:
     return FakeProviderRegistry(adapter=adapter)
 
 
@@ -87,7 +89,7 @@ def account_id() -> uuid.UUID:
     return uuid.uuid4()
 
 
-def _create_active_connection(
+async def _create_active_connection(
     uow: FakeIntegrationsUnitOfWork, user_id: uuid.UUID, account_id: uuid.UUID
 ) -> BankConnection:
     conn = BankConnection.create(
@@ -100,7 +102,7 @@ def _create_active_connection(
     )
     conn.activate(ProviderCredentials("test-token"))
     conn.collect_events()
-    uow.bank_connections.save(conn)
+    await uow.bank_connections.save(conn)
     return conn
 
 
@@ -110,12 +112,17 @@ class TestExecuteSyncWithNewTransactions:
         service: BankSyncService,
         uow: FakeIntegrationsUnitOfWork,
         import_port: FakeTransactionImportPort,
-        adapter: FakeBankProviderAdapter,
+        adapter: FakeBankProviderPort,
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn = _create_active_connection(uow, user_id, account_id)
-        adapter.set_transactions([_raw_txn(external_id="ext_1"), _raw_txn(external_id="ext_2")])
+        conn = await _create_active_connection(uow, user_id, account_id)
+        adapter.set_transactions(
+            [
+                _make_normalized(external_id="ext_1"),
+                _make_normalized(external_id="ext_2"),
+            ]
+        )
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
 
         history = await service.execute_sync(cmd)
@@ -135,13 +142,13 @@ class TestExecuteSyncWithDuplicates:
         service: BankSyncService,
         uow: FakeIntegrationsUnitOfWork,
         import_port: FakeTransactionImportPort,
-        adapter: FakeBankProviderAdapter,
+        adapter: FakeBankProviderPort,
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn = _create_active_connection(uow, user_id, account_id)
+        conn = await _create_active_connection(uow, user_id, account_id)
         import_port.add_existing_external_id(account_id, "ext_dup")
-        adapter.set_transactions([_raw_txn(external_id="ext_dup")])
+        adapter.set_transactions([_make_normalized(external_id="ext_dup")])
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
 
         history = await service.execute_sync(cmd)
@@ -160,16 +167,13 @@ class TestExecuteSyncWithNeedsReview:
         service: BankSyncService,
         uow: FakeIntegrationsUnitOfWork,
         import_port: FakeTransactionImportPort,
-        adapter: FakeBankProviderAdapter,
+        adapter: FakeBankProviderPort,
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        from datetime import date
-        from decimal import Decimal
-
         from emerald.integrations.application.dtos.transaction_match import TransactionMatch
 
-        conn = _create_active_connection(uow, user_id, account_id)
+        conn = await _create_active_connection(uow, user_id, account_id)
         # Set up a fuzzy match (same date+amount, different description)
         import_port.add_match(
             account_id,
@@ -182,7 +186,7 @@ class TestExecuteSyncWithNeedsReview:
                 description="Different Coffee Shop",
             ),
         )
-        adapter.set_transactions([_raw_txn()])
+        adapter.set_transactions([_make_normalized()])
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
 
         history = await service.execute_sync(cmd)
@@ -192,7 +196,7 @@ class TestExecuteSyncWithNeedsReview:
         assert history.transactions_staged == 1
         assert history.transactions_imported == 0
         assert len(import_port.imported) == 0
-        pendings = uow.pending_transactions.find_needs_review(conn.id)
+        pendings = await uow.pending_transactions.find_needs_review(conn.id)
         assert len(pendings) == 1
         assert pendings[0].match_status == MatchStatus.NEEDS_REVIEW
 
@@ -203,16 +207,13 @@ class TestExecuteSyncMixed:
         service: BankSyncService,
         uow: FakeIntegrationsUnitOfWork,
         import_port: FakeTransactionImportPort,
-        adapter: FakeBankProviderAdapter,
+        adapter: FakeBankProviderPort,
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        from datetime import date
-        from decimal import Decimal
-
         from emerald.integrations.application.dtos.transaction_match import TransactionMatch
 
-        conn = _create_active_connection(uow, user_id, account_id)
+        conn = await _create_active_connection(uow, user_id, account_id)
 
         # Transaction 1: duplicate (external_id match)
         import_port.add_existing_external_id(account_id, "ext_dup")
@@ -233,14 +234,14 @@ class TestExecuteSyncMixed:
         # Transaction 3: new (no match)
         adapter.set_transactions(
             [
-                _raw_txn(external_id="ext_dup"),
-                _raw_txn(
+                _make_normalized(external_id="ext_dup"),
+                _make_normalized(
                     external_id="ext_review",
                     amount="-75.00",
                     transaction_date="2024-01-20",
                     description="Store",
                 ),
-                _raw_txn(external_id="ext_new", amount="-100.00"),
+                _make_normalized(external_id="ext_new", amount="-100.00"),
             ]
         )
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
@@ -271,7 +272,7 @@ class TestExecuteSyncValidation:
             created_by=user_id,
         )
         conn.collect_events()
-        uow.bank_connections.save(conn)
+        await uow.bank_connections.save(conn)
 
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
 
@@ -285,9 +286,9 @@ class TestExecuteSyncValidation:
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn = _create_active_connection(uow, user_id, account_id)
+        conn = await _create_active_connection(uow, user_id, account_id)
         existing_history = SyncHistory.create(connection_id=conn.id)
-        uow.sync_history.save(existing_history)
+        await uow.sync_history.save(existing_history)
 
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
 

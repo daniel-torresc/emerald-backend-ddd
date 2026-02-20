@@ -26,10 +26,10 @@ def _make_deps() -> tuple[
     return service, uow, port
 
 
-def _create_taxonomy(uow: FakeClassificationUnitOfWork, name: str = "Category") -> Taxonomy:
+async def _create_taxonomy(uow: FakeClassificationUnitOfWork, name: str = "Category") -> Taxonomy:
     taxonomy = Taxonomy.create(owner_id=_OWNER_ID, name=TaxonomyName(name))
     taxonomy.collect_events()
-    uow.taxonomies.save(taxonomy)
+    await uow.taxonomies.save(taxonomy)
     return taxonomy
 
 
@@ -53,7 +53,7 @@ async def _assign(
 class TestHandleTermDeleted:
     async def test_removes_all_assignments_for_term(self) -> None:
         service, uow, port = _make_deps()
-        taxonomy = _create_taxonomy(uow)
+        taxonomy = await _create_taxonomy(uow)
         term_id = _add_term(taxonomy, "Food")
 
         tx_a, tx_b = uuid.uuid4(), uuid.uuid4()
@@ -63,7 +63,7 @@ class TestHandleTermDeleted:
         count = await service.handle_term_deleted(term_id)
 
         assert count == 2
-        assert uow.assignments.find_by_term(term_id) == []
+        assert await uow.assignments.find_by_term(term_id) == []
 
     async def test_no_assignments_returns_zero(self) -> None:
         service, uow, port = _make_deps()
@@ -74,7 +74,7 @@ class TestHandleTermDeleted:
 class TestHandleTaxonomySoftDeleted:
     async def test_removes_all_assignments_for_taxonomy(self) -> None:
         service, uow, port = _make_deps()
-        taxonomy = _create_taxonomy(uow)
+        taxonomy = await _create_taxonomy(uow)
         term_a = _add_term(taxonomy, "Food")
         term_b = _add_term(taxonomy, "Transport")
 
@@ -85,8 +85,8 @@ class TestHandleTaxonomySoftDeleted:
         count = await service.handle_taxonomy_soft_deleted(taxonomy.id)
 
         assert count == 2
-        assert uow.assignments.find_by_transaction(tx_a) == []
-        assert uow.assignments.find_by_transaction(tx_b) == []
+        assert await uow.assignments.find_by_transaction(tx_a) == []
+        assert await uow.assignments.find_by_transaction(tx_b) == []
 
     async def test_no_assignments_returns_zero(self) -> None:
         service, uow, port = _make_deps()
@@ -97,8 +97,8 @@ class TestHandleTaxonomySoftDeleted:
 class TestHandleTransactionSoftDeleted:
     async def test_removes_all_assignments_for_transaction(self) -> None:
         service, uow, port = _make_deps()
-        tax_a = _create_taxonomy(uow, "Category")
-        tax_b = _create_taxonomy(uow, "Project")
+        tax_a = await _create_taxonomy(uow, "Category")
+        tax_b = await _create_taxonomy(uow, "Project")
         term_a = _add_term(tax_a, "Food")
         term_b = _add_term(tax_b, "Personal")
 
@@ -109,7 +109,7 @@ class TestHandleTransactionSoftDeleted:
         count = await service.handle_transaction_soft_deleted(tx_id)
 
         assert count == 2
-        assert uow.assignments.find_by_transaction(tx_id) == []
+        assert await uow.assignments.find_by_transaction(tx_id) == []
 
     async def test_no_assignments_returns_zero(self) -> None:
         service, uow, port = _make_deps()

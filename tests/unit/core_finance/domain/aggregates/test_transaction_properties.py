@@ -103,7 +103,7 @@ class TestSplitStubs:
 class TestTransactionVersionTracking:
     def test_new_transaction_has_version_zero(self) -> None:
         tx = _make_transaction()
-        assert tx.version == 0
+        assert tx.version == 1
 
     def test_constructor_accepts_version_for_hydration(self) -> None:
         tx = Transaction(

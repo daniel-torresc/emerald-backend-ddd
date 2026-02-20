@@ -53,7 +53,7 @@ def _make_service() -> tuple[TransactionManagementService, FakeCoreFinanceUnitOf
     return service, uow
 
 
-def _make_account(
+async def _make_account(
     uow: FakeCoreFinanceUnitOfWork,
     owner_id: uuid.UUID | None = None,
     currency: Currency = Currency.USD,
@@ -68,7 +68,7 @@ def _make_account(
         account_type_id=uuid.uuid4(),
         financial_institution_id=uuid.uuid4(),
     )
-    uow.accounts.save(account)
+    await uow.accounts.save(account)
     account.collect_events()  # Clear creation events
     return account, owner_id
 
@@ -90,7 +90,7 @@ def _make_create_cmd(**overrides: Any) -> CreateTransaction:
 class TestCreateTransactionSuccess:
     async def test_creates_manual_transaction(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -103,7 +103,7 @@ class TestCreateTransactionSuccess:
 
     async def test_creates_bank_import_transaction(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -119,7 +119,7 @@ class TestCreateTransactionSuccess:
 
     async def test_returns_transaction_with_correct_fields(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -139,7 +139,7 @@ class TestCreateTransactionSuccess:
 
     async def test_zero_amount_allowed(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -151,7 +151,7 @@ class TestCreateTransactionSuccess:
 
     async def test_no_external_id_skips_dedup_check(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd1 = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -170,7 +170,7 @@ class TestCreateTransactionSuccess:
 
     async def test_editor_can_create(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         editor_id = uuid.uuid4()
         account.share_with(
             user_id=editor_id,
@@ -189,7 +189,7 @@ class TestCreateTransactionSuccess:
 
     async def test_commits_uow(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         uow.committed = False
         cmd = _make_create_cmd(
             account_id=account.id,
@@ -201,7 +201,7 @@ class TestCreateTransactionSuccess:
 
     async def test_emits_transaction_created_event(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -223,7 +223,7 @@ class TestCreateTransactionSuccess:
 class TestCreateTransactionValidation:
     async def test_currency_mismatch_raises(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow, currency=Currency.USD)
+        account, owner_id = await _make_account(uow, currency=Currency.USD)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -234,7 +234,7 @@ class TestCreateTransactionValidation:
 
     async def test_duplicate_external_id_raises(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd1 = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -254,7 +254,7 @@ class TestCreateTransactionValidation:
 
     async def test_duplicate_external_id_includes_soft_deleted(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd1 = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -268,7 +268,7 @@ class TestCreateTransactionValidation:
         retention = RetentionPeriod(duration=30, unit=RetentionUnit.DAYS)
         txn.soft_delete(deleted_by=owner_id, retention=retention)
         txn.collect_events()
-        uow.transactions.save(txn)
+        await uow.transactions.save(txn)
 
         # Attempt to create another with the same external_id
         cmd2 = _make_create_cmd(
@@ -288,11 +288,11 @@ class TestCreateTransactionValidation:
 
     async def test_deleted_account_raises(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         retention = RetentionPeriod(duration=30, unit=RetentionUnit.DAYS)
         account.soft_delete(deleted_by=owner_id, retention=retention)
         account.collect_events()
-        uow.accounts.save(account)
+        await uow.accounts.save(account)
 
         cmd = _make_create_cmd(
             account_id=account.id,
@@ -304,7 +304,7 @@ class TestCreateTransactionValidation:
 
     async def test_viewer_permission_denied(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         viewer_id = uuid.uuid4()
         account.share_with(
             user_id=viewer_id,

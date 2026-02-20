@@ -59,7 +59,7 @@ def _make_service() -> tuple[TransactionManagementService, FakeCoreFinanceUnitOf
     return service, uow
 
 
-def _make_account(
+async def _make_account(
     uow: FakeCoreFinanceUnitOfWork,
     owner_id: uuid.UUID | None = None,
 ) -> tuple[Account, uuid.UUID]:
@@ -73,7 +73,7 @@ def _make_account(
         account_type_id=uuid.uuid4(),
         financial_institution_id=uuid.uuid4(),
     )
-    uow.accounts.save(account)
+    await uow.accounts.save(account)
     account.collect_events()
     return account, owner_id
 
@@ -103,7 +103,7 @@ async def _create_transaction(
 class TestSoftDeleteTransaction:
     async def test_soft_delete_success(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
         uow.committed = False
 
@@ -119,7 +119,7 @@ class TestSoftDeleteTransaction:
 
     async def test_soft_delete_emits_event(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
 
         cmd = SoftDeleteTransaction(
@@ -136,7 +136,7 @@ class TestSoftDeleteTransaction:
 
     async def test_soft_delete_viewer_denied(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
         viewer_id = uuid.uuid4()
         account.share_with(
@@ -156,7 +156,7 @@ class TestSoftDeleteTransaction:
 
     async def test_already_deleted_raises(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
 
         cmd = SoftDeleteTransaction(
@@ -172,7 +172,7 @@ class TestSoftDeleteTransaction:
 
     async def test_soft_delete_with_reason(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
 
         cmd = SoftDeleteTransaction(
@@ -188,7 +188,7 @@ class TestSoftDeleteTransaction:
 class TestRecoverTransaction:
     async def test_recover_success(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
 
         delete_cmd = SoftDeleteTransaction(
@@ -212,7 +212,7 @@ class TestRecoverTransaction:
 
     async def test_recover_emits_event(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
 
         delete_cmd = SoftDeleteTransaction(
@@ -236,7 +236,7 @@ class TestRecoverTransaction:
 
     async def test_recover_non_owner_denied(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         editor_id = uuid.uuid4()
         account.share_with(
             user_id=editor_id,
@@ -265,7 +265,7 @@ class TestRecoverTransaction:
 
     async def test_recover_parent_account_deleted_raises(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
 
         # Soft-delete the transaction first
@@ -281,7 +281,7 @@ class TestRecoverTransaction:
         retention = RetentionPeriod(duration=30, unit=RetentionUnit.DAYS)
         account.soft_delete(deleted_by=owner_id, retention=retention)
         account.collect_events()
-        uow.accounts.save(account)
+        await uow.accounts.save(account)
 
         recover_cmd = RecoverTransaction(
             account_id=account.id,
@@ -293,7 +293,7 @@ class TestRecoverTransaction:
 
     async def test_recover_not_deleted_raises(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
 
         recover_cmd = RecoverTransaction(

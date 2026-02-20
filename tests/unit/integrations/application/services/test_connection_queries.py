@@ -49,7 +49,7 @@ def account_id() -> uuid.UUID:
     return uuid.uuid4()
 
 
-def _create_connection(
+async def _create_connection(
     uow: FakeIntegrationsUnitOfWork,
     user_id: uuid.UUID,
     account_id: uuid.UUID,
@@ -64,7 +64,7 @@ def _create_connection(
         created_by=user_id,
     )
     conn.collect_events()
-    uow.bank_connections.save(conn)
+    await uow.bank_connections.save(conn)
     return conn
 
 
@@ -76,13 +76,13 @@ class TestGetConnectionsForUser:
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn1 = _create_connection(uow, user_id, account_id, provider="plaid")
+        conn1 = await _create_connection(uow, user_id, account_id, provider="plaid")
         other_account = uuid.uuid4()
-        conn2 = _create_connection(uow, user_id, other_account, provider="yodlee")
+        conn2 = await _create_connection(uow, user_id, other_account, provider="yodlee")
 
         # Another user's connection
         other_user = uuid.uuid4()
-        _create_connection(uow, other_user, uuid.uuid4(), provider="mx")
+        await _create_connection(uow, other_user, uuid.uuid4(), provider="mx")
 
         results = await service.get_connections_for_user(user_id)
 
@@ -98,8 +98,8 @@ class TestGetConnectionsForAccount:
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn = _create_connection(uow, user_id, account_id)
-        _create_connection(uow, user_id, uuid.uuid4(), provider="yodlee")
+        conn = await _create_connection(uow, user_id, account_id)
+        await _create_connection(uow, user_id, uuid.uuid4(), provider="yodlee")
 
         results = await service.get_connections_for_account(account_id)
 
@@ -115,9 +115,9 @@ class TestGetSyncHistory:
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn = _create_connection(uow, user_id, account_id)
+        conn = await _create_connection(uow, user_id, account_id)
         history = SyncHistory.create(connection_id=conn.id)
-        uow.sync_history.save(history)
+        await uow.sync_history.save(history)
 
         results = await service.get_sync_history(conn.id)
 
@@ -141,7 +141,7 @@ class TestGetPendingForReview:
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn = _create_connection(uow, user_id, account_id)
+        conn = await _create_connection(uow, user_id, account_id)
         normalized = NormalizedTransaction(
             transaction_date=date(2024, 1, 15),
             amount=Decimal("-50.00"),
@@ -154,11 +154,10 @@ class TestGetPendingForReview:
             sync_id=uuid.uuid4(),
             account_id=account_id,
             external_id="ext_123",
-            raw_data="{}",
             normalized=normalized,
             match_status=MatchStatus.NEEDS_REVIEW,
         )
-        uow.pending_transactions.save(pending_review)
+        await uow.pending_transactions.save(pending_review)
 
         # A NEW pending should not appear
         normalized_new = NormalizedTransaction(
@@ -173,11 +172,10 @@ class TestGetPendingForReview:
             sync_id=uuid.uuid4(),
             account_id=account_id,
             external_id="ext_456",
-            raw_data="{}",
             normalized=normalized_new,
             match_status=MatchStatus.NEW,
         )
-        uow.pending_transactions.save(pending_new)
+        await uow.pending_transactions.save(pending_new)
 
         results = await service.get_pending_for_review(conn.id)
 

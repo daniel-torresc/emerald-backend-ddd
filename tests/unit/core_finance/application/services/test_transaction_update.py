@@ -55,7 +55,7 @@ def _make_service() -> tuple[TransactionManagementService, FakeCoreFinanceUnitOf
     return service, uow
 
 
-def _make_account(
+async def _make_account(
     uow: FakeCoreFinanceUnitOfWork,
     owner_id: uuid.UUID | None = None,
     currency: Currency = Currency.USD,
@@ -70,7 +70,7 @@ def _make_account(
         account_type_id=uuid.uuid4(),
         financial_institution_id=uuid.uuid4(),
     )
-    uow.accounts.save(account)
+    await uow.accounts.save(account)
     account.collect_events()
     return account, owner_id
 
@@ -106,7 +106,7 @@ def _soft_delete_transaction(txn: Transaction, deleted_by: uuid.UUID) -> None:
 class TestUpdateDescription:
     async def test_success(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
         uow.committed = False
 
@@ -122,7 +122,7 @@ class TestUpdateDescription:
 
     async def test_viewer_denied(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
         viewer_id = uuid.uuid4()
         account.share_with(
@@ -145,10 +145,10 @@ class TestUpdateDescription:
         """Soft-deleted txn is filtered by repo (include_deleted=False),
         so service raises TransactionNotFoundError."""
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
         _soft_delete_transaction(txn, owner_id)
-        uow.transactions.save(txn)
+        await uow.transactions.save(txn)
 
         cmd = UpdateTransactionDescription(
             account_id=account.id,
@@ -163,7 +163,7 @@ class TestUpdateDescription:
 class TestUpdateMerchant:
     async def test_success(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
         uow.committed = False
 
@@ -179,7 +179,7 @@ class TestUpdateMerchant:
 
     async def test_viewer_denied(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
         viewer_id = uuid.uuid4()
         account.share_with(
@@ -202,7 +202,7 @@ class TestUpdateMerchant:
 class TestUpdateComments:
     async def test_success(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
         uow.committed = False
 
@@ -218,7 +218,7 @@ class TestUpdateComments:
 
     async def test_viewer_denied(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
         viewer_id = uuid.uuid4()
         account.share_with(
@@ -241,7 +241,7 @@ class TestUpdateComments:
 class TestUpdateDates:
     async def test_success(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
         uow.committed = False
 
@@ -259,7 +259,7 @@ class TestUpdateDates:
 
     async def test_viewer_denied(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
         viewer_id = uuid.uuid4()
         account.share_with(
@@ -282,7 +282,7 @@ class TestUpdateDates:
 class TestUpdateAmount:
     async def test_success(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
         uow.committed = False
 
@@ -299,7 +299,7 @@ class TestUpdateAmount:
 
     async def test_currency_mismatch_raises(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow, currency=Currency.USD)
+        account, owner_id = await _make_account(uow, currency=Currency.USD)
         txn = await _create_transaction(service, account, owner_id)
 
         cmd = UpdateTransactionAmount(
@@ -314,7 +314,7 @@ class TestUpdateAmount:
 
     async def test_viewer_denied(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
         viewer_id = uuid.uuid4()
         account.share_with(
@@ -338,7 +338,7 @@ class TestUpdateAmount:
 class TestUpdateTransactionNotFound:
     async def test_description_not_found(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
 
         cmd = UpdateTransactionDescription(
             account_id=account.id,
@@ -351,7 +351,7 @@ class TestUpdateTransactionNotFound:
 
     async def test_merchant_not_found(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
 
         cmd = UpdateTransactionMerchant(
             account_id=account.id,
@@ -364,7 +364,7 @@ class TestUpdateTransactionNotFound:
 
     async def test_comments_not_found(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
 
         cmd = UpdateTransactionComments(
             account_id=account.id,
@@ -377,7 +377,7 @@ class TestUpdateTransactionNotFound:
 
     async def test_dates_not_found(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
 
         cmd = UpdateTransactionDates(
             account_id=account.id,
@@ -390,7 +390,7 @@ class TestUpdateTransactionNotFound:
 
     async def test_amount_not_found(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
 
         cmd = UpdateTransactionAmount(
             account_id=account.id,

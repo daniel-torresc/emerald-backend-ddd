@@ -17,7 +17,7 @@ from emerald.iam.domain.models.value_objects.auth_provider import AuthProvider, 
 from emerald.iam.domain.models.value_objects.email_address import EmailAddress
 from emerald.iam.domain.models.value_objects.user_status import UserStatus
 from emerald.iam.domain.models.value_objects.username import Username
-from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasher, FakeTokenService
+from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasherPort, FakeTokenPort
 
 
 def _make_social_user(**overrides: Any) -> User:
@@ -43,7 +43,7 @@ def uow() -> FakeIamUnitOfWork:
 
 @pytest.fixture
 def service(uow: FakeIamUnitOfWork) -> AuthenticationService:
-    return AuthenticationService(uow, FakePasswordHasher(), FakeTokenService())
+    return AuthenticationService(uow, FakePasswordHasherPort(), FakeTokenPort())
 
 
 class TestSetOnboardingUsername:
@@ -54,7 +54,7 @@ class TestSetOnboardingUsername:
     ) -> None:
         """Social-only user (username=None) -> set username succeeds."""
         user = _make_social_user()
-        uow.users.add(user)
+        await uow.users.add(user)
         user.collect_events()
 
         cmd = SetOnboardingUsername(user_id=str(user.id), username="mynewname")
@@ -80,10 +80,10 @@ class TestSetOnboardingUsername:
             id=uuid.uuid4(),
             created_by=uuid.uuid4(),
         )
-        uow.users.add(existing)
+        await uow.users.add(existing)
 
         user = _make_social_user()
-        uow.users.add(user)
+        await uow.users.add(user)
 
         cmd = SetOnboardingUsername(user_id=str(user.id), username="takenname")
 
@@ -95,7 +95,7 @@ class TestSetOnboardingUsername:
     ) -> None:
         """Too short username -> InvalidUsernameError."""
         user = _make_social_user()
-        uow.users.add(user)
+        await uow.users.add(user)
 
         cmd = SetOnboardingUsername(user_id=str(user.id), username="a")
 
@@ -116,7 +116,7 @@ class TestSetOnboardingUsername:
     ) -> None:
         """User with existing username -> update_username still works."""
         user = _make_social_user(username=Username("oldname"))
-        uow.users.add(user)
+        await uow.users.add(user)
         user.collect_events()
 
         cmd = SetOnboardingUsername(user_id=str(user.id), username="newname123")

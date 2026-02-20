@@ -34,6 +34,14 @@ class TransactionReviewed(TransactionEvent):
 
 
 @dataclass(frozen=True)
+class TransactionMarkedForReview(TransactionEvent):
+    """Emitted when a transaction is marked for review (unreview)."""
+
+    account_id: uuid.UUID
+    updated_by: uuid.UUID
+
+
+@dataclass(frozen=True)
 class TransactionSoftDeleted(TransactionEvent):
     """Emitted when a transaction is soft-deleted."""
 

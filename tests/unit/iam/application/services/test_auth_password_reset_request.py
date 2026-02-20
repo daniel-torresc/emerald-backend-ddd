@@ -13,10 +13,10 @@ from emerald.shared_kernel.domain.models.value_objects.retention_period import (
     RetentionPeriod,
     RetentionUnit,
 )
-from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasher, FakeTokenService
+from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasherPort, FakeTokenPort
 
 
-def _create_active_user(uow: FakeIamUnitOfWork) -> User:
+async def _create_active_user(uow: FakeIamUnitOfWork) -> User:
     user = User.register(
         EmailAddress("test@example.com"),
         Username("testuser"),
@@ -24,22 +24,22 @@ def _create_active_user(uow: FakeIamUnitOfWork) -> User:
     )
     user.verify_email()
     user.collect_events()
-    uow.users.add(user)
+    await uow.users.add(user)
     return user
 
 
 @pytest.fixture
 def auth_env():
     uow = FakeIamUnitOfWork()
-    hasher = FakePasswordHasher()
-    token_service = FakeTokenService()
+    hasher = FakePasswordHasherPort()
+    token_service = FakeTokenPort()
     service = AuthenticationService(uow, hasher, token_service)
     return service, uow, hasher, token_service
 
 
 async def test_request_existing_user_returns_raw_token(auth_env):
     service, uow, _, _ = auth_env
-    _create_active_user(uow)
+    await _create_active_user(uow)
 
     raw_token = await service.request_password_reset(RequestPasswordReset(email="test@example.com"))
 
@@ -58,7 +58,7 @@ async def test_request_nonexistent_email_returns_none(auth_env):
 
 async def test_request_deleted_user_returns_none(auth_env):
     service, uow, _, _ = auth_env
-    user = _create_active_user(uow)
+    user = await _create_active_user(uow)
     user.soft_delete(
         deleted_by=user.id,
         retention=RetentionPeriod(duration=90, unit=RetentionUnit.DAYS),
@@ -72,7 +72,7 @@ async def test_request_deleted_user_returns_none(auth_env):
 
 async def test_request_invalidates_previous_tokens(auth_env):
     service, uow, _, token_service = auth_env
-    _create_active_user(uow)
+    await _create_active_user(uow)
 
     # Request first token
     raw_token_1 = await service.request_password_reset(
@@ -87,29 +87,29 @@ async def test_request_invalidates_previous_tokens(auth_env):
     assert raw_token_2 is not None
 
     # First token should be invalidated (used_at set)
-    hash_1 = token_service.hash_token(raw_token_1)
-    token_1 = uow.password_reset_tokens.find_by_hash(hash_1)
+    hash_1 = await token_service.hash_token(raw_token_1)
+    token_1 = await uow.password_reset_tokens.find_by_hash(hash_1)
     assert token_1 is not None
     assert token_1.is_used()
 
     # Second token should still be valid
-    hash_2 = token_service.hash_token(raw_token_2)
-    token_2 = uow.password_reset_tokens.find_by_hash(hash_2)
+    hash_2 = await token_service.hash_token(raw_token_2)
+    token_2 = await uow.password_reset_tokens.find_by_hash(hash_2)
     assert token_2 is not None
     assert not token_2.is_used()
 
 
 async def test_request_reset_token_expires_in_one_hour(auth_env):
     service, uow, _, token_service = auth_env
-    _create_active_user(uow)
+    await _create_active_user(uow)
 
     before = datetime.now(UTC)
     raw_token = await service.request_password_reset(RequestPasswordReset(email="test@example.com"))
     after = datetime.now(UTC)
 
     assert raw_token is not None
-    token_hash = token_service.hash_token(raw_token)
-    reset_token = uow.password_reset_tokens.find_by_hash(token_hash)
+    token_hash = await token_service.hash_token(raw_token)
+    reset_token = await uow.password_reset_tokens.find_by_hash(token_hash)
     assert reset_token is not None
 
     # The token's expires_at should be approximately created_at + 1 hour

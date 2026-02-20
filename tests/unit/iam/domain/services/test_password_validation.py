@@ -1,16 +1,17 @@
 import pytest
 
+from emerald.iam.domain.constants import PASSWORD_MIN_LENGTH
 from emerald.iam.domain.exceptions import PasswordReusedError, PasswordTooWeakError
 from emerald.iam.domain.services import validate_not_in_history, validate_password_strength
 
 
 class _FakeHasher:
-    """Fake PasswordHasher that stores plaintext as 'hash' for testing."""
+    """Fake PasswordHasherPort that stores plaintext as 'hash' for testing."""
 
-    def hash(self, plaintext: str) -> str:
+    async def hash(self, plaintext: str) -> str:
         return f"hashed:{plaintext}"
 
-    def verify(self, plaintext: str, hashed: str) -> bool:
+    async def verify(self, plaintext: str, hashed: str) -> bool:
         return hashed == f"hashed:{plaintext}"
 
 
@@ -19,7 +20,7 @@ class TestValidatePasswordStrength:
         validate_password_strength("ValidPass123!!")
 
     def test_too_short(self):
-        with pytest.raises(PasswordTooWeakError, match="12 characters"):
+        with pytest.raises(PasswordTooWeakError, match=f"{PASSWORD_MIN_LENGTH} characters"):
             validate_password_strength("Short1!a")
 
     def test_no_uppercase(self):
@@ -42,7 +43,7 @@ class TestValidatePasswordStrength:
         with pytest.raises(PasswordTooWeakError) as exc_info:
             validate_password_strength("short")
         msg = str(exc_info.value)
-        assert "12 characters" in msg
+        assert f"{PASSWORD_MIN_LENGTH} characters" in msg
         assert "uppercase" in msg
         assert "digit" in msg
         assert "special" in msg
@@ -56,26 +57,26 @@ class TestValidatePasswordStrength:
 
 
 class TestValidateNotInHistory:
-    def test_no_match_passes(self):
+    async def test_no_match_passes(self):
         hasher = _FakeHasher()
-        validate_not_in_history("newpass", ["hashed:old1", "hashed:old2"], hasher)
+        await validate_not_in_history("newpass", ["hashed:old1", "hashed:old2"], hasher)
 
-    def test_match_raises(self):
+    async def test_match_raises(self):
         hasher = _FakeHasher()
         with pytest.raises(PasswordReusedError):
-            validate_not_in_history("old1", ["hashed:old1", "hashed:old2"], hasher)
+            await validate_not_in_history("old1", ["hashed:old1", "hashed:old2"], hasher)
 
-    def test_empty_history_passes(self):
+    async def test_empty_history_passes(self):
         hasher = _FakeHasher()
-        validate_not_in_history("anything", [], hasher)
+        await validate_not_in_history("anything", [], hasher)
 
-    def test_partial_history_checked_fully(self):
+    async def test_partial_history_checked_fully(self):
         hasher = _FakeHasher()
         history = ["hashed:pw1", "hashed:pw2"]
-        validate_not_in_history("newpass", history, hasher)
+        await validate_not_in_history("newpass", history, hasher)
 
-    def test_match_at_end_of_history(self):
+    async def test_match_at_end_of_history(self):
         hasher = _FakeHasher()
         history = ["hashed:pw1", "hashed:pw2", "hashed:pw3"]
         with pytest.raises(PasswordReusedError):
-            validate_not_in_history("pw3", history, hasher)
+            await validate_not_in_history("pw3", history, hasher)

@@ -19,12 +19,12 @@ class DeduplicationService:
     def __init__(self, transaction_import_port: TransactionImportPort) -> None:
         self._port = transaction_import_port
 
-    def check(
+    async def check(
         self, normalized: NormalizedTransaction, account_id: uuid.UUID
     ) -> DeduplicationResult:
         """Check a normalized transaction against existing transactions."""
         # 1. Exact external_id match
-        if self._port.find_by_external_id(account_id, normalized.external_id):
+        if await self._port.find_by_external_id(account_id, normalized.external_id):
             return DeduplicationResult(
                 match_status=MatchStatus.DUPLICATE,
                 confidence=1.0,
@@ -32,7 +32,7 @@ class DeduplicationService:
             )
 
         # 2-3. Date + amount matching
-        matches = self._port.find_by_date_and_amount(
+        matches = await self._port.find_by_date_and_amount(
             account_id,
             normalized.transaction_date,
             normalized.amount,

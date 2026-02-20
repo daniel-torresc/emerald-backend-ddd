@@ -5,7 +5,7 @@ from emerald.iam.domain.models.aggregates.user import User
 from emerald.iam.domain.models.value_objects.email_address import EmailAddress
 from emerald.iam.domain.models.value_objects.hashed_password import HashedPassword
 from emerald.iam.domain.models.value_objects.username import Username
-from emerald.iam.domain.ports.password_hasher import PasswordHasher
+from emerald.iam.domain.ports.password_hasher_port import PasswordHasherPort
 from emerald.iam.domain.services.password_validation import validate_password_strength
 
 
@@ -15,7 +15,7 @@ class UserRegistrationService:
     Validation order: format -> strength -> uniqueness -> creation.
     """
 
-    def __init__(self, uow: AbstractIamUnitOfWork, hasher: PasswordHasher) -> None:
+    def __init__(self, uow: AbstractIamUnitOfWork, hasher: PasswordHasherPort) -> None:
         self._uow = uow
         self._hasher = hasher
 
@@ -38,18 +38,18 @@ class UserRegistrationService:
             validate_password_strength(cmd.plaintext_password)
 
             # 3. Check uniqueness
-            if self._uow.users.exists_by_email(email_vo):
+            if await self._uow.users.exists_by_email(email_vo):
                 raise EmailAlreadyExistsError(f"Email {email_vo} is already in use")
-            if self._uow.users.exists_by_username(username_vo, include_recently_deleted=True):
+            if await self._uow.users.exists_by_username(username_vo, include_recently_deleted=True):
                 raise UsernameAlreadyExistsError(f"Username {username_vo} is already taken")
 
             # 4. Hash password
-            hashed = self._hasher.hash(cmd.plaintext_password)
+            hashed = await self._hasher.hash(cmd.plaintext_password)
             hashed_password = HashedPassword(hashed)
 
             # 5. Create user and persist
             user = User.register(email_vo, username_vo, hashed_password)
-            self._uow.users.add(user)
+            await self._uow.users.add(user)
             await self._uow.commit()
 
             return user

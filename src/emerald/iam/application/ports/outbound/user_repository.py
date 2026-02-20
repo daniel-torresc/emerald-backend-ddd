@@ -13,30 +13,32 @@ if TYPE_CHECKING:
 class UserRepository(Protocol):
     """Domain port for user persistence and uniqueness queries."""
 
-    def add(self, user: User) -> None:
+    async def add(self, user: User) -> None:
         """Add a new user aggregate to the collection."""
         ...
 
-    def find_by_id(self, user_id: uuid.UUID) -> User | None:
+    async def find_by_id(self, user_id: uuid.UUID) -> User | None:
         """Find user by ID, returns None if not found."""
         ...
 
-    def find_by_email(self, email: EmailAddress) -> User | None:
+    async def find_by_email(self, email: EmailAddress) -> User | None:
         """Find user by email, returns None if not found."""
         ...
 
-    def find_by_username(self, username: Username) -> User | None:
+    async def find_by_username(self, username: Username) -> User | None:
         """Find user by username, returns None if not found."""
         ...
 
-    def exists_by_email(self, email: EmailAddress) -> bool:
+    async def exists_by_email(self, email: EmailAddress) -> bool:
         """Check if email is taken."""
         ...
 
-    def exists_by_username(self, username: Username, include_recently_deleted: bool = True) -> bool:
+    async def exists_by_username(
+        self, username: Username, include_recently_deleted: bool = True
+    ) -> bool:
         """Check if username is taken (optionally including recently deleted)."""
         ...
 
-    def exists_by_role(self, role: SystemRole) -> bool:
+    async def exists_by_role(self, role: SystemRole) -> bool:
         """Check if any user with the given system role exists."""
         ...

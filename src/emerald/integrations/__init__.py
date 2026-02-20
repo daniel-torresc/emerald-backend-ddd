@@ -4,8 +4,8 @@ from emerald.integrations.application import (
     ApprovePendingTransaction,
     BankConnectionRepository,
     BankConnectionService,
-    BankProviderAdapter,
-    BankProviderAdapterRegistry,
+    BankProviderPort,
+    BankProviderRegistryPort,
     BankSyncService,
     DeduplicationService,
     DisconnectBankConnection,
@@ -61,7 +61,6 @@ from emerald.integrations.domain import (
     SyncHistoryNotFoundError,
     SyncResult,
     SyncStatus,
-    TransactionNormalizer,
     TransactionsImported,
 )
 
@@ -112,8 +111,6 @@ __all__ = [
     "SyncAlreadyCompletedError",
     "SyncAlreadyInProgressError",
     "SyncHistoryNotFoundError",
-    # Domain Ports
-    "TransactionNormalizer",
     # Commands
     "ActivateBankConnection",
     "ApprovePendingTransaction",
@@ -129,8 +126,8 @@ __all__ = [
     # Application Ports
     "AbstractIntegrationsUnitOfWork",
     "BankConnectionRepository",
-    "BankProviderAdapter",
-    "BankProviderAdapterRegistry",
+    "BankProviderPort",
+    "BankProviderRegistryPort",
     "PendingTransactionRepository",
     "SyncHistoryRepository",
     "TransactionImportPort",

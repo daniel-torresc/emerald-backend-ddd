@@ -23,11 +23,13 @@ class FakeTaxonomyRepository:
         self._taxonomies: dict[uuid.UUID, Taxonomy] = {}
         self.seen: set[Taxonomy] = set()
 
-    def save(self, taxonomy: Taxonomy) -> None:
+    async def save(self, taxonomy: Taxonomy) -> None:
         self._taxonomies[taxonomy.id] = taxonomy
         self.seen.add(taxonomy)
 
-    def find_by_id(self, taxonomy_id: uuid.UUID, include_deleted: bool = False) -> Taxonomy | None:
+    async def find_by_id(
+        self, taxonomy_id: uuid.UUID, include_deleted: bool = False
+    ) -> Taxonomy | None:
         taxonomy = self._taxonomies.get(taxonomy_id)
         if taxonomy is None:
             return None
@@ -36,7 +38,9 @@ class FakeTaxonomyRepository:
             return None
         return taxonomy
 
-    def find_by_owner(self, owner_id: uuid.UUID, include_deleted: bool = False) -> list[Taxonomy]:
+    async def find_by_owner(
+        self, owner_id: uuid.UUID, include_deleted: bool = False
+    ) -> list[Taxonomy]:
         results: list[Taxonomy] = []
         for taxonomy in self._taxonomies.values():
             if taxonomy.owner_id != owner_id:
@@ -47,7 +51,7 @@ class FakeTaxonomyRepository:
             results.append(taxonomy)
         return results
 
-    def exists_by_name_for_owner(
+    async def exists_by_name_for_owner(
         self,
         name: TaxonomyName,
         owner_id: uuid.UUID,
@@ -64,7 +68,7 @@ class FakeTaxonomyRepository:
                 return True
         return False
 
-    def find_by_term_id(self, term_id: uuid.UUID) -> Taxonomy | None:
+    async def find_by_term_id(self, term_id: uuid.UUID) -> Taxonomy | None:
         for taxonomy in self._taxonomies.values():
             if taxonomy.is_deleted():
                 continue
@@ -91,13 +95,13 @@ class FakeTransactionAccessPort:
     def grant_editor_permission(self, account_id: uuid.UUID, user_id: uuid.UUID) -> None:
         self._editor_permissions.add((account_id, user_id))
 
-    def verify_transaction_active(self, transaction_id: uuid.UUID) -> uuid.UUID:
+    async def verify_transaction_active(self, transaction_id: uuid.UUID) -> uuid.UUID:
         account_id = self._active_transactions.get(transaction_id)
         if account_id is None:
             raise TransactionNotActiveError()
         return account_id
 
-    def verify_editor_permission(self, account_id: uuid.UUID, user_id: uuid.UUID) -> None:
+    async def verify_editor_permission(self, account_id: uuid.UUID, user_id: uuid.UUID) -> None:
         if (account_id, user_id) not in self._editor_permissions:
             raise AuthorizationError("Insufficient permission for categorization")
 
@@ -108,34 +112,38 @@ class FakeTransactionTermAssignmentRepository:
     def __init__(self) -> None:
         self._assignments: dict[uuid.UUID, TransactionTermAssignment] = {}
 
-    def save(self, assignment: TransactionTermAssignment) -> None:
+    async def save(self, assignment: TransactionTermAssignment) -> None:
         self._assignments[assignment.id] = assignment
 
-    def delete(self, assignment_id: uuid.UUID) -> None:
+    async def delete(self, assignment_id: uuid.UUID) -> None:
         self._assignments.pop(assignment_id, None)
 
-    def delete_by_term(self, term_id: uuid.UUID) -> list[TransactionTermAssignment]:
+    async def delete_by_term(self, term_id: uuid.UUID) -> list[TransactionTermAssignment]:
         to_delete = [a for a in self._assignments.values() if a.term_id == term_id]
         for a in to_delete:
             del self._assignments[a.id]
         return to_delete
 
-    def delete_by_taxonomy(self, taxonomy_id: uuid.UUID) -> list[TransactionTermAssignment]:
+    async def delete_by_taxonomy(self, taxonomy_id: uuid.UUID) -> list[TransactionTermAssignment]:
         to_delete = [a for a in self._assignments.values() if a.taxonomy_id == taxonomy_id]
         for a in to_delete:
             del self._assignments[a.id]
         return to_delete
 
-    def delete_by_transaction(self, transaction_id: uuid.UUID) -> list[TransactionTermAssignment]:
+    async def delete_by_transaction(
+        self, transaction_id: uuid.UUID
+    ) -> list[TransactionTermAssignment]:
         to_delete = [a for a in self._assignments.values() if a.transaction_id == transaction_id]
         for a in to_delete:
             del self._assignments[a.id]
         return to_delete
 
-    def find_by_transaction(self, transaction_id: uuid.UUID) -> list[TransactionTermAssignment]:
+    async def find_by_transaction(
+        self, transaction_id: uuid.UUID
+    ) -> list[TransactionTermAssignment]:
         return [a for a in self._assignments.values() if a.transaction_id == transaction_id]
 
-    def find_by_transaction_and_taxonomy(
+    async def find_by_transaction_and_taxonomy(
         self, transaction_id: uuid.UUID, taxonomy_id: uuid.UUID
     ) -> TransactionTermAssignment | None:
         for a in self._assignments.values():
@@ -143,13 +151,13 @@ class FakeTransactionTermAssignmentRepository:
                 return a
         return None
 
-    def find_by_term(self, term_id: uuid.UUID) -> list[TransactionTermAssignment]:
+    async def find_by_term(self, term_id: uuid.UUID) -> list[TransactionTermAssignment]:
         return [a for a in self._assignments.values() if a.term_id == term_id]
 
-    def find_transaction_ids_by_term(self, term_id: uuid.UUID) -> list[uuid.UUID]:
+    async def find_transaction_ids_by_term(self, term_id: uuid.UUID) -> list[uuid.UUID]:
         return [a.transaction_id for a in self._assignments.values() if a.term_id == term_id]
 
-    def find_uncategorized_transaction_ids(
+    async def find_uncategorized_transaction_ids(
         self, account_id: uuid.UUID, taxonomy_id: uuid.UUID
     ) -> list[uuid.UUID]:
         # In a real implementation this would query transactions from Core Finance.

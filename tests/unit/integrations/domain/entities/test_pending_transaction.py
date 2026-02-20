@@ -38,7 +38,6 @@ def _make_pending(
         sync_id=uuid.uuid4(),
         account_id=uuid.uuid4(),
         external_id="ext_123",
-        raw_data='{"raw": "data"}',
         normalized=_make_normalized(),
         match_status=match_status,
         matched_transaction_id=matched_transaction_id,
@@ -75,7 +74,6 @@ class TestPendingTransactionCreate:
             sync_id=uuid.uuid4(),
             account_id=uuid.uuid4(),
             external_id="ext_1",
-            raw_data="{}",
             normalized=_make_normalized(),
             match_status=MatchStatus.NEW,
         )
@@ -88,7 +86,6 @@ class TestPendingTransactionCreate:
             sync_id=uuid.uuid4(),
             account_id=uuid.uuid4(),
             external_id="ext_1",
-            raw_data="{}",
             normalized=norm,
             match_status=MatchStatus.NEW,
         )

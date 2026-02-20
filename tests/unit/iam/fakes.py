@@ -23,63 +23,65 @@ class FakeUserRepository:
         self._users: dict[uuid.UUID, User] = {}
         self.seen: set[User] = set()
 
-    def add(self, user: User) -> None:
+    async def add(self, user: User) -> None:
         self._users[user.id] = user
         self.seen.add(user)
 
-    def find_by_id(self, user_id: uuid.UUID) -> User | None:
+    async def find_by_id(self, user_id: uuid.UUID) -> User | None:
         user = self._users.get(user_id)
         if user is not None:
             self.seen.add(user)
         return user
 
-    def find_by_email(self, email: EmailAddress) -> User | None:
+    async def find_by_email(self, email: EmailAddress) -> User | None:
         for user in self._users.values():
             if user.email == email:
                 self.seen.add(user)
                 return user
         return None
 
-    def find_by_username(self, username: Username) -> User | None:
+    async def find_by_username(self, username: Username) -> User | None:
         for user in self._users.values():
             if user.username == username:
                 self.seen.add(user)
                 return user
         return None
 
-    def exists_by_email(self, email: EmailAddress) -> bool:
+    async def exists_by_email(self, email: EmailAddress) -> bool:
         return any(user.email == email for user in self._users.values())
 
-    def exists_by_username(self, username: Username, include_recently_deleted: bool = True) -> bool:
+    async def exists_by_username(
+        self, username: Username, include_recently_deleted: bool = True
+    ) -> bool:
         return any(user.username == username for user in self._users.values())
 
-    def exists_by_role(self, role: SystemRole) -> bool:
+    async def exists_by_role(self, role: SystemRole) -> bool:
         return any(user.system_role == role for user in self._users.values())
 
 
-class FakePasswordHasher:
+class FakePasswordHasherPort:
     """Deterministic password hasher for tests."""
 
-    def hash(self, plaintext: str) -> str:
+    async def hash(self, plaintext: str) -> str:
         return f"hashed:{plaintext}"
 
-    def verify(self, plaintext: str, hashed: str) -> bool:
+    async def verify(self, plaintext: str, hashed: str) -> bool:
         return hashed == f"hashed:{plaintext}"
 
 
-class FakeTokenService:
+class FakeTokenPort:
     """Deterministic token service for tests."""
 
     def __init__(self) -> None:
         self._counter = 0
         self._claims_store: dict[str, AccessTokenClaims] = {}
 
-    def sign_access_token(self, claims: AccessTokenClaims) -> str:
+    async def sign_access_token(self, claims: AccessTokenClaims) -> str:
         token = f"fake_access_token:{claims.jti}"
         self._claims_store[token] = claims
         return token
 
-    def verify_access_token(self, token: str) -> AccessTokenClaims:
+    async def verify_access_token(self, token: str) -> AccessTokenClaims:
         from emerald.iam.domain.exceptions import InvalidTokenError, TokenExpiredError
 
         claims = self._claims_store.get(token)
@@ -89,12 +91,12 @@ class FakeTokenService:
             raise TokenExpiredError("Token expired")
         return claims
 
-    def generate_refresh_token(self) -> tuple[str, str]:
+    async def generate_refresh_token(self) -> tuple[str, str]:
         self._counter += 1
         raw = f"raw_token_{self._counter}"
-        return (raw, self.hash_token(raw))
+        return (raw, await self.hash_token(raw))
 
-    def hash_token(self, raw_token: str) -> str:
+    async def hash_token(self, raw_token: str) -> str:
         return f"hashed:{raw_token}"
 
 
@@ -104,16 +106,16 @@ class FakeRefreshTokenRepository:
     def __init__(self) -> None:
         self._tokens: dict[uuid.UUID, RefreshToken] = {}
 
-    def add(self, token: RefreshToken) -> None:
+    async def add(self, token: RefreshToken) -> None:
         self._tokens[token.id] = token
 
-    def find_by_hash(self, token_hash: str) -> RefreshToken | None:
+    async def find_by_hash(self, token_hash: str) -> RefreshToken | None:
         for token in self._tokens.values():
             if token.token_hash == token_hash:
                 return token
         return None
 
-    def find_active_families_by_user(self, user_id: uuid.UUID) -> list[uuid.UUID]:
+    async def find_active_families_by_user(self, user_id: uuid.UUID) -> list[uuid.UUID]:
         families: dict[uuid.UUID, datetime] = {}
         now = datetime.now(UTC)
         for token in self._tokens.values():
@@ -125,20 +127,20 @@ class FakeRefreshTokenRepository:
         sorted_families = sorted(families.items(), key=lambda x: x[1])
         return [fid for fid, _ in sorted_families]
 
-    def revoke_family(self, family_id: uuid.UUID) -> None:
+    async def revoke_family(self, family_id: uuid.UUID) -> None:
         now = datetime.now(UTC)
         for token in self._tokens.values():
             if token.family_id == family_id and token.revoked_at is None:
                 token.revoked_at = now
 
-    def revoke_all_for_user(self, user_id: uuid.UUID) -> None:
+    async def revoke_all_for_user(self, user_id: uuid.UUID) -> None:
         now = datetime.now(UTC)
         for token in self._tokens.values():
             if token.user_id == user_id and token.revoked_at is None:
                 token.revoked_at = now
 
-    def count_active_families(self, user_id: uuid.UUID) -> int:
-        return len(self.find_active_families_by_user(user_id))
+    async def count_active_families(self, user_id: uuid.UUID) -> int:
+        return len(await self.find_active_families_by_user(user_id))
 
 
 class FakePasswordResetTokenRepository:
@@ -147,23 +149,23 @@ class FakePasswordResetTokenRepository:
     def __init__(self) -> None:
         self._tokens: dict[uuid.UUID, PasswordResetToken] = {}
 
-    def add(self, token: PasswordResetToken) -> None:
+    async def add(self, token: PasswordResetToken) -> None:
         self._tokens[token.id] = token
 
-    def find_by_hash(self, token_hash: str) -> PasswordResetToken | None:
+    async def find_by_hash(self, token_hash: str) -> PasswordResetToken | None:
         for token in self._tokens.values():
             if token.token_hash == token_hash:
                 return token
         return None
 
-    def invalidate_existing_for_user(self, user_id: uuid.UUID) -> None:
+    async def invalidate_existing_for_user(self, user_id: uuid.UUID) -> None:
         now = datetime.now(UTC)
         for token in self._tokens.values():
             if token.user_id == user_id and token.used_at is None:
                 token.used_at = now
 
 
-class FakeOidcProvider:
+class FakeOidcProviderPort:
     """Fake OIDC provider for testing social auth flows."""
 
     def __init__(self) -> None:
@@ -178,13 +180,13 @@ class FakeOidcProvider:
     def set_auth_url(self, state: str, url: str) -> None:
         self._auth_urls[state] = url
 
-    def generate_authorization_url(
+    async def generate_authorization_url(
         self, provider_type: ProviderType, redirect_uri: str, state: str
     ) -> str:
         self.generate_call_count += 1
         return self._auth_urls.get(state, f"https://provider.example.com/auth?state={state}")
 
-    def exchange_code_for_claims(
+    async def exchange_code_for_claims(
         self, provider_type: ProviderType, code: str, redirect_uri: str
     ) -> OidcClaims:
         self.exchange_call_count += 1

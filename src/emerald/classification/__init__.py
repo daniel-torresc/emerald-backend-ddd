@@ -2,7 +2,7 @@ from emerald.classification.application import (
     AbstractClassificationUnitOfWork,
     AddTerm,
     AssignTerm,
-    CategorizationEventHandler,
+    CategorizationEventHandlerPort,
     CreateTaxonomy,
     DeleteTerm,
     MoveTerm,
@@ -119,7 +119,7 @@ __all__ = [
     "UpdateTermDescription",
     # Ports
     "AbstractClassificationUnitOfWork",
-    "CategorizationEventHandler",
+    "CategorizationEventHandlerPort",
     "TaxonomyRepository",
     "TransactionAccessPort",
     "TransactionTermAssignmentRepository",

@@ -11,19 +11,21 @@ from emerald.iam.domain.exceptions import (
     UsernameAlreadyExistsError,
 )
 from emerald.iam.domain.models import EmailAddress, HashedPassword, User, Username, UserStatus
-from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasher
+from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasherPort
 
 
 class TestUserRegistrationService:
     def _make_service(
         self,
-    ) -> tuple[UserRegistrationService, FakeIamUnitOfWork, FakePasswordHasher]:
+    ) -> tuple[UserRegistrationService, FakeIamUnitOfWork, FakePasswordHasherPort]:
         uow = FakeIamUnitOfWork()
-        hasher = FakePasswordHasher()
+        hasher = FakePasswordHasherPort()
         service = UserRegistrationService(uow, hasher)
         return service, uow, hasher
 
-    def _register_existing_user(self, uow: FakeIamUnitOfWork, email: str, username: str) -> User:
+    async def _register_existing_user(
+        self, uow: FakeIamUnitOfWork, email: str, username: str
+    ) -> User:
         """Helper: create and add a real User to the fake repository."""
         user = User.register(
             EmailAddress(email),
@@ -31,7 +33,7 @@ class TestUserRegistrationService:
             HashedPassword("hashed:SomePass123!!"),
         )
         user.collect_events()  # drain events so they don't leak into assertions
-        uow.users.add(user)
+        await uow.users.add(user)
         return user
 
     async def test_successful_registration(self):
@@ -56,7 +58,7 @@ class TestUserRegistrationService:
         user = await service.register_user(
             RegisterUser("user@example.com", "johndoe", "ValidPass123!!")
         )
-        assert uow.users.find_by_id(user.id) is not None
+        assert await uow.users.find_by_id(user.id) is not None
 
     async def test_registration_emits_event(self):
         service, uow, _ = self._make_service()
@@ -79,13 +81,13 @@ class TestUserRegistrationService:
 
     async def test_weak_password_raises_before_uniqueness(self):
         service, uow, _ = self._make_service()
-        self._register_existing_user(uow, "user@example.com", "existing")
+        await self._register_existing_user(uow, "user@example.com", "existing")
         with pytest.raises(PasswordTooWeakError):
             await service.register_user(RegisterUser("user@example.com", "johndoe", "weak"))
 
     async def test_duplicate_email_raises(self):
         service, uow, _ = self._make_service()
-        self._register_existing_user(uow, "user@example.com", "existing")
+        await self._register_existing_user(uow, "user@example.com", "existing")
         with pytest.raises(EmailAlreadyExistsError):
             await service.register_user(
                 RegisterUser("user@example.com", "johndoe", "ValidPass123!!")
@@ -93,7 +95,7 @@ class TestUserRegistrationService:
 
     async def test_duplicate_username_raises(self):
         service, uow, _ = self._make_service()
-        self._register_existing_user(uow, "other@example.com", "johndoe")
+        await self._register_existing_user(uow, "other@example.com", "johndoe")
         with pytest.raises(UsernameAlreadyExistsError):
             await service.register_user(
                 RegisterUser("user@example.com", "johndoe", "ValidPass123!!")
@@ -108,13 +110,13 @@ class TestUserRegistrationService:
     async def test_validation_order_strength_before_uniqueness(self):
         """Weak password should fail before uniqueness is checked."""
         service, uow, _ = self._make_service()
-        self._register_existing_user(uow, "user@example.com", "existing")
+        await self._register_existing_user(uow, "user@example.com", "existing")
         with pytest.raises(PasswordTooWeakError):
             await service.register_user(RegisterUser("user@example.com", "johndoe", "short"))
 
     async def test_email_normalized_before_uniqueness_check(self):
         service, uow, _ = self._make_service()
-        self._register_existing_user(uow, "user@example.com", "existing")
+        await self._register_existing_user(uow, "user@example.com", "existing")
         with pytest.raises(EmailAlreadyExistsError):
             await service.register_user(
                 RegisterUser("USER@EXAMPLE.COM", "johndoe", "ValidPass123!!")

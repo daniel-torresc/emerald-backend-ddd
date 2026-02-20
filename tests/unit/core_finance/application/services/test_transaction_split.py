@@ -48,7 +48,7 @@ def _make_service() -> tuple[TransactionManagementService, FakeCoreFinanceUnitOf
     return service, uow
 
 
-def _make_account(
+async def _make_account(
     uow: FakeCoreFinanceUnitOfWork,
     owner_id: uuid.UUID | None = None,
     currency: Currency = Currency.USD,
@@ -63,7 +63,7 @@ def _make_account(
         account_type_id=uuid.uuid4(),
         financial_institution_id=uuid.uuid4(),
     )
-    uow.accounts.save(account)
+    await uow.accounts.save(account)
     account.collect_events()
     return account, owner_id
 
@@ -103,7 +103,7 @@ def _make_split_requests(
 class TestSplitTransactionSuccess:
     async def test_creates_children_and_saves(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -126,7 +126,7 @@ class TestSplitTransactionSuccess:
 
     async def test_children_are_persisted(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -143,12 +143,12 @@ class TestSplitTransactionSuccess:
         children = await service.split_transaction(split_cmd)
 
         for child in children:
-            found = uow.transactions.find_by_id(child.id)
+            found = await uow.transactions.find_by_id(child.id)
             assert found is not None
 
     async def test_children_have_correct_review_status(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -170,7 +170,7 @@ class TestSplitTransactionSuccess:
 class TestSplitTransactionPermissions:
     async def test_requires_editor_permission(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -201,7 +201,7 @@ class TestSplitTransactionPermissions:
 
     async def test_raises_on_nonexistent_transaction(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         split_cmd = SplitTransaction(
             account_id=account.id,
             transaction_id=uuid.uuid4(),
@@ -213,7 +213,7 @@ class TestSplitTransactionPermissions:
 
     async def test_raises_on_deleted_transaction(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -254,7 +254,7 @@ class TestJoinTransactionSplitsSuccess:
         uuid.UUID,
     ]:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -272,7 +272,7 @@ class TestJoinTransactionSplitsSuccess:
 
     async def test_hard_deletes_children(self) -> None:
         service, uow, account_id, parent_id, owner_id = await self._setup()
-        children_before = uow.transactions.find_children(parent_id)
+        children_before = await uow.transactions.find_children(parent_id)
         assert len(children_before) == 2
 
         join_cmd = JoinTransactionSplits(
@@ -282,7 +282,7 @@ class TestJoinTransactionSplitsSuccess:
         )
         await service.join_transaction_splits(join_cmd)
 
-        children_after = uow.transactions.find_children(parent_id)
+        children_after = await uow.transactions.find_children(parent_id)
         assert len(children_after) == 0
 
     async def test_parent_no_longer_split(self) -> None:
@@ -294,7 +294,7 @@ class TestJoinTransactionSplitsSuccess:
         )
         await service.join_transaction_splits(join_cmd)
 
-        parent = uow.transactions.find_by_id(parent_id)
+        parent = await uow.transactions.find_by_id(parent_id)
         assert parent is not None
         assert parent.is_split_parent is False
 
@@ -313,7 +313,7 @@ class TestJoinTransactionSplitsSuccess:
 class TestJoinTransactionSplitsValidation:
     async def test_requires_editor_permission(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -340,7 +340,7 @@ class TestJoinTransactionSplitsValidation:
 
     async def test_raises_on_non_split_parent(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -359,7 +359,7 @@ class TestJoinTransactionSplitsValidation:
 
     async def test_raises_on_nonexistent_transaction(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         with pytest.raises(TransactionNotFoundError):
             await service.join_transaction_splits(
                 JoinTransactionSplits(
@@ -378,7 +378,7 @@ class TestJoinTransactionSplitsValidation:
 class TestUpdateAmountAutoJoin:
     async def test_auto_joins_split_parent(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -407,14 +407,14 @@ class TestUpdateAmountAutoJoin:
 
         assert parent.is_split_parent is False
         assert parent.amount == Money(Decimal("-100.00"), Currency.USD)
-        children = uow.transactions.find_children(parent.id)
+        children = await uow.transactions.find_children(parent.id)
         assert len(children) == 0
 
 
 class TestUpdateAmountSplitChildValidation:
     async def test_valid_child_amount_update(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -445,7 +445,7 @@ class TestUpdateAmountSplitChildValidation:
 
     async def test_valid_child_amount_preserving_sum(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -483,7 +483,7 @@ class TestUpdateAmountSplitChildValidation:
 class TestSoftDeleteCascade:
     async def test_deleting_parent_cascades_to_children(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -513,7 +513,7 @@ class TestSoftDeleteCascade:
 
     async def test_deleting_single_child_does_not_affect_parent(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -550,7 +550,7 @@ class TestSoftDeleteCascade:
 class TestRecoverCascade:
     async def test_recovering_parent_recovers_deleted_children(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -589,7 +589,7 @@ class TestRecoverCascade:
 
     async def test_recovering_child_raises_when_parent_deleted(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -625,7 +625,7 @@ class TestRecoverCascade:
 
     async def test_recovering_child_succeeds_when_parent_active(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -669,7 +669,7 @@ class TestRecoverCascade:
 class TestBalanceWithSplits:
     async def test_balance_unchanged_after_split(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -693,7 +693,7 @@ class TestBalanceWithSplits:
 
     async def test_balance_restored_after_join(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,
@@ -723,7 +723,7 @@ class TestBalanceWithSplits:
 
     async def test_deleting_child_affects_balance(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         cmd = _make_create_cmd(
             account_id=account.id,
             requesting_user_id=owner_id,

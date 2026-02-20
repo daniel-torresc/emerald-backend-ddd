@@ -13,10 +13,10 @@ from emerald.iam.domain.models.value_objects.email_address import EmailAddress
 from emerald.iam.domain.models.value_objects.hashed_password import HashedPassword
 from emerald.iam.domain.models.value_objects.portal_context import PortalContext
 from emerald.iam.domain.models.value_objects.username import Username
-from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasher, FakeTokenService
+from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasherPort, FakeTokenPort
 
 
-def _create_active_user(uow: FakeIamUnitOfWork) -> User:
+async def _create_active_user(uow: FakeIamUnitOfWork) -> User:
     user = User.register(
         EmailAddress("test@example.com"),
         Username("testuser"),
@@ -24,15 +24,15 @@ def _create_active_user(uow: FakeIamUnitOfWork) -> User:
     )
     user.verify_email()
     user.collect_events()
-    uow.users.add(user)
+    await uow.users.add(user)
     return user
 
 
 @pytest.fixture
 def auth_env():
     uow = FakeIamUnitOfWork()
-    hasher = FakePasswordHasher()
-    token_service = FakeTokenService()
+    hasher = FakePasswordHasherPort()
+    token_service = FakeTokenPort()
     service = AuthenticationService(uow, hasher, token_service)
     return service, uow, hasher, token_service
 
@@ -45,7 +45,7 @@ async def _login(service: AuthenticationService) -> LoginResult:
 
 async def test_refresh_valid_token_returns_new_pair(auth_env):
     service, uow, _, _ = auth_env
-    _create_active_user(uow)
+    await _create_active_user(uow)
     login_result = await _login(service)
 
     refresh_result = await service.refresh(
@@ -60,23 +60,23 @@ async def test_refresh_valid_token_returns_new_pair(auth_env):
 
 async def test_refresh_old_token_is_revoked(auth_env):
     service, uow, _, token_service = auth_env
-    _create_active_user(uow)
+    await _create_active_user(uow)
     login_result = await _login(service)
-    old_hash = token_service.hash_token(login_result.refresh_token)
+    old_hash = await token_service.hash_token(login_result.refresh_token)
 
     await service.refresh(RefreshAccessToken(refresh_token=login_result.refresh_token))
 
-    old_token = uow.refresh_tokens.find_by_hash(old_hash)
+    old_token = await uow.refresh_tokens.find_by_hash(old_hash)
     assert old_token is not None
     assert old_token.is_revoked()
 
 
 async def test_refresh_new_token_in_same_family(auth_env):
     service, uow, _, token_service = auth_env
-    _create_active_user(uow)
+    await _create_active_user(uow)
     login_result = await _login(service)
-    old_hash = token_service.hash_token(login_result.refresh_token)
-    old_token = uow.refresh_tokens.find_by_hash(old_hash)
+    old_hash = await token_service.hash_token(login_result.refresh_token)
+    old_token = await uow.refresh_tokens.find_by_hash(old_hash)
     assert old_token is not None
     old_family_id = old_token.family_id
 
@@ -84,15 +84,15 @@ async def test_refresh_new_token_in_same_family(auth_env):
         RefreshAccessToken(refresh_token=login_result.refresh_token)
     )
 
-    new_hash = token_service.hash_token(refresh_result.refresh_token)
-    new_token = uow.refresh_tokens.find_by_hash(new_hash)
+    new_hash = await token_service.hash_token(refresh_result.refresh_token)
+    new_token = await uow.refresh_tokens.find_by_hash(new_hash)
     assert new_token is not None
     assert new_token.family_id == old_family_id
 
 
 async def test_refresh_expired_token_raises_token_expired(auth_env):
     service, uow, _, _ = auth_env
-    user = _create_active_user(uow)
+    user = await _create_active_user(uow)
 
     expired_token = RefreshToken(
         user_id=user.id,
@@ -102,7 +102,7 @@ async def test_refresh_expired_token_raises_token_expired(auth_env):
         expires_at=datetime.now(UTC) - timedelta(hours=1),
         created_at=datetime.now(UTC) - timedelta(hours=2),
     )
-    uow.refresh_tokens.add(expired_token)
+    await uow.refresh_tokens.add(expired_token)
 
     with pytest.raises(TokenExpiredError):
         await service.refresh(RefreshAccessToken(refresh_token="expired_raw"))
@@ -117,15 +117,15 @@ async def test_refresh_not_found_token_raises_invalid_token(auth_env):
 
 async def test_refresh_revoked_token_triggers_theft_detection(auth_env):
     service, uow, _, token_service = auth_env
-    _create_active_user(uow)
+    await _create_active_user(uow)
 
     # 1. Login to get tokens
     login_result = await _login(service)
 
     # 2. Find the refresh token in the fake repo and revoke it
     raw_refresh = login_result.refresh_token
-    token_hash = token_service.hash_token(raw_refresh)
-    stored_token = uow.refresh_tokens.find_by_hash(token_hash)
+    token_hash = await token_service.hash_token(raw_refresh)
+    stored_token = await uow.refresh_tokens.find_by_hash(token_hash)
     assert stored_token is not None
     stored_token.revoke()
 

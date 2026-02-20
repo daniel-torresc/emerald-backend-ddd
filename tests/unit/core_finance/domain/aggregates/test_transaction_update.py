@@ -308,23 +308,23 @@ class TestUpdateAmount:
 class TestVersionTracking:
     def test_update_description_increments_version(self) -> None:
         tx = _make_transaction()
-        assert tx.version == 0
-        tx.update_description("New desc", uuid.uuid4())
         assert tx.version == 1
+        tx.update_description("New desc", uuid.uuid4())
+        assert tx.version == 2
 
     def test_update_merchant_increments_version(self) -> None:
         tx = _make_transaction()
         tx.update_merchant("Starbucks", uuid.uuid4())
-        assert tx.version == 1
+        assert tx.version == 2
 
     def test_update_amount_increments_version(self) -> None:
         tx = _make_transaction()
         tx.update_amount(Money(Decimal("50.00"), Currency.USD), uuid.uuid4())
-        assert tx.version == 1
+        assert tx.version == 2
 
     def test_multiple_updates_increment_version_cumulatively(self) -> None:
         tx = _make_transaction()
         tx.update_description("Desc", uuid.uuid4())
         tx.update_merchant("Shop", uuid.uuid4())
         tx.update_amount(Money(Decimal("50.00"), Currency.USD), uuid.uuid4())
-        assert tx.version == 3
+        assert tx.version == 4

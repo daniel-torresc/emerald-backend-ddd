@@ -52,7 +52,7 @@ def _make_normalized(
 class TestExactExternalIdMatch:
     """Tier 1: exact external_id match."""
 
-    def test_returns_duplicate_with_confidence_one(
+    async def test_returns_duplicate_with_confidence_one(
         self,
         service: DeduplicationService,
         import_port: FakeTransactionImportPort,
@@ -61,7 +61,7 @@ class TestExactExternalIdMatch:
         normalized = _make_normalized(external_id="ext_123")
         import_port.add_existing_external_id(account_id, "ext_123")
 
-        result = service.check(normalized, account_id)
+        result = await service.check(normalized, account_id)
 
         assert result.match_status == MatchStatus.DUPLICATE
         assert result.confidence == 1.0
@@ -72,7 +72,7 @@ class TestExactExternalIdMatch:
 class TestExactDateAmountDescription:
     """Tier 2: same date + amount + description."""
 
-    def test_returns_duplicate_with_confidence_095(
+    async def test_returns_duplicate_with_confidence_095(
         self,
         service: DeduplicationService,
         import_port: FakeTransactionImportPort,
@@ -96,7 +96,7 @@ class TestExactDateAmountDescription:
             ),
         )
 
-        result = service.check(normalized, account_id)
+        result = await service.check(normalized, account_id)
 
         assert result.match_status == MatchStatus.DUPLICATE
         assert result.confidence == 0.95
@@ -106,7 +106,7 @@ class TestExactDateAmountDescription:
 class TestFuzzyDateApproximateAmount:
     """Tier 3: same date + approximate amount (within tolerance)."""
 
-    def test_returns_needs_review_with_confidence_06(
+    async def test_returns_needs_review_with_confidence_06(
         self,
         service: DeduplicationService,
         import_port: FakeTransactionImportPort,
@@ -131,13 +131,13 @@ class TestFuzzyDateApproximateAmount:
             ),
         )
 
-        result = service.check(normalized, account_id)
+        result = await service.check(normalized, account_id)
 
         assert result.match_status == MatchStatus.NEEDS_REVIEW
         assert result.confidence == 0.6
         assert result.matched_transaction_id == txn_id
 
-    def test_approximate_amount_within_tolerance(
+    async def test_approximate_amount_within_tolerance(
         self,
         service: DeduplicationService,
         import_port: FakeTransactionImportPort,
@@ -162,7 +162,7 @@ class TestFuzzyDateApproximateAmount:
             ),
         )
 
-        result = service.check(normalized, account_id)
+        result = await service.check(normalized, account_id)
 
         assert result.match_status == MatchStatus.NEEDS_REVIEW
         assert result.confidence == 0.6
@@ -171,7 +171,7 @@ class TestFuzzyDateApproximateAmount:
 class TestNoMatch:
     """Tier 4: no matching transaction."""
 
-    def test_returns_new_with_confidence_zero(
+    async def test_returns_new_with_confidence_zero(
         self,
         service: DeduplicationService,
         import_port: FakeTransactionImportPort,
@@ -179,7 +179,7 @@ class TestNoMatch:
     ) -> None:
         normalized = _make_normalized()
 
-        result = service.check(normalized, account_id)
+        result = await service.check(normalized, account_id)
 
         assert result.match_status == MatchStatus.NEW
         assert result.confidence == 0.0

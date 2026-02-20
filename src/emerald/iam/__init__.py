@@ -20,10 +20,10 @@ from emerald.iam.application.dtos import (
 )
 from emerald.iam.application.ports import (
     AbstractIamUnitOfWork,
-    OidcProvider,
+    OidcProviderPort,
     PasswordResetTokenRepository,
     RefreshTokenRepository,
-    TokenService,
+    TokenPort,
     UserRepository,
 )
 from emerald.iam.application.services import (
@@ -32,6 +32,7 @@ from emerald.iam.application.services import (
     SuperadminProvisioningService,
     UserRegistrationService,
 )
+from emerald.iam.domain.constants import MAX_PASSWORD_HISTORY, PASSWORD_MIN_LENGTH
 from emerald.iam.domain.events import (
     AdminPermissionGranted,
     AdminPermissionRevoked,
@@ -43,7 +44,9 @@ from emerald.iam.domain.events import (
     UserDemotedToUser,
     UserEmailChanged,
     UserEvent,
+    UserFullNameUpdated,
     UserLoggedIn,
+    UserPreferencesUpdated,
     UserPromotedToAdmin,
     UserRecovered,
     UserRegistered,
@@ -107,7 +110,7 @@ from emerald.iam.domain.models import (
     UserPreferences,
     UserStatus,
 )
-from emerald.iam.domain.ports import PasswordHasher
+from emerald.iam.domain.ports import PasswordHasherPort
 from emerald.iam.domain.services import validate_not_in_history, validate_password_strength
 
 __all__ = [
@@ -130,6 +133,9 @@ __all__ = [
     "UserPreferences",
     "UserStatus",
     "Username",
+    # Domain Constants
+    "MAX_PASSWORD_HISTORY",
+    "PASSWORD_MIN_LENGTH",
     # Domain Services
     "validate_not_in_history",
     "validate_password_strength",
@@ -144,7 +150,9 @@ __all__ = [
     "UserDemotedToUser",
     "UserEmailChanged",
     "UserEvent",
+    "UserFullNameUpdated",
     "UserLoggedIn",
+    "UserPreferencesUpdated",
     "UserPromotedToAdmin",
     "UserRecovered",
     "UserRegistered",
@@ -208,11 +216,11 @@ __all__ = [
     "UnlinkAuthProvider",
     # Ports
     "AbstractIamUnitOfWork",
-    "OidcProvider",
-    "PasswordHasher",
+    "OidcProviderPort",
+    "PasswordHasherPort",
     "PasswordResetTokenRepository",
     "RefreshTokenRepository",
-    "TokenService",
+    "TokenPort",
     "UserRepository",
     # Services
     "AuthenticationService",

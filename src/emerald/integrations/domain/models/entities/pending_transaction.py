@@ -25,7 +25,6 @@ class PendingTransaction(Entity):
         sync_id: uuid.UUID,
         account_id: uuid.UUID,
         external_id: str,
-        raw_data: str,
         normalized: NormalizedTransaction,
         match_status: MatchStatus,
         matched_transaction_id: uuid.UUID | None = None,
@@ -38,7 +37,6 @@ class PendingTransaction(Entity):
         self._sync_id = sync_id
         self._account_id = account_id
         self._external_id = external_id
-        self._raw_data = raw_data
         self._normalized = normalized
         self.match_status = match_status
         self.matched_transaction_id = matched_transaction_id
@@ -62,10 +60,6 @@ class PendingTransaction(Entity):
         return self._external_id
 
     @property
-    def raw_data(self) -> str:
-        return self._raw_data
-
-    @property
     def normalized(self) -> NormalizedTransaction:
         return self._normalized
 
@@ -81,7 +75,6 @@ class PendingTransaction(Entity):
         sync_id: uuid.UUID,
         account_id: uuid.UUID,
         external_id: str,
-        raw_data: str,
         normalized: NormalizedTransaction,
         match_status: MatchStatus,
         matched_transaction_id: uuid.UUID | None = None,
@@ -96,7 +89,6 @@ class PendingTransaction(Entity):
             sync_id=sync_id,
             account_id=account_id,
             external_id=external_id,
-            raw_data=raw_data,
             normalized=normalized,
             match_status=match_status,
             matched_transaction_id=matched_transaction_id,

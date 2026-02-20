@@ -4,11 +4,11 @@ from emerald.core_finance.application.services.account_management import (
 from emerald.core_finance.application.services.account_sharing import (
     AccountSharingService,
 )
-from emerald.core_finance.application.services.bulk_transaction import (
-    BulkTransactionService,
-)
 from emerald.core_finance.application.services.card_management import (
     CardManagementService,
+)
+from emerald.core_finance.application.services.transaction_bulk_management import (
+    TransactionBulkManagementService,
 )
 from emerald.core_finance.application.services.transaction_management import (
     TransactionManagementService,
@@ -17,7 +17,7 @@ from emerald.core_finance.application.services.transaction_management import (
 __all__ = [
     "AccountManagementService",
     "AccountSharingService",
-    "BulkTransactionService",
+    "TransactionBulkManagementService",
     "CardManagementService",
     "TransactionManagementService",
 ]

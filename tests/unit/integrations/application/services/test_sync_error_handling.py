@@ -20,7 +20,7 @@ from emerald.integrations.domain.models.value_objects.provider_credentials impor
 from emerald.integrations.domain.models.value_objects.provider_name import ProviderName
 from emerald.integrations.domain.models.value_objects.sync_status import SyncStatus
 from tests.unit.integrations.fakes import (
-    FakeBankProviderAdapter,
+    FakeBankProviderPort,
     FakeIntegrationsUnitOfWork,
     FakeProviderRegistry,
     FakeTransactionImportPort,
@@ -38,12 +38,12 @@ def import_port() -> FakeTransactionImportPort:
 
 
 @pytest.fixture()
-def adapter() -> FakeBankProviderAdapter:
-    return FakeBankProviderAdapter()
+def adapter() -> FakeBankProviderPort:
+    return FakeBankProviderPort()
 
 
 @pytest.fixture()
-def registry(adapter: FakeBankProviderAdapter) -> FakeProviderRegistry:
+def registry(adapter: FakeBankProviderPort) -> FakeProviderRegistry:
     return FakeProviderRegistry(adapter=adapter)
 
 
@@ -66,7 +66,7 @@ def account_id() -> uuid.UUID:
     return uuid.uuid4()
 
 
-def _create_active_connection(
+async def _create_active_connection(
     uow: FakeIntegrationsUnitOfWork, user_id: uuid.UUID, account_id: uuid.UUID
 ) -> BankConnection:
     conn = BankConnection.create(
@@ -79,7 +79,7 @@ def _create_active_connection(
     )
     conn.activate(ProviderCredentials("test-token"))
     conn.collect_events()
-    uow.bank_connections.save(conn)
+    await uow.bank_connections.save(conn)
     return conn
 
 
@@ -88,11 +88,11 @@ class TestAuthErrorHandling:
         self,
         service: BankSyncService,
         uow: FakeIntegrationsUnitOfWork,
-        adapter: FakeBankProviderAdapter,
+        adapter: FakeBankProviderPort,
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn = _create_active_connection(uow, user_id, account_id)
+        conn = await _create_active_connection(uow, user_id, account_id)
         adapter.set_auth_error(ProviderAuthError("Token expired"))
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
 
@@ -100,7 +100,7 @@ class TestAuthErrorHandling:
 
         assert history.status == SyncStatus.FAILED
         assert history.error_message == "Token expired"
-        updated = uow.bank_connections.find_by_id(conn.id)
+        updated = await uow.bank_connections.find_by_id(conn.id)
         assert updated is not None
         assert updated.status == ConnectionStatus.NEEDS_REAUTH
         assert updated.credentials is None
@@ -112,11 +112,11 @@ class TestProviderErrorHandling:
         self,
         service: BankSyncService,
         uow: FakeIntegrationsUnitOfWork,
-        adapter: FakeBankProviderAdapter,
+        adapter: FakeBankProviderPort,
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        conn = _create_active_connection(uow, user_id, account_id)
+        conn = await _create_active_connection(uow, user_id, account_id)
         adapter.set_provider_error(ProviderError("Service unavailable"))
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
 
@@ -124,7 +124,7 @@ class TestProviderErrorHandling:
 
         assert history.status == SyncStatus.FAILED
         assert history.error_message == "Service unavailable"
-        updated = uow.bank_connections.find_by_id(conn.id)
+        updated = await uow.bank_connections.find_by_id(conn.id)
         assert updated is not None
         # First failure does not transition to ERROR (needs MAX_CONSECUTIVE_FAILURES)
         assert updated.status == ConnectionStatus.ACTIVE

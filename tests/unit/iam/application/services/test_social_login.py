@@ -26,8 +26,8 @@ from emerald.iam.domain.models.value_objects.user_status import UserStatus
 from emerald.iam.domain.models.value_objects.username import Username
 from tests.unit.iam.fakes import (
     FakeIamUnitOfWork,
-    FakePasswordHasher,
-    FakeTokenService,
+    FakePasswordHasherPort,
+    FakeTokenPort,
 )
 
 
@@ -65,7 +65,7 @@ def uow() -> FakeIamUnitOfWork:
 
 @pytest.fixture
 def service(uow: FakeIamUnitOfWork) -> AuthenticationService:
-    return AuthenticationService(uow, FakePasswordHasher(), FakeTokenService())
+    return AuthenticationService(uow, FakePasswordHasherPort(), FakeTokenPort())
 
 
 class TestLoginWithProvider:
@@ -81,7 +81,7 @@ class TestLoginWithProvider:
                 AuthProvider(ProviderType.GOOGLE, "google-123", datetime.now(UTC)),
             },
         )
-        uow.users.add(user)
+        await uow.users.add(user)
         user.collect_events()  # Clear prior events
 
         claims = _make_claims()
@@ -96,7 +96,7 @@ class TestLoginWithProvider:
     ) -> None:
         """User exists ACTIVE, no GOOGLE linked -> auto-link."""
         user = _make_user()  # Only PASSWORD provider
-        uow.users.add(user)
+        await uow.users.add(user)
         user.collect_events()
 
         claims = _make_claims()
@@ -117,7 +117,7 @@ class TestLoginWithProvider:
             status=UserStatus.PENDING_VERIFICATION,
             email_verified=False,
         )
-        uow.users.add(user)
+        await uow.users.add(user)
         user.collect_events()
 
         claims = _make_claims()
@@ -137,7 +137,7 @@ class TestLoginWithProvider:
     ) -> None:
         """User is DELETED -> AuthenticationFailedError."""
         user = _make_user(status=UserStatus.DELETED)
-        uow.users.add(user)
+        await uow.users.add(user)
 
         claims = _make_claims()
 
@@ -149,7 +149,7 @@ class TestLoginWithProvider:
     ) -> None:
         """User is SUSPENDED -> AccountSuspendedError."""
         user = _make_user(status=UserStatus.SUSPENDED)
-        uow.users.add(user)
+        await uow.users.add(user)
 
         claims = _make_claims()
 
@@ -166,7 +166,7 @@ class TestLoginWithProvider:
                 AuthProvider(ProviderType.GOOGLE, "google-123", datetime.now(UTC)),
             },
         )
-        uow.users.add(user)
+        await uow.users.add(user)
 
         claims = _make_claims(external_id="google-999")
 
@@ -185,7 +185,7 @@ class TestLoginWithProvider:
         assert result.is_new_registration is True
 
         # New user should exist in repo
-        new_user = uow.users.find_by_email(EmailAddress("newuser@test.com"))
+        new_user = await uow.users.find_by_email(EmailAddress("newuser@test.com"))
         assert new_user is not None
         assert new_user.status == UserStatus.ACTIVE
         assert new_user.password is None
@@ -204,7 +204,7 @@ class TestLoginWithProvider:
         result = await service.login_with_provider(claims)
 
         assert result.is_new_registration is True
-        new_user = uow.users.find_by_email(EmailAddress("nofullname@test.com"))
+        new_user = await uow.users.find_by_email(EmailAddress("nofullname@test.com"))
         assert new_user is not None
         assert new_user.full_name is None
 
@@ -219,7 +219,7 @@ class TestLoginWithProvider:
                 AuthProvider(ProviderType.GOOGLE, "google-123", datetime.now(UTC)),
             },
         )
-        uow.users.add(user)
+        await uow.users.add(user)
         user.collect_events()
 
         claims = _make_claims()
@@ -238,7 +238,7 @@ class TestLoginWithProvider:
                 AuthProvider(ProviderType.GOOGLE, "google-123", datetime.now(UTC)),
             },
         )
-        uow.users.add(user)
+        await uow.users.add(user)
         user.collect_events()
 
         # Create MAX_CONCURRENT_SESSIONS active families
@@ -255,7 +255,7 @@ class TestLoginWithProvider:
                 expires_at=now + timedelta(days=7),
                 created_at=now + timedelta(seconds=i),
             )
-            uow.refresh_tokens.add(token)
+            await uow.refresh_tokens.add(token)
 
         claims = _make_claims()
         result = await service.login_with_provider(claims)
@@ -263,6 +263,6 @@ class TestLoginWithProvider:
         assert result is not None
 
         # Oldest family should have been revoked
-        active_families = uow.refresh_tokens.find_active_families_by_user(user.id)
+        active_families = await uow.refresh_tokens.find_active_families_by_user(user.id)
         assert family_ids[0] not in active_families
         assert len(active_families) == MAX_CONCURRENT_SESSIONS

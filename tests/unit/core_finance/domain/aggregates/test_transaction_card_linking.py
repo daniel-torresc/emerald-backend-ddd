@@ -148,6 +148,6 @@ class TestTouchesUpdatedAt:
 class TestCardLinkVersionTracking:
     def test_link_card_increments_version(self) -> None:
         tx = _make_transaction()
-        assert tx.version == 0
-        tx.update_card_id(uuid.uuid4())
         assert tx.version == 1
+        tx.update_card_id(uuid.uuid4())
+        assert tx.version == 2

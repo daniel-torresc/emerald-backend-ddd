@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import uuid
 from datetime import UTC, datetime
 
@@ -6,7 +8,12 @@ from emerald.shared_kernel.domain.models.base.entity import Entity
 
 
 class PasswordResetToken(Entity):
-    """Short-lived, single-use token for password reset. Stored hashed."""
+    """Short-lived, single-use token for password reset. Stored hashed.
+
+    Design note: intentionally does NOT use TimestampedMixin. Password reset tokens
+    are lightweight entities with a create-then-use-or-expire lifecycle — they do not
+    need ``updated_at`` tracking.
+    """
 
     def __init__(
         self,
@@ -27,6 +34,22 @@ class PasswordResetToken(Entity):
             expires_at if expires_at is not None else self.created_at + PASSWORD_RESET_TOKEN_TTL
         )
         self.used_at = used_at
+
+    @classmethod
+    def create(
+        cls,
+        user_id: uuid.UUID,
+        token_hash: str,
+        expires_at: datetime | None = None,
+    ) -> PasswordResetToken:
+        """Create a new PasswordResetToken with auto-generated id and created_at."""
+        return cls(
+            id=uuid.uuid4(),
+            user_id=user_id,
+            token_hash=token_hash,
+            expires_at=expires_at,
+            created_at=datetime.now(UTC),
+        )
 
     def mark_used(self) -> None:
         """Mark this token as consumed. Single-use — irreversible."""

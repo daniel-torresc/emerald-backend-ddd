@@ -52,7 +52,7 @@ def _make_service() -> tuple[TransactionManagementService, FakeCoreFinanceUnitOf
     return service, uow
 
 
-def _make_account(
+async def _make_account(
     uow: FakeCoreFinanceUnitOfWork,
     owner_id: uuid.UUID | None = None,
 ) -> tuple[Account, uuid.UUID]:
@@ -66,7 +66,7 @@ def _make_account(
         account_type_id=uuid.uuid4(),
         financial_institution_id=uuid.uuid4(),
     )
-    uow.accounts.save(account)
+    await uow.accounts.save(account)
     account.collect_events()
     return account, owner_id
 
@@ -96,7 +96,7 @@ async def _create_transaction(
 class TestReviewTransaction:
     async def test_review_success(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
         assert txn.review_status == ReviewStatus.TO_REVIEW
         uow.committed = False
@@ -112,7 +112,7 @@ class TestReviewTransaction:
 
     async def test_review_viewer_denied(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
         viewer_id = uuid.uuid4()
         account.share_with(
@@ -134,12 +134,12 @@ class TestReviewTransaction:
         """Soft-deleted txn is filtered by repo (include_deleted=False),
         so service raises TransactionNotFoundError."""
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
         retention = RetentionPeriod(duration=30, unit=RetentionUnit.DAYS)
         txn.soft_delete(deleted_by=owner_id, retention=retention)
         txn.collect_events()
-        uow.transactions.save(txn)
+        await uow.transactions.save(txn)
 
         cmd = ReviewTransaction(
             account_id=account.id,
@@ -153,7 +153,7 @@ class TestReviewTransaction:
 class TestUnreviewTransaction:
     async def test_unreview_success(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
         # First mark as reviewed
         review_cmd = ReviewTransaction(
@@ -176,7 +176,7 @@ class TestUnreviewTransaction:
 
     async def test_unreview_viewer_denied(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
         review_cmd = ReviewTransaction(
             account_id=account.id,
@@ -205,12 +205,12 @@ class TestUnreviewTransaction:
         """Soft-deleted txn is filtered by repo (include_deleted=False),
         so service raises TransactionNotFoundError."""
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
         retention = RetentionPeriod(duration=30, unit=RetentionUnit.DAYS)
         txn.soft_delete(deleted_by=owner_id, retention=retention)
         txn.collect_events()
-        uow.transactions.save(txn)
+        await uow.transactions.save(txn)
 
         cmd = UnreviewTransaction(
             account_id=account.id,
@@ -222,7 +222,7 @@ class TestUnreviewTransaction:
 
     async def test_review_commits_uow(self) -> None:
         service, uow = _make_service()
-        account, owner_id = _make_account(uow)
+        account, owner_id = await _make_account(uow)
         txn = await _create_transaction(service, account, owner_id)
         uow.committed = False
 

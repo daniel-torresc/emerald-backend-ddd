@@ -6,8 +6,8 @@ from emerald.integrations.application.dtos.commands.connection_commands import (
     RejectPendingTransaction,
     TriggerSync,
 )
-from emerald.integrations.application.ports.outbound.provider_registry import (
-    BankProviderAdapterRegistry,
+from emerald.integrations.application.ports.outbound.provider_registry_port import (
+    BankProviderRegistryPort,
 )
 from emerald.integrations.application.ports.outbound.transaction_import_port import (
     TransactionImportPort,
@@ -47,7 +47,7 @@ class BankSyncService:
         self,
         uow: AbstractIntegrationsUnitOfWork,
         transaction_import_port: TransactionImportPort,
-        provider_registry: BankProviderAdapterRegistry,
+        provider_registry: BankProviderRegistryPort,
     ) -> None:
         self._uow = uow
         self._import_port = transaction_import_port
@@ -57,31 +57,32 @@ class BankSyncService:
     async def execute_sync(self, cmd: TriggerSync) -> SyncHistory:
         """Execute a full sync pipeline for a connection."""
         async with self._uow:
-            connection = self._load_connection(cmd.connection_id)
+            connection = await self._load_connection(cmd.connection_id)
             if not connection.is_syncable():
                 raise ConnectionNotActiveError()
 
             # Check no sync already in progress
-            in_progress = self._uow.sync_history.find_in_progress_by_connection(cmd.connection_id)
+            in_progress = await self._uow.sync_history.find_in_progress_by_connection(
+                cmd.connection_id
+            )
             if in_progress is not None:
                 raise SyncAlreadyInProgressError()
 
             # Create sync history
             history = SyncHistory.create(connection_id=cmd.connection_id)
-            self._uow.sync_history.save(history)
+            await self._uow.sync_history.save(history)
 
             # Register sync started event
             connection._register_event(
                 BankSyncStarted(aggregate_id=connection.id, sync_id=history.id)
             )
 
-            # Resolve adapter + normalizer
-            adapter = self._registry.get_adapter(connection.provider_name)
-            normalizer = self._registry.get_normalizer(connection.provider_name)
+            # Resolve adapter
+            adapter = await self._registry.get_adapter(connection.provider_name)
 
-            # Fetch raw transactions
+            # Fetch transactions
             try:
-                raw_transactions = adapter.fetch_transactions(
+                transactions = await adapter.fetch_transactions(
                     connection.credentials,  # type: ignore[arg-type]
                     connection.external_account_id,
                     since=connection.last_sync_at,
@@ -116,9 +117,8 @@ class BankSyncService:
             duplicate_count = 0
             staged_count = 0
 
-            for raw in raw_transactions:
-                normalized = normalizer.normalize(raw)
-                dedup_result = self._dedup.check(normalized, connection.account_id)
+            for transaction in transactions:
+                dedup_result = await self._dedup.check(transaction, connection.account_id)
 
                 if dedup_result.match_status == MatchStatus.DUPLICATE:
                     duplicate_count += 1
@@ -130,24 +130,23 @@ class BankSyncService:
                         connection_id=connection.id,
                         sync_id=history.id,
                         account_id=connection.account_id,
-                        external_id=normalized.external_id,
-                        raw_data=raw,
-                        normalized=normalized,
+                        external_id=transaction.external_id,
+                        normalized=transaction,
                         match_status=MatchStatus.NEW,
                     )
-                    txn_id = self._import_port.import_transaction(
+                    txn_id = await self._import_port.import_transaction(
                         account_id=connection.account_id,
-                        transaction_date=normalized.transaction_date,
-                        amount=normalized.amount,
-                        currency_code=normalized.currency_code,
-                        original_description=normalized.description,
-                        external_id=normalized.external_id,
+                        transaction_date=transaction.transaction_date,
+                        amount=transaction.amount,
+                        currency_code=transaction.currency_code,
+                        original_description=transaction.description,
+                        external_id=transaction.external_id,
                         imported_by=connection.user_id,
-                        value_date=normalized.value_date,
-                        merchant=normalized.merchant,
+                        value_date=transaction.value_date,
+                        merchant=transaction.merchant,
                     )
                     pending.mark_imported(txn_id)
-                    self._uow.pending_transactions.save(pending)
+                    await self._uow.pending_transactions.save(pending)
                     imported_count += 1
 
                 elif dedup_result.match_status == MatchStatus.NEEDS_REVIEW:
@@ -155,18 +154,17 @@ class BankSyncService:
                         connection_id=connection.id,
                         sync_id=history.id,
                         account_id=connection.account_id,
-                        external_id=normalized.external_id,
-                        raw_data=raw,
-                        normalized=normalized,
+                        external_id=transaction.external_id,
+                        normalized=transaction,
                         match_status=MatchStatus.NEEDS_REVIEW,
                         matched_transaction_id=dedup_result.matched_transaction_id,
                     )
-                    self._uow.pending_transactions.save(pending)
+                    await self._uow.pending_transactions.save(pending)
                     staged_count += 1
 
             # Complete sync
             result = SyncResult(
-                transactions_found=len(raw_transactions),
+                transactions_found=len(transactions),
                 transactions_imported=imported_count,
                 transactions_duplicate=duplicate_count,
                 transactions_staged=staged_count,
@@ -202,18 +200,18 @@ class BankSyncService:
     async def approve_pending(self, cmd: ApprovePendingTransaction) -> uuid.UUID:
         """Approve a pending transaction and import it."""
         async with self._uow:
-            pending = self._uow.pending_transactions.find_by_id(cmd.pending_id)
+            pending = await self._uow.pending_transactions.find_by_id(cmd.pending_id)
             if pending is None:
                 raise PendingTransactionNotFoundError()
 
-            connection = self._load_connection(pending.connection_id)
+            connection = await self._load_connection(pending.connection_id)
             if connection.user_id != cmd.approved_by:
                 raise InvalidConnectionStateError(
                     "Only the connection owner can approve pending transactions"
                 )
 
             pending.approve()
-            txn_id = self._import_port.import_transaction(
+            txn_id = await self._import_port.import_transaction(
                 account_id=pending.account_id,
                 transaction_date=pending.normalized.transaction_date,
                 amount=pending.normalized.amount,
@@ -225,7 +223,6 @@ class BankSyncService:
                 merchant=pending.normalized.merchant,
             )
             pending.mark_imported(txn_id)
-            self._uow.pending_transactions.save(pending)
 
             connection._register_event(
                 PendingTransactionApproved(
@@ -240,18 +237,17 @@ class BankSyncService:
     async def reject_pending(self, cmd: RejectPendingTransaction) -> None:
         """Reject a pending transaction."""
         async with self._uow:
-            pending = self._uow.pending_transactions.find_by_id(cmd.pending_id)
+            pending = await self._uow.pending_transactions.find_by_id(cmd.pending_id)
             if pending is None:
                 raise PendingTransactionNotFoundError()
 
-            connection = self._load_connection(pending.connection_id)
+            connection = await self._load_connection(pending.connection_id)
             if connection.user_id != cmd.rejected_by:
                 raise InvalidConnectionStateError(
                     "Only the connection owner can reject pending transactions"
                 )
 
             pending.reject()
-            self._uow.pending_transactions.save(pending)
 
             connection._register_event(
                 PendingTransactionRejected(
@@ -264,13 +260,13 @@ class BankSyncService:
     async def find_connections_due_for_sync(self, as_of: datetime) -> list[BankConnection]:
         """Find connections that are due for sync."""
         async with self._uow:
-            return self._uow.bank_connections.find_due_for_sync(as_of)
+            return await self._uow.bank_connections.find_due_for_sync(as_of)
 
     # -- Private helpers -------------------------------------------------------
 
-    def _load_connection(self, connection_id: uuid.UUID) -> BankConnection:
+    async def _load_connection(self, connection_id: uuid.UUID) -> BankConnection:
         """Load a bank connection or raise BankConnectionNotFoundError."""
-        connection = self._uow.bank_connections.find_by_id(connection_id)
+        connection = await self._uow.bank_connections.find_by_id(connection_id)
         if connection is None:
             raise BankConnectionNotFoundError(f"Bank connection {connection_id} not found")
         return connection

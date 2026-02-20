@@ -12,12 +12,12 @@ from emerald.shared_kernel.domain.models.value_objects.deletable_entity_type imp
 class RetentionPolicyRepository(Protocol):
     """Port for persisting and retrieving user retention preferences."""
 
-    def find_user_preference(
+    async def find_user_preference(
         self, entity_type: DeletableEntityType, user_id: uuid.UUID
     ) -> UserRetentionPreference | None: ...
 
-    def save_user_preference(self, preference: UserRetentionPreference) -> None: ...
+    async def save_user_preference(self, preference: UserRetentionPreference) -> None: ...
 
-    def delete_user_preference(
+    async def delete_user_preference(
         self, entity_type: DeletableEntityType, user_id: uuid.UUID
     ) -> None: ...

@@ -46,7 +46,7 @@ from emerald.shared_kernel.domain.models.value_objects.money import Money
 from emerald.shared_kernel.domain.services.retention_policy_service import RetentionPolicyService
 
 
-class BulkTransactionService:
+class TransactionBulkManagementService:
     """Application service orchestrating bulk transaction operations."""
 
     def __init__(
@@ -63,7 +63,7 @@ class BulkTransactionService:
         """Create multiple transactions with partial-success semantics."""
         async with self._uow:
             # Phase 1: Request-level validation
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_not_deleted(account)
             self._verify_permission(account, cmd.requesting_user_id, PermissionLevel.EDITOR)
             self._validate_bulk_count(len(cmd.transactions))
@@ -89,7 +89,7 @@ class BulkTransactionService:
                                 f"Duplicate external ID '{txn_input.external_id}' within batch"
                             )
                         # Against-existing dedup
-                        existing = self._uow.transactions.find_by_external_id(
+                        existing = await self._uow.transactions.find_by_external_id(
                             cmd.account_id, txn_input.external_id
                         )
                         if existing is not None:
@@ -117,7 +117,7 @@ class BulkTransactionService:
                     if txn_input.review_status != ReviewStatus.TO_REVIEW:
                         transaction.review_status = txn_input.review_status
 
-                    self._uow.transactions.save(transaction)
+                    await self._uow.transactions.save(transaction)
                     successes.append(BulkSuccess(index=i, entity_id=transaction.id))
                 except DomainError as e:
                     failures.append(
@@ -139,7 +139,7 @@ class BulkTransactionService:
         """Update multiple transactions with partial-success semantics."""
         async with self._uow:
             # Phase 1: Request-level validation
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_not_deleted(account)
             self._verify_permission(account, cmd.requesting_user_id, PermissionLevel.EDITOR)
             self._validate_bulk_count(len(cmd.transaction_ids))
@@ -152,7 +152,7 @@ class BulkTransactionService:
 
             for i, transaction_id in enumerate(cmd.transaction_ids):
                 try:
-                    transaction = self._uow.transactions.find_by_id(
+                    transaction = await self._uow.transactions.find_by_id(
                         transaction_id, include_deleted=True
                     )
                     if transaction is None:
@@ -176,7 +176,6 @@ class BulkTransactionService:
                         if not isinstance(updates.merchant, _UnsetType):
                             transaction.update_merchant(updates.merchant, cmd.requesting_user_id)
 
-                    self._uow.transactions.save(transaction)
                     successes.append(BulkSuccess(index=i, entity_id=transaction.id))
                 except DomainError as e:
                     failures.append(
@@ -208,12 +207,12 @@ class BulkTransactionService:
         """Soft-delete multiple transactions with partial-success semantics."""
         async with self._uow:
             # Phase 1: Request-level validation
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_not_deleted(account)
             self._verify_permission(account, cmd.requesting_user_id, PermissionLevel.EDITOR)
             self._validate_bulk_count(len(cmd.transaction_ids))
 
-            retention = self._retention_policy_service.get_effective_retention(
+            retention = await self._retention_policy_service.get_effective_retention(
                 DeletableEntityType.TRANSACTION, cmd.requesting_user_id
             )
 
@@ -223,7 +222,7 @@ class BulkTransactionService:
 
             for i, transaction_id in enumerate(cmd.transaction_ids):
                 try:
-                    transaction = self._uow.transactions.find_by_id(
+                    transaction = await self._uow.transactions.find_by_id(
                         transaction_id, include_deleted=True
                     )
                     if transaction is None:
@@ -231,13 +230,11 @@ class BulkTransactionService:
 
                     # Cascade soft-delete to children if split parent
                     if transaction.is_split_parent:
-                        children = self._uow.transactions.find_children(transaction.id)
+                        children = await self._uow.transactions.find_children(transaction.id)
                         for child in children:
                             child.soft_delete(cmd.requesting_user_id, retention, cmd.reason)
-                            self._uow.transactions.save(child)
 
                     transaction.soft_delete(cmd.requesting_user_id, retention, cmd.reason)
-                    self._uow.transactions.save(transaction)
                     successes.append(BulkSuccess(index=i, entity_id=transaction.id))
                 except DomainError as e:
                     failures.append(
@@ -259,7 +256,7 @@ class BulkTransactionService:
         """Recover multiple soft-deleted transactions with partial-success semantics."""
         async with self._uow:
             # Phase 1: Request-level validation
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             self._verify_not_deleted(account)
             self._verify_permission(account, cmd.requesting_user_id, PermissionLevel.OWNER)
             self._validate_bulk_count(len(cmd.transaction_ids))
@@ -270,7 +267,7 @@ class BulkTransactionService:
 
             for i, transaction_id in enumerate(cmd.transaction_ids):
                 try:
-                    transaction = self._uow.transactions.find_by_id(
+                    transaction = await self._uow.transactions.find_by_id(
                         transaction_id, include_deleted=True
                     )
                     if transaction is None:
@@ -278,7 +275,7 @@ class BulkTransactionService:
 
                     # If recovering a split child, verify parent is not deleted
                     if transaction.is_split_child():
-                        parent = self._uow.transactions.find_by_id(
+                        parent = await self._uow.transactions.find_by_id(
                             transaction.parent_transaction_id,  # type: ignore[arg-type]
                             include_deleted=True,
                         )
@@ -287,16 +284,14 @@ class BulkTransactionService:
 
                     # Cascade recover to deleted children if split parent
                     if transaction.is_split_parent:
-                        children = self._uow.transactions.find_children(
+                        children = await self._uow.transactions.find_children(
                             transaction.id, include_deleted=True
                         )
                         for child in children:
                             if child.is_deleted():
                                 child.recover()
-                                self._uow.transactions.save(child)
 
                     transaction.recover()
-                    self._uow.transactions.save(transaction)
                     successes.append(BulkSuccess(index=i, entity_id=transaction.id))
                 except DomainError as e:
                     failures.append(
@@ -314,9 +309,9 @@ class BulkTransactionService:
 
     # -- Private helpers -------------------------------------------------------
 
-    def _load_account(self, account_id: uuid.UUID) -> Account:
+    async def _load_account(self, account_id: uuid.UUID) -> Account:
         """Load an account or raise AccountNotFoundError."""
-        account = self._uow.accounts.find_by_id(account_id, include_deleted=True)
+        account = await self._uow.accounts.find_by_id(account_id, include_deleted=True)
         if account is None:
             raise AccountNotFoundError(f"Account {account_id} not found")
         return account

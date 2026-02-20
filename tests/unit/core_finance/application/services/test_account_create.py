@@ -58,7 +58,7 @@ class TestCreateAccount:
         service, uow = _make_service()
         cmd = _make_create_cmd()
         account = await service.create_account(cmd)
-        assert uow.accounts.find_by_id(account.id) is not None
+        assert await uow.accounts.find_by_id(account.id) is not None
 
     async def test_commits_uow(self) -> None:
         service, uow = _make_service()

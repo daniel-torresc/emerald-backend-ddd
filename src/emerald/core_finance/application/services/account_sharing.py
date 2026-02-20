@@ -25,7 +25,7 @@ class AccountSharingService:
     async def share_account(self, cmd: ShareAccountWith) -> AccountShare:
         """Grant share access to a user."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             permission = PermissionLevel[cmd.permission_level]
             share = account.share_with(
                 user_id=cmd.target_user_id,
@@ -38,7 +38,7 @@ class AccountSharingService:
     async def update_share_permission(self, cmd: UpdateSharePermission) -> None:
         """Update a share's permission level."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             permission = PermissionLevel[cmd.new_permission_level]
             account.update_share_permission(
                 user_id=cmd.target_user_id,
@@ -50,7 +50,7 @@ class AccountSharingService:
     async def revoke_share(self, cmd: RevokeAccountShare) -> None:
         """Owner revokes a share."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             account.revoke_share(
                 user_id=cmd.target_user_id,
                 revoked_by=cmd.requesting_user_id,
@@ -60,23 +60,23 @@ class AccountSharingService:
     async def leave_share(self, cmd: LeaveAccountShare) -> None:
         """Non-owner removes own share."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             account.leave_share(user_id=cmd.requesting_user_id)
             await self._uow.commit()
 
     async def transfer_ownership(self, cmd: TransferAccountOwnership) -> None:
         """Transfer ownership to another shared user."""
         async with self._uow:
-            account = self._load_account(cmd.account_id)
+            account = await self._load_account(cmd.account_id)
             account.transfer_ownership(
                 new_owner_id=cmd.new_owner_id,
                 current_owner_id=cmd.requesting_user_id,
             )
             await self._uow.commit()
 
-    def _load_account(self, account_id: uuid.UUID) -> Account:
+    async def _load_account(self, account_id: uuid.UUID) -> Account:
         """Load an account or raise AccountNotFoundError."""
-        account = self._uow.accounts.find_by_id(account_id)
+        account = await self._uow.accounts.find_by_id(account_id)
         if account is None:
             raise AccountNotFoundError(f"Account {account_id} not found")
         return account

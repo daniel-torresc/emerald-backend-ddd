@@ -21,7 +21,7 @@ from emerald.iam.domain.models.value_objects.hashed_password import HashedPasswo
 from emerald.iam.domain.models.value_objects.oidc_claims import OidcClaims
 from emerald.iam.domain.models.value_objects.user_status import UserStatus
 from emerald.iam.domain.models.value_objects.username import Username
-from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasher, FakeTokenService
+from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasherPort, FakeTokenPort
 
 
 def _make_user(**overrides: Any) -> User:
@@ -58,7 +58,7 @@ def uow() -> FakeIamUnitOfWork:
 
 @pytest.fixture
 def service(uow: FakeIamUnitOfWork) -> AuthenticationService:
-    return AuthenticationService(uow, FakePasswordHasher(), FakeTokenService())
+    return AuthenticationService(uow, FakePasswordHasherPort(), FakeTokenPort())
 
 
 class TestLinkProvider:
@@ -69,7 +69,7 @@ class TestLinkProvider:
     ) -> None:
         """ACTIVE user, claims email matches, new provider type -> link succeeds."""
         user = _make_user()
-        uow.users.add(user)
+        await uow.users.add(user)
         user.collect_events()
 
         claims = _make_claims()
@@ -89,7 +89,7 @@ class TestLinkProvider:
     ) -> None:
         """Claims email != user email -> ProviderEmailMismatchError."""
         user = _make_user()
-        uow.users.add(user)
+        await uow.users.add(user)
 
         claims = _make_claims(email="different@test.com")
 
@@ -106,7 +106,7 @@ class TestLinkProvider:
                 AuthProvider(ProviderType.GOOGLE, "google-123", datetime.now(UTC)),
             },
         )
-        uow.users.add(user)
+        await uow.users.add(user)
 
         claims = _make_claims()
 
@@ -136,7 +136,7 @@ class TestUnlinkProvider:
                 AuthProvider(ProviderType.GOOGLE, "google-123", datetime.now(UTC)),
             },
         )
-        uow.users.add(user)
+        await uow.users.add(user)
         user.collect_events()
 
         cmd = UnlinkAuthProvider(user_id=str(user.id), provider_type="GOOGLE")
@@ -155,7 +155,7 @@ class TestUnlinkProvider:
     ) -> None:
         """User has only PASSWORD, unlink PASSWORD -> CannotUnlinkLastProviderError."""
         user = _make_user()  # Only PASSWORD
-        uow.users.add(user)
+        await uow.users.add(user)
 
         cmd = UnlinkAuthProvider(user_id=str(user.id), provider_type="PASSWORD")
 
@@ -167,7 +167,7 @@ class TestUnlinkProvider:
     ) -> None:
         """Provider type not linked -> ProviderNotLinkedError."""
         user = _make_user()  # Only PASSWORD
-        uow.users.add(user)
+        await uow.users.add(user)
 
         cmd = UnlinkAuthProvider(user_id=str(user.id), provider_type="GOOGLE")
 
@@ -184,7 +184,7 @@ class TestUnlinkProvider:
                 AuthProvider(ProviderType.GOOGLE, "google-123", datetime.now(UTC)),
             },
         )
-        uow.users.add(user)
+        await uow.users.add(user)
         user.collect_events()
 
         cmd = UnlinkAuthProvider(user_id=str(user.id), provider_type="PASSWORD")

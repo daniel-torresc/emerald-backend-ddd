@@ -47,8 +47,8 @@ from emerald.core_finance.application.ports import (
 from emerald.core_finance.application.services import (
     AccountManagementService,
     AccountSharingService,
-    BulkTransactionService,
     CardManagementService,
+    TransactionBulkManagementService,
     TransactionManagementService,
 )
 
@@ -100,7 +100,7 @@ __all__ = [
     # Services
     "AccountManagementService",
     "AccountSharingService",
-    "BulkTransactionService",
+    "TransactionBulkManagementService",
     "CardManagementService",
     "TransactionManagementService",
 ]
