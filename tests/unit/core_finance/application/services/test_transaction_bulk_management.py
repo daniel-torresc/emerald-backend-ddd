@@ -17,8 +17,8 @@ from emerald.core_finance.application.dtos.commands.bulk_transaction_commands im
 from emerald.core_finance.application.services.account_management import (
     AccountManagementService,
 )
-from emerald.core_finance.application.services.bulk_transaction import (
-    BulkTransactionService,
+from emerald.core_finance.application.services.transaction_bulk_management import (
+    TransactionBulkManagementService,
 )
 from emerald.core_finance.application.services.transaction_management import (
     TransactionManagementService,
@@ -59,7 +59,7 @@ def _retention() -> RetentionPeriod:
 
 
 def _make_services() -> tuple[
-    BulkTransactionService,
+    TransactionBulkManagementService,
     AccountManagementService,
     TransactionManagementService,
     FakeCoreFinanceUnitOfWork,
@@ -67,7 +67,9 @@ def _make_services() -> tuple[
     uow = FakeCoreFinanceUnitOfWork()
     retention_repo = FakeRetentionPolicyRepository()
     retention_service = RetentionPolicyService(preference_repository=retention_repo)
-    bulk_service = BulkTransactionService(uow=uow, retention_policy_service=retention_service)
+    bulk_service = TransactionBulkManagementService(
+        uow=uow, retention_policy_service=retention_service
+    )
     acct_service = AccountManagementService(uow=uow, retention_policy_service=retention_service)
     txn_service = TransactionManagementService(uow=uow, retention_policy_service=retention_service)
     return bulk_service, acct_service, txn_service, uow

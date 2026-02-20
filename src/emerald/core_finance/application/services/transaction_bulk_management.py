@@ -46,7 +46,7 @@ from emerald.shared_kernel.domain.models.value_objects.money import Money
 from emerald.shared_kernel.domain.services.retention_policy_service import RetentionPolicyService
 
 
-class BulkTransactionService:
+class TransactionBulkManagementService:
     """Application service orchestrating bulk transaction operations."""
 
     def __init__(
@@ -176,7 +176,6 @@ class BulkTransactionService:
                         if not isinstance(updates.merchant, _UnsetType):
                             transaction.update_merchant(updates.merchant, cmd.requesting_user_id)
 
-                    await self._uow.transactions.save(transaction)
                     successes.append(BulkSuccess(index=i, entity_id=transaction.id))
                 except DomainError as e:
                     failures.append(
@@ -234,10 +233,8 @@ class BulkTransactionService:
                         children = await self._uow.transactions.find_children(transaction.id)
                         for child in children:
                             child.soft_delete(cmd.requesting_user_id, retention, cmd.reason)
-                            await self._uow.transactions.save(child)
 
                     transaction.soft_delete(cmd.requesting_user_id, retention, cmd.reason)
-                    await self._uow.transactions.save(transaction)
                     successes.append(BulkSuccess(index=i, entity_id=transaction.id))
                 except DomainError as e:
                     failures.append(
@@ -293,10 +290,8 @@ class BulkTransactionService:
                         for child in children:
                             if child.is_deleted():
                                 child.recover()
-                                await self._uow.transactions.save(child)
 
                     transaction.recover()
-                    await self._uow.transactions.save(transaction)
                     successes.append(BulkSuccess(index=i, entity_id=transaction.id))
                 except DomainError as e:
                     failures.append(

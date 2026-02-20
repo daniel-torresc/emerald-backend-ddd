@@ -7,7 +7,6 @@ from emerald.core_finance.application import (
     BulkCreateTransactions,
     BulkDeleteTransactions,
     BulkRecoverTransactions,
-    BulkTransactionService,
     BulkUpdateTransactions,
     CardManagementService,
     CreateAccount,
@@ -26,6 +25,7 @@ from emerald.core_finance.application import (
     SoftDeleteAccount,
     SoftDeleteTransaction,
     SplitTransaction,
+    TransactionBulkManagementService,
     TransactionManagementService,
     TransactionRepository,
     TransferAccountOwnership,
@@ -280,7 +280,7 @@ __all__ = [
     # Services
     "AccountManagementService",
     "AccountSharingService",
-    "BulkTransactionService",
+    "TransactionBulkManagementService",
     "CardManagementService",
     "TransactionManagementService",
 ]
