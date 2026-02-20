@@ -118,7 +118,6 @@ class TransactionManagementService:
             transaction = await self._load_transaction(cmd.transaction_id)
             self._verify_not_deleted(transaction)
             transaction.update_description(cmd.user_description, cmd.requesting_user_id)
-            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     async def update_merchant(self, cmd: UpdateTransactionMerchant) -> None:
@@ -129,7 +128,6 @@ class TransactionManagementService:
             transaction = await self._load_transaction(cmd.transaction_id)
             self._verify_not_deleted(transaction)
             transaction.update_merchant(cmd.merchant, cmd.requesting_user_id)
-            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     async def update_comments(self, cmd: UpdateTransactionComments) -> None:
@@ -140,7 +138,6 @@ class TransactionManagementService:
             transaction = await self._load_transaction(cmd.transaction_id)
             self._verify_not_deleted(transaction)
             transaction.update_comments(cmd.comments, cmd.requesting_user_id)
-            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     async def update_dates(self, cmd: UpdateTransactionDates) -> None:
@@ -155,7 +152,6 @@ class TransactionManagementService:
                 transaction_date=cmd.transaction_date,
                 value_date=cmd.value_date,
             )
-            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     async def update_amount(self, cmd: UpdateTransactionAmount) -> None:
@@ -200,7 +196,6 @@ class TransactionManagementService:
                         )
 
             transaction.update_amount(amount, cmd.requesting_user_id)
-            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     # -- Splitting -------------------------------------------------------------
@@ -214,7 +209,6 @@ class TransactionManagementService:
             self._verify_not_deleted(parent)
 
             children = parent.split(list(cmd.splits), cmd.requesting_user_id)
-            await self._uow.transactions.save(parent)
             await self._uow.transactions.save_many(children)
             await self._uow.commit()
             return children
@@ -230,7 +224,6 @@ class TransactionManagementService:
             children = await self._uow.transactions.find_children(cmd.transaction_id)
             parent.join_splits(child_count=len(children))
             await self._uow.transactions.hard_delete_children(cmd.transaction_id)
-            await self._uow.transactions.save(parent)
             await self._uow.commit()
 
     # -- Review ----------------------------------------------------------------
@@ -243,7 +236,6 @@ class TransactionManagementService:
             transaction = await self._load_transaction(cmd.transaction_id)
             self._verify_not_deleted(transaction)
             transaction.mark_as_reviewed(cmd.requesting_user_id)
-            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     async def unreview_transaction(self, cmd: UnreviewTransaction) -> None:
@@ -254,7 +246,6 @@ class TransactionManagementService:
             transaction = await self._load_transaction(cmd.transaction_id)
             self._verify_not_deleted(transaction)
             transaction.mark_for_review(cmd.requesting_user_id)
-            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     # -- Lifecycle -------------------------------------------------------------
@@ -274,10 +265,8 @@ class TransactionManagementService:
                 children = await self._uow.transactions.find_children(transaction.id)
                 for child in children:
                     child.soft_delete(cmd.requesting_user_id, retention, cmd.reason)
-                    await self._uow.transactions.save(child)
 
             transaction.soft_delete(cmd.requesting_user_id, retention, cmd.reason)
-            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     async def recover_transaction(self, cmd: RecoverTransaction) -> None:
@@ -309,10 +298,8 @@ class TransactionManagementService:
                 for child in children:
                     if child.is_deleted():
                         child.recover()
-                        await self._uow.transactions.save(child)
 
             transaction.recover()
-            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     # -- Query -----------------------------------------------------------------

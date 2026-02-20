@@ -80,7 +80,6 @@ class CardManagementService:
                 notes=cmd.notes,
             )
             account.add_card(card)
-            await self._uow.accounts.save(account)
             await self._uow.commit()
             return card
 
@@ -92,7 +91,6 @@ class CardManagementService:
             account = await self._load_account(cmd.account_id)
             self._verify_editor(account, cmd.requesting_user_id)
             account.update_card_name(cmd.card_id, cmd.card_name, cmd.requesting_user_id)
-            await self._uow.accounts.save(account)
             await self._uow.commit()
 
     async def update_card_network(self, cmd: UpdateCardNetwork) -> None:
@@ -102,7 +100,6 @@ class CardManagementService:
             self._verify_editor(account, cmd.requesting_user_id)
             network = CardNetwork[cmd.card_network] if cmd.card_network is not None else None
             account.update_card_network(cmd.card_id, network, cmd.requesting_user_id)
-            await self._uow.accounts.save(account)
             await self._uow.commit()
 
     async def update_card_expiry(self, cmd: UpdateCardExpiry) -> None:
@@ -113,7 +110,6 @@ class CardManagementService:
             account.update_card_expiry(
                 cmd.card_id, cmd.expiry_month, cmd.expiry_year, cmd.requesting_user_id
             )
-            await self._uow.accounts.save(account)
             await self._uow.commit()
 
     async def update_card_credit_limit(self, cmd: UpdateCardCreditLimit) -> None:
@@ -128,7 +124,6 @@ class CardManagementService:
                 credit_limit = Money(cmd.credit_limit_amount, currency)
 
             account.update_card_credit_limit(cmd.card_id, credit_limit, cmd.requesting_user_id)
-            await self._uow.accounts.save(account)
             await self._uow.commit()
 
     async def update_card_issuing_institution(self, cmd: UpdateCardIssuingInstitution) -> None:
@@ -139,7 +134,6 @@ class CardManagementService:
             account.update_card_issuing_institution(
                 cmd.card_id, cmd.issuing_institution, cmd.requesting_user_id
             )
-            await self._uow.accounts.save(account)
             await self._uow.commit()
 
     async def update_card_notes(self, cmd: UpdateCardNotes) -> None:
@@ -148,7 +142,6 @@ class CardManagementService:
             account = await self._load_account(cmd.account_id)
             self._verify_editor(account, cmd.requesting_user_id)
             account.update_card_notes(cmd.card_id, cmd.notes, cmd.requesting_user_id)
-            await self._uow.accounts.save(account)
             await self._uow.commit()
 
     # -- Card Lifecycle --------------------------------------------------------
@@ -163,7 +156,6 @@ class CardManagementService:
                 DeletableEntityType.CARD, cmd.requesting_user_id
             )
             account.remove_card(cmd.card_id, cmd.requesting_user_id, retention, cmd.reason)
-            await self._uow.accounts.save(account)
             await self._uow.commit()
 
     async def recover_card(self, cmd: RecoverCard) -> None:
@@ -172,7 +164,6 @@ class CardManagementService:
             account = await self._load_account(cmd.account_id)
             self._verify_owner(account, cmd.requesting_user_id)
             account.recover_card(cmd.card_id)
-            await self._uow.accounts.save(account)
             await self._uow.commit()
 
     # -- Card-Transaction Linking ----------------------------------------------
@@ -200,7 +191,6 @@ class CardManagementService:
                 raise TransactionDeletedError(f"Transaction {cmd.transaction_id} is deleted")
 
             transaction.update_card_id(cmd.card_id)
-            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     async def unlink_transaction_from_card(self, cmd: UnlinkTransactionFromCard) -> None:
@@ -220,7 +210,6 @@ class CardManagementService:
                 raise TransactionDeletedError(f"Transaction {cmd.transaction_id} is deleted")
 
             transaction.update_card_id(None)
-            await self._uow.transactions.save(transaction)
             await self._uow.commit()
 
     # -- Private helpers -------------------------------------------------------
