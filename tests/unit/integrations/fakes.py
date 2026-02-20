@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
@@ -183,12 +182,12 @@ class FakeBankProviderPort:
     """Fake bank provider adapter for tests."""
 
     def __init__(self) -> None:
-        self._transactions: list[str] = []
+        self._transactions: list[NormalizedTransaction] = []
         self._auth_error: Exception | None = None
         self._provider_error: Exception | None = None
         self._credentials_valid = True
 
-    def set_transactions(self, transactions: list[str]) -> None:
+    def set_transactions(self, transactions: list[NormalizedTransaction]) -> None:
         self._transactions = transactions
 
     def set_auth_error(self, error: Exception) -> None:
@@ -202,7 +201,7 @@ class FakeBankProviderPort:
         credentials: ProviderCredentials,
         external_account_id: str,
         since: datetime | None = None,
-    ) -> list[str]:
+    ) -> list[NormalizedTransaction]:
         if self._auth_error is not None:
             raise self._auth_error
         if self._provider_error is not None:
@@ -220,38 +219,17 @@ class FakeBankProviderPort:
         return {"account_id": external_account_id}
 
 
-class FakeTransactionNormalizerPort:
-    """Fake normalizer that parses JSON raw data into NormalizedTransaction."""
-
-    async def normalize(self, raw_data: str) -> NormalizedTransaction:
-        data = json.loads(raw_data)
-        return NormalizedTransaction(
-            transaction_date=date.fromisoformat(data["transaction_date"]),
-            amount=Decimal(str(data["amount"])),
-            currency_code=data["currency_code"],
-            description=data["description"],
-            external_id=data["external_id"],
-            value_date=(date.fromisoformat(data["value_date"]) if data.get("value_date") else None),
-            merchant=data.get("merchant"),
-        )
-
-
 class FakeProviderRegistry:
-    """Fake provider registry resolving fake adapter + normalizer."""
+    """Fake provider registry resolving fake adapter."""
 
     def __init__(
         self,
         adapter: FakeBankProviderPort | None = None,
-        normalizer: FakeTransactionNormalizerPort | None = None,
     ) -> None:
         self._adapter = adapter or FakeBankProviderPort()
-        self._normalizer = normalizer or FakeTransactionNormalizerPort()
 
     async def get_adapter(self, provider_name: ProviderName) -> FakeBankProviderPort:
         return self._adapter
-
-    async def get_normalizer(self, provider_name: ProviderName) -> FakeTransactionNormalizerPort:
-        return self._normalizer
 
 
 class FakeTransactionImportPort:

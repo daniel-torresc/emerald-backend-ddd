@@ -61,7 +61,6 @@ from emerald.integrations.domain import (
     SyncHistoryNotFoundError,
     SyncResult,
     SyncStatus,
-    TransactionNormalizerPort,
     TransactionsImported,
 )
 
@@ -112,8 +111,6 @@ __all__ = [
     "SyncAlreadyCompletedError",
     "SyncAlreadyInProgressError",
     "SyncHistoryNotFoundError",
-    # Domain Ports
-    "TransactionNormalizerPort",
     # Commands
     "ActivateBankConnection",
     "ApprovePendingTransaction",

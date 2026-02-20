@@ -98,7 +98,6 @@ def _create_pending(connection_id: uuid.UUID, account_id: uuid.UUID) -> PendingT
         sync_id=uuid.uuid4(),
         account_id=account_id,
         external_id="ext_pending_123",
-        raw_data="{}",
         normalized=normalized,
         match_status=MatchStatus.NEEDS_REVIEW,
     )

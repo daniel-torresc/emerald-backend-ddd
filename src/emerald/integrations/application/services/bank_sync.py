@@ -77,13 +77,12 @@ class BankSyncService:
                 BankSyncStarted(aggregate_id=connection.id, sync_id=history.id)
             )
 
-            # Resolve adapter + normalizer
+            # Resolve adapter
             adapter = await self._registry.get_adapter(connection.provider_name)
-            normalizer = await self._registry.get_normalizer(connection.provider_name)
 
-            # Fetch raw transactions
+            # Fetch transactions
             try:
-                raw_transactions = await adapter.fetch_transactions(
+                transactions = await adapter.fetch_transactions(
                     connection.credentials,  # type: ignore[arg-type]
                     connection.external_account_id,
                     since=connection.last_sync_at,
@@ -118,9 +117,8 @@ class BankSyncService:
             duplicate_count = 0
             staged_count = 0
 
-            for raw in raw_transactions:
-                normalized = await normalizer.normalize(raw)
-                dedup_result = await self._dedup.check(normalized, connection.account_id)
+            for transaction in transactions:
+                dedup_result = await self._dedup.check(transaction, connection.account_id)
 
                 if dedup_result.match_status == MatchStatus.DUPLICATE:
                     duplicate_count += 1
@@ -132,21 +130,20 @@ class BankSyncService:
                         connection_id=connection.id,
                         sync_id=history.id,
                         account_id=connection.account_id,
-                        external_id=normalized.external_id,
-                        raw_data=raw,
-                        normalized=normalized,
+                        external_id=transaction.external_id,
+                        normalized=transaction,
                         match_status=MatchStatus.NEW,
                     )
                     txn_id = await self._import_port.import_transaction(
                         account_id=connection.account_id,
-                        transaction_date=normalized.transaction_date,
-                        amount=normalized.amount,
-                        currency_code=normalized.currency_code,
-                        original_description=normalized.description,
-                        external_id=normalized.external_id,
+                        transaction_date=transaction.transaction_date,
+                        amount=transaction.amount,
+                        currency_code=transaction.currency_code,
+                        original_description=transaction.description,
+                        external_id=transaction.external_id,
                         imported_by=connection.user_id,
-                        value_date=normalized.value_date,
-                        merchant=normalized.merchant,
+                        value_date=transaction.value_date,
+                        merchant=transaction.merchant,
                     )
                     pending.mark_imported(txn_id)
                     await self._uow.pending_transactions.save(pending)
@@ -157,9 +154,8 @@ class BankSyncService:
                         connection_id=connection.id,
                         sync_id=history.id,
                         account_id=connection.account_id,
-                        external_id=normalized.external_id,
-                        raw_data=raw,
-                        normalized=normalized,
+                        external_id=transaction.external_id,
+                        normalized=transaction,
                         match_status=MatchStatus.NEEDS_REVIEW,
                         matched_transaction_id=dedup_result.matched_transaction_id,
                     )
@@ -168,7 +164,7 @@ class BankSyncService:
 
             # Complete sync
             result = SyncResult(
-                transactions_found=len(raw_transactions),
+                transactions_found=len(transactions),
                 transactions_imported=imported_count,
                 transactions_duplicate=duplicate_count,
                 transactions_staged=staged_count,

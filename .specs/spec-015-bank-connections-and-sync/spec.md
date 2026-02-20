@@ -24,7 +24,6 @@ This spec defines the **BankConnection aggregate** and the supporting infrastruc
 - Connection lifecycle (PENDING → ACTIVE → NEEDS_REAUTH / ERROR / DISCONNECTED)
 - SyncHistory entity (separate from aggregate, own repository)
 - PendingTransaction entity (ephemeral staging area)
-- TransactionNormalizer domain service (pure transformation)
 - DeduplicationService application service (queries existing transactions)
 - BankConnectionService (connection lifecycle orchestration)
 - BankSyncService (sync execution orchestration)
@@ -349,7 +348,6 @@ SyncHistory:
 | sync_id | UUID | No | Which sync produced this |
 | account_id | UUID | No | Target Emerald account |
 | external_id | str | No | ID from provider |
-| raw_data | str | No | Original JSON from provider |
 | normalized | NormalizedTransaction | No | Converted to internal format |
 | match_status | MatchStatus | Yes | NEW, DUPLICATE, NEEDS_REVIEW, USER_APPROVED, USER_REJECTED |
 | matched_transaction_id | UUID \| None | Yes | If DUPLICATE or NEEDS_REVIEW |
@@ -366,7 +364,6 @@ PendingTransaction:
       sync_id: UUID,
       account_id: UUID,
       external_id: str,
-      raw_data: str,
       normalized: NormalizedTransaction,
       match_status: MatchStatus,
       matched_transaction_id: UUID?
@@ -392,26 +389,7 @@ PendingTransaction:
       Returns: match_status in (NEW, USER_APPROVED) and imported_transaction_id is None
 ```
 
-### 3.7 Domain Services
-
-#### TransactionNormalizer (Protocol — domain port)
-
-Pure transformation logic. Each provider has an infrastructure implementation.
-
-```
-TransactionNormalizer (Protocol):
-  + normalize(raw_data: str) -> NormalizedTransaction
-      Handles:
-        - Date format conversion
-        - Amount sign normalization
-        - Currency code mapping
-        - Description cleanup / trimming
-        - Merchant extraction
-```
-
-**Note:** This is a domain-layer protocol because normalization rules are domain logic (what constitutes a valid normalized transaction). Infrastructure adapters implement it per provider.
-
-### 3.8 Domain Events
+### 3.7 Domain Events
 
 | Event | Trigger | Key Data |
 |-------|---------|----------|
@@ -543,9 +521,6 @@ Resolves the correct provider adapter for a given provider name.
 ```
 BankProviderAdapterRegistry (Protocol):
   + get_adapter(provider_name: ProviderName) -> BankProviderAdapter
-      Raises: UnsupportedProviderError
-
-  + get_normalizer(provider_name: ProviderName) -> TransactionNormalizer
       Raises: UnsupportedProviderError
 ```
 
@@ -864,9 +839,6 @@ Transactions created via bank sync have:
 │  ├── TransactionImportPort ──→ Core Finance          │
 │  ├── BankProviderAdapter ──→ Infrastructure          │
 │  └── BankProviderAdapterRegistry ──→ Infrastructure  │
-│                                                       │
-│  Domain Ports:                                        │
-│  └── TransactionNormalizer ──→ Infrastructure         │
 └──────────────────────────────────────────────────────┘
           │
           │ TransactionImportPort (ACL)
@@ -911,7 +883,7 @@ Transactions created via bank sync have:
 
 ### Import Pipeline
 
-- [ ] Raw transactions normalized via provider-specific TransactionNormalizer
+- [ ] BankProviderAdapter returns NormalizedTransaction objects directly
 - [ ] Normalized transactions checked by DeduplicationService
 - [ ] Exact external_id match → DUPLICATE (skipped, not persisted as pending)
 - [ ] Exact date + amount + description → DUPLICATE (skipped)

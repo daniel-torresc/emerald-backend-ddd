@@ -1,6 +1,9 @@
 from datetime import datetime
 from typing import Any, Protocol
 
+from emerald.integrations.domain.models.value_objects.normalized_transaction import (
+    NormalizedTransaction,
+)
 from emerald.integrations.domain.models.value_objects.provider_credentials import (
     ProviderCredentials,
 )
@@ -14,7 +17,7 @@ class BankProviderPort(Protocol):
         credentials: ProviderCredentials,
         external_account_id: str,
         since: datetime | None = None,
-    ) -> list[str]: ...
+    ) -> list[NormalizedTransaction]: ...
 
     async def verify_credentials(self, credentials: ProviderCredentials) -> bool: ...
 

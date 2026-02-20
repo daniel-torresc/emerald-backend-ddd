@@ -154,7 +154,6 @@ class TestGetPendingForReview:
             sync_id=uuid.uuid4(),
             account_id=account_id,
             external_id="ext_123",
-            raw_data="{}",
             normalized=normalized,
             match_status=MatchStatus.NEEDS_REVIEW,
         )
@@ -173,7 +172,6 @@ class TestGetPendingForReview:
             sync_id=uuid.uuid4(),
             account_id=account_id,
             external_id="ext_456",
-            raw_data="{}",
             normalized=normalized_new,
             match_status=MatchStatus.NEW,
         )

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import json
 import uuid
+from datetime import date
+from decimal import Decimal
 
 import pytest
 
@@ -16,6 +17,9 @@ from emerald.integrations.domain.exceptions.connection_exceptions import (
 from emerald.integrations.domain.models.aggregates.bank_connection import BankConnection
 from emerald.integrations.domain.models.entities.sync_history import SyncHistory
 from emerald.integrations.domain.models.value_objects.match_status import MatchStatus
+from emerald.integrations.domain.models.value_objects.normalized_transaction import (
+    NormalizedTransaction,
+)
 from emerald.integrations.domain.models.value_objects.provider_credentials import (
     ProviderCredentials,
 )
@@ -29,22 +33,20 @@ from tests.unit.integrations.fakes import (
 )
 
 
-def _raw_txn(
+def _make_normalized(
     *,
     external_id: str = "ext_123",
     amount: str = "-50.00",
     description: str = "Coffee Shop",
     transaction_date: str = "2024-01-15",
     currency_code: str = "USD",
-) -> str:
-    return json.dumps(
-        {
-            "transaction_date": transaction_date,
-            "amount": amount,
-            "currency_code": currency_code,
-            "description": description,
-            "external_id": external_id,
-        }
+) -> NormalizedTransaction:
+    return NormalizedTransaction(
+        transaction_date=date.fromisoformat(transaction_date),
+        amount=Decimal(amount),
+        currency_code=currency_code,
+        description=description,
+        external_id=external_id,
     )
 
 
@@ -115,7 +117,12 @@ class TestExecuteSyncWithNewTransactions:
         account_id: uuid.UUID,
     ) -> None:
         conn = await _create_active_connection(uow, user_id, account_id)
-        adapter.set_transactions([_raw_txn(external_id="ext_1"), _raw_txn(external_id="ext_2")])
+        adapter.set_transactions(
+            [
+                _make_normalized(external_id="ext_1"),
+                _make_normalized(external_id="ext_2"),
+            ]
+        )
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
 
         history = await service.execute_sync(cmd)
@@ -141,7 +148,7 @@ class TestExecuteSyncWithDuplicates:
     ) -> None:
         conn = await _create_active_connection(uow, user_id, account_id)
         import_port.add_existing_external_id(account_id, "ext_dup")
-        adapter.set_transactions([_raw_txn(external_id="ext_dup")])
+        adapter.set_transactions([_make_normalized(external_id="ext_dup")])
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
 
         history = await service.execute_sync(cmd)
@@ -164,9 +171,6 @@ class TestExecuteSyncWithNeedsReview:
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        from datetime import date
-        from decimal import Decimal
-
         from emerald.integrations.application.dtos.transaction_match import TransactionMatch
 
         conn = await _create_active_connection(uow, user_id, account_id)
@@ -182,7 +186,7 @@ class TestExecuteSyncWithNeedsReview:
                 description="Different Coffee Shop",
             ),
         )
-        adapter.set_transactions([_raw_txn()])
+        adapter.set_transactions([_make_normalized()])
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
 
         history = await service.execute_sync(cmd)
@@ -207,9 +211,6 @@ class TestExecuteSyncMixed:
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
-        from datetime import date
-        from decimal import Decimal
-
         from emerald.integrations.application.dtos.transaction_match import TransactionMatch
 
         conn = await _create_active_connection(uow, user_id, account_id)
@@ -233,14 +234,14 @@ class TestExecuteSyncMixed:
         # Transaction 3: new (no match)
         adapter.set_transactions(
             [
-                _raw_txn(external_id="ext_dup"),
-                _raw_txn(
+                _make_normalized(external_id="ext_dup"),
+                _make_normalized(
                     external_id="ext_review",
                     amount="-75.00",
                     transaction_date="2024-01-20",
                     description="Store",
                 ),
-                _raw_txn(external_id="ext_new", amount="-100.00"),
+                _make_normalized(external_id="ext_new", amount="-100.00"),
             ]
         )
         cmd = TriggerSync(connection_id=conn.id, triggered_by=user_id)
