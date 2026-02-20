@@ -59,7 +59,7 @@ class FakeUserRepository:
         return any(user.system_role == role for user in self._users.values())
 
 
-class FakePasswordHasher:
+class FakePasswordHasherPort:
     """Deterministic password hasher for tests."""
 
     async def hash(self, plaintext: str) -> str:
@@ -69,7 +69,7 @@ class FakePasswordHasher:
         return hashed == f"hashed:{plaintext}"
 
 
-class FakeTokenService:
+class FakeTokenPort:
     """Deterministic token service for tests."""
 
     def __init__(self) -> None:
@@ -165,7 +165,7 @@ class FakePasswordResetTokenRepository:
                 token.used_at = now
 
 
-class FakeOidcProvider:
+class FakeOidcProviderPort:
     """Fake OIDC provider for testing social auth flows."""
 
     def __init__(self) -> None:

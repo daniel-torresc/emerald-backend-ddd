@@ -11,15 +11,15 @@ from emerald.iam.domain.exceptions import (
     UsernameAlreadyExistsError,
 )
 from emerald.iam.domain.models import EmailAddress, HashedPassword, User, Username, UserStatus
-from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasher
+from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasherPort
 
 
 class TestUserRegistrationService:
     def _make_service(
         self,
-    ) -> tuple[UserRegistrationService, FakeIamUnitOfWork, FakePasswordHasher]:
+    ) -> tuple[UserRegistrationService, FakeIamUnitOfWork, FakePasswordHasherPort]:
         uow = FakeIamUnitOfWork()
-        hasher = FakePasswordHasher()
+        hasher = FakePasswordHasherPort()
         service = UserRegistrationService(uow, hasher)
         return service, uow, hasher
 

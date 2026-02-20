@@ -1,8 +1,8 @@
 from emerald.classification.application.ports.outbound.assignment_repository import (
     TransactionTermAssignmentRepository,
 )
-from emerald.classification.application.ports.outbound.categorization_event_handler import (
-    CategorizationEventHandler,
+from emerald.classification.application.ports.outbound.categorization_event_handler_port import (
+    CategorizationEventHandlerPort,
 )
 from emerald.classification.application.ports.outbound.taxonomy_repository import TaxonomyRepository
 from emerald.classification.application.ports.outbound.transaction_access_port import (
@@ -14,7 +14,7 @@ from emerald.classification.application.ports.outbound.unit_of_work import (
 
 __all__ = [
     "AbstractClassificationUnitOfWork",
-    "CategorizationEventHandler",
+    "CategorizationEventHandlerPort",
     "TaxonomyRepository",
     "TransactionAccessPort",
     "TransactionTermAssignmentRepository",

@@ -18,7 +18,7 @@ from emerald.iam.domain.models.value_objects.hashed_password import HashedPasswo
 from emerald.iam.domain.models.value_objects.system_role import SystemRole
 from emerald.iam.domain.models.value_objects.user_status import UserStatus
 from emerald.iam.domain.models.value_objects.username import Username
-from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasher
+from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasherPort
 
 
 def _make_user(**overrides: Any) -> User:
@@ -41,9 +41,9 @@ def _make_superadmin(**overrides: Any) -> User:
     return user
 
 
-def _setup() -> tuple[FakeIamUnitOfWork, FakePasswordHasher, SuperadminProvisioningService]:
+def _setup() -> tuple[FakeIamUnitOfWork, FakePasswordHasherPort, SuperadminProvisioningService]:
     uow = FakeIamUnitOfWork()
-    hasher = FakePasswordHasher()
+    hasher = FakePasswordHasherPort()
     svc = SuperadminProvisioningService(uow, hasher)
     return uow, hasher, svc
 

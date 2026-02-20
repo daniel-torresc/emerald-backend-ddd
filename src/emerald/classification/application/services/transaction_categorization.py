@@ -25,7 +25,7 @@ from emerald.classification.domain.models.entities.transaction_term_assignment i
 class TransactionCategorizationService:
     """Application service for transaction categorization.
 
-    Also implements the CategorizationEventHandler protocol (structural subtyping).
+    Also implements the CategorizationEventHandlerPort protocol (structural subtyping).
     """
 
     def __init__(
@@ -152,7 +152,7 @@ class TransactionCategorizationService:
                 account_id, taxonomy_id
             )
 
-    # -- CategorizationEventHandler protocol implementation --------------------
+    # -- CategorizationEventHandlerPort protocol implementation --------------------
 
     async def handle_term_deleted(self, term_id: uuid.UUID) -> int:
         """Remove all assignments for the deleted term."""

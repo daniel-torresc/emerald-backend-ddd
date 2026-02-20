@@ -1,6 +1,6 @@
 from emerald.classification.application.ports.outbound import (
     AbstractClassificationUnitOfWork,
-    CategorizationEventHandler,
+    CategorizationEventHandlerPort,
     TaxonomyRepository,
     TransactionAccessPort,
     TransactionTermAssignmentRepository,
@@ -8,7 +8,7 @@ from emerald.classification.application.ports.outbound import (
 
 __all__ = [
     "AbstractClassificationUnitOfWork",
-    "CategorizationEventHandler",
+    "CategorizationEventHandlerPort",
     "TaxonomyRepository",
     "TransactionAccessPort",
     "TransactionTermAssignmentRepository",

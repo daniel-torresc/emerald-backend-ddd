@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Self
+from typing import Any, Self
 
 
 class AbstractUnitOfWork(ABC):
@@ -16,7 +16,7 @@ class AbstractUnitOfWork(ABC):
     async def __aenter__(self) -> Self:
         return self
 
-    async def __aexit__(self, *args: object) -> None:
+    async def __aexit__(self, *args: Any) -> None:
         await self.rollback()
 
     @abstractmethod

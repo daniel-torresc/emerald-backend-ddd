@@ -26,8 +26,8 @@ from emerald.iam.domain.models.value_objects.user_status import UserStatus
 from emerald.iam.domain.models.value_objects.username import Username
 from tests.unit.iam.fakes import (
     FakeIamUnitOfWork,
-    FakePasswordHasher,
-    FakeTokenService,
+    FakePasswordHasherPort,
+    FakeTokenPort,
 )
 
 
@@ -65,7 +65,7 @@ def uow() -> FakeIamUnitOfWork:
 
 @pytest.fixture
 def service(uow: FakeIamUnitOfWork) -> AuthenticationService:
-    return AuthenticationService(uow, FakePasswordHasher(), FakeTokenService())
+    return AuthenticationService(uow, FakePasswordHasherPort(), FakeTokenPort())
 
 
 class TestLoginWithProvider:

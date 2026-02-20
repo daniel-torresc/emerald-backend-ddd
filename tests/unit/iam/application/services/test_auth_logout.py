@@ -6,7 +6,7 @@ from emerald.iam.domain.models.aggregates.user import User
 from emerald.iam.domain.models.value_objects.email_address import EmailAddress
 from emerald.iam.domain.models.value_objects.hashed_password import HashedPassword
 from emerald.iam.domain.models.value_objects.username import Username
-from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasher, FakeTokenService
+from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasherPort, FakeTokenPort
 
 
 async def _create_active_user(uow: FakeIamUnitOfWork) -> User:
@@ -24,8 +24,8 @@ async def _create_active_user(uow: FakeIamUnitOfWork) -> User:
 @pytest.fixture
 def auth_env():
     uow = FakeIamUnitOfWork()
-    hasher = FakePasswordHasher()
-    token_service = FakeTokenService()
+    hasher = FakePasswordHasherPort()
+    token_service = FakeTokenPort()
     service = AuthenticationService(uow, hasher, token_service)
     return service, uow, hasher, token_service
 

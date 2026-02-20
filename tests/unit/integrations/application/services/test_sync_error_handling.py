@@ -20,7 +20,7 @@ from emerald.integrations.domain.models.value_objects.provider_credentials impor
 from emerald.integrations.domain.models.value_objects.provider_name import ProviderName
 from emerald.integrations.domain.models.value_objects.sync_status import SyncStatus
 from tests.unit.integrations.fakes import (
-    FakeBankProviderAdapter,
+    FakeBankProviderPort,
     FakeIntegrationsUnitOfWork,
     FakeProviderRegistry,
     FakeTransactionImportPort,
@@ -38,12 +38,12 @@ def import_port() -> FakeTransactionImportPort:
 
 
 @pytest.fixture()
-def adapter() -> FakeBankProviderAdapter:
-    return FakeBankProviderAdapter()
+def adapter() -> FakeBankProviderPort:
+    return FakeBankProviderPort()
 
 
 @pytest.fixture()
-def registry(adapter: FakeBankProviderAdapter) -> FakeProviderRegistry:
+def registry(adapter: FakeBankProviderPort) -> FakeProviderRegistry:
     return FakeProviderRegistry(adapter=adapter)
 
 
@@ -88,7 +88,7 @@ class TestAuthErrorHandling:
         self,
         service: BankSyncService,
         uow: FakeIntegrationsUnitOfWork,
-        adapter: FakeBankProviderAdapter,
+        adapter: FakeBankProviderPort,
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:
@@ -112,7 +112,7 @@ class TestProviderErrorHandling:
         self,
         service: BankSyncService,
         uow: FakeIntegrationsUnitOfWork,
-        adapter: FakeBankProviderAdapter,
+        adapter: FakeBankProviderPort,
         user_id: uuid.UUID,
         account_id: uuid.UUID,
     ) -> None:

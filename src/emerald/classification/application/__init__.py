@@ -16,7 +16,7 @@ from emerald.classification.application.dtos import (
 )
 from emerald.classification.application.ports import (
     AbstractClassificationUnitOfWork,
-    CategorizationEventHandler,
+    CategorizationEventHandlerPort,
     TaxonomyRepository,
     TransactionAccessPort,
     TransactionTermAssignmentRepository,
@@ -44,7 +44,7 @@ __all__ = [
     "UpdateTermDescription",
     # Ports
     "AbstractClassificationUnitOfWork",
-    "CategorizationEventHandler",
+    "CategorizationEventHandlerPort",
     "TaxonomyRepository",
     "TransactionAccessPort",
     "TransactionTermAssignmentRepository",

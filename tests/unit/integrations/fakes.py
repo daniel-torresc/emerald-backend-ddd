@@ -179,7 +179,7 @@ class FakeIntegrationsUnitOfWork(AbstractIntegrationsUnitOfWork):
         pass
 
 
-class FakeBankProviderAdapter:
+class FakeBankProviderPort:
     """Fake bank provider adapter for tests."""
 
     def __init__(self) -> None:
@@ -220,7 +220,7 @@ class FakeBankProviderAdapter:
         return {"account_id": external_account_id}
 
 
-class FakeTransactionNormalizer:
+class FakeTransactionNormalizerPort:
     """Fake normalizer that parses JSON raw data into NormalizedTransaction."""
 
     async def normalize(self, raw_data: str) -> NormalizedTransaction:
@@ -241,16 +241,16 @@ class FakeProviderRegistry:
 
     def __init__(
         self,
-        adapter: FakeBankProviderAdapter | None = None,
-        normalizer: FakeTransactionNormalizer | None = None,
+        adapter: FakeBankProviderPort | None = None,
+        normalizer: FakeTransactionNormalizerPort | None = None,
     ) -> None:
-        self._adapter = adapter or FakeBankProviderAdapter()
-        self._normalizer = normalizer or FakeTransactionNormalizer()
+        self._adapter = adapter or FakeBankProviderPort()
+        self._normalizer = normalizer or FakeTransactionNormalizerPort()
 
-    async def get_adapter(self, provider_name: ProviderName) -> FakeBankProviderAdapter:
+    async def get_adapter(self, provider_name: ProviderName) -> FakeBankProviderPort:
         return self._adapter
 
-    async def get_normalizer(self, provider_name: ProviderName) -> FakeTransactionNormalizer:
+    async def get_normalizer(self, provider_name: ProviderName) -> FakeTransactionNormalizerPort:
         return self._normalizer
 
 

@@ -17,7 +17,7 @@ from emerald.iam.application.dtos.commands.social_auth import (
     UnlinkAuthProvider,
 )
 from emerald.iam.application.dtos.responses import LoginResult
-from emerald.iam.application.ports.outbound.token_service import TokenService
+from emerald.iam.application.ports.outbound.token_port import TokenPort
 from emerald.iam.application.ports.outbound.unit_of_work import AbstractIamUnitOfWork
 from emerald.iam.domain.constants import (
     ACCESS_TOKEN_TTL,
@@ -47,14 +47,14 @@ from emerald.iam.domain.models.value_objects.portal_context import PortalContext
 from emerald.iam.domain.models.value_objects.system_role import SystemRole
 from emerald.iam.domain.models.value_objects.user_status import UserStatus
 from emerald.iam.domain.models.value_objects.username import Username
-from emerald.iam.domain.ports.password_hasher import PasswordHasher
+from emerald.iam.domain.ports.password_hasher_port import PasswordHasherPort
 from emerald.iam.domain.services.password_validation import (
     validate_not_in_history,
     validate_password_strength,
 )
 
 if TYPE_CHECKING:
-    from emerald.iam.application.ports.outbound.oidc_provider import OidcProvider
+    from emerald.iam.application.ports.outbound.oidc_provider_port import OidcProviderPort
 
 
 class AuthenticationService:
@@ -63,9 +63,9 @@ class AuthenticationService:
     def __init__(
         self,
         uow: AbstractIamUnitOfWork,
-        hasher: PasswordHasher,
-        token_service: TokenService,
-        oidc_provider: OidcProvider | None = None,
+        hasher: PasswordHasherPort,
+        token_service: TokenPort,
+        oidc_provider: OidcProviderPort | None = None,
     ) -> None:
         self._uow = uow
         self._hasher = hasher

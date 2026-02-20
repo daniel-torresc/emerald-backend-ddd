@@ -16,7 +16,7 @@ from emerald.iam.domain.models.value_objects.portal_context import PortalContext
 from emerald.iam.domain.models.value_objects.system_role import SystemRole
 from emerald.iam.domain.models.value_objects.user_status import UserStatus
 from emerald.iam.domain.models.value_objects.username import Username
-from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasher, FakeTokenService
+from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasherPort, FakeTokenPort
 
 MASTER_DATA = AdminPermission(AdminPermissionType.MASTER_DATA_ADMIN)
 
@@ -49,11 +49,11 @@ def _make_admin(permissions: frozenset[AdminPermission] | None = None, **overrid
 
 
 def _setup_auth_service() -> tuple[
-    FakeIamUnitOfWork, FakePasswordHasher, FakeTokenService, AuthenticationService
+    FakeIamUnitOfWork, FakePasswordHasherPort, FakeTokenPort, AuthenticationService
 ]:
     uow = FakeIamUnitOfWork()
-    hasher = FakePasswordHasher()
-    token_service = FakeTokenService()
+    hasher = FakePasswordHasherPort()
+    token_service = FakeTokenPort()
     svc = AuthenticationService(uow, hasher, token_service)
     return uow, hasher, token_service, svc
 

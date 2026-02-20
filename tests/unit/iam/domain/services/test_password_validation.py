@@ -1,11 +1,12 @@
 import pytest
 
+from emerald.iam.domain.constants import PASSWORD_MIN_LENGTH
 from emerald.iam.domain.exceptions import PasswordReusedError, PasswordTooWeakError
 from emerald.iam.domain.services import validate_not_in_history, validate_password_strength
 
 
 class _FakeHasher:
-    """Fake PasswordHasher that stores plaintext as 'hash' for testing."""
+    """Fake PasswordHasherPort that stores plaintext as 'hash' for testing."""
 
     async def hash(self, plaintext: str) -> str:
         return f"hashed:{plaintext}"
@@ -19,7 +20,7 @@ class TestValidatePasswordStrength:
         validate_password_strength("ValidPass123!!")
 
     def test_too_short(self):
-        with pytest.raises(PasswordTooWeakError, match="12 characters"):
+        with pytest.raises(PasswordTooWeakError, match=f"{PASSWORD_MIN_LENGTH} characters"):
             validate_password_strength("Short1!a")
 
     def test_no_uppercase(self):
@@ -42,7 +43,7 @@ class TestValidatePasswordStrength:
         with pytest.raises(PasswordTooWeakError) as exc_info:
             validate_password_strength("short")
         msg = str(exc_info.value)
-        assert "12 characters" in msg
+        assert f"{PASSWORD_MIN_LENGTH} characters" in msg
         assert "uppercase" in msg
         assert "digit" in msg
         assert "special" in msg

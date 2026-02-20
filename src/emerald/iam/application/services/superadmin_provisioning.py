@@ -12,7 +12,7 @@ from emerald.iam.domain.models.value_objects.email_address import EmailAddress
 from emerald.iam.domain.models.value_objects.hashed_password import HashedPassword
 from emerald.iam.domain.models.value_objects.system_role import SystemRole
 from emerald.iam.domain.models.value_objects.username import Username
-from emerald.iam.domain.ports.password_hasher import PasswordHasher
+from emerald.iam.domain.ports.password_hasher_port import PasswordHasherPort
 from emerald.iam.domain.services.password_validation import validate_password_strength
 
 
@@ -22,7 +22,7 @@ class SuperadminProvisioningService:
     This is called from a CLI command or installation script, never from an API.
     """
 
-    def __init__(self, uow: AbstractIamUnitOfWork, hasher: PasswordHasher) -> None:
+    def __init__(self, uow: AbstractIamUnitOfWork, hasher: PasswordHasherPort) -> None:
         self._uow = uow
         self._hasher = hasher
 

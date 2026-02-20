@@ -45,7 +45,7 @@ from emerald.integrations.domain.models import (
     SyncResult,
     SyncStatus,
 )
-from emerald.integrations.domain.ports import TransactionNormalizer
+from emerald.integrations.domain.ports import TransactionNormalizerPort
 
 __all__ = [
     # Aggregates
@@ -95,5 +95,5 @@ __all__ = [
     "SyncAlreadyInProgressError",
     "SyncHistoryNotFoundError",
     # Domain Ports
-    "TransactionNormalizer",
+    "TransactionNormalizerPort",
 ]

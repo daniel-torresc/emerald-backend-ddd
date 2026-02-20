@@ -1,8 +1,8 @@
 from emerald.integrations.application.ports.outbound import (
     AbstractIntegrationsUnitOfWork,
     BankConnectionRepository,
-    BankProviderAdapter,
-    BankProviderAdapterRegistry,
+    BankProviderPort,
+    BankProviderRegistryPort,
     PendingTransactionRepository,
     SyncHistoryRepository,
     TransactionImportPort,
@@ -11,8 +11,8 @@ from emerald.integrations.application.ports.outbound import (
 __all__ = [
     "AbstractIntegrationsUnitOfWork",
     "BankConnectionRepository",
-    "BankProviderAdapter",
-    "BankProviderAdapterRegistry",
+    "BankProviderPort",
+    "BankProviderRegistryPort",
     "PendingTransactionRepository",
     "SyncHistoryRepository",
     "TransactionImportPort",

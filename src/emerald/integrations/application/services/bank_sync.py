@@ -6,8 +6,8 @@ from emerald.integrations.application.dtos.commands.connection_commands import (
     RejectPendingTransaction,
     TriggerSync,
 )
-from emerald.integrations.application.ports.outbound.provider_registry import (
-    BankProviderAdapterRegistry,
+from emerald.integrations.application.ports.outbound.provider_registry_port import (
+    BankProviderRegistryPort,
 )
 from emerald.integrations.application.ports.outbound.transaction_import_port import (
     TransactionImportPort,
@@ -47,7 +47,7 @@ class BankSyncService:
         self,
         uow: AbstractIntegrationsUnitOfWork,
         transaction_import_port: TransactionImportPort,
-        provider_registry: BankProviderAdapterRegistry,
+        provider_registry: BankProviderRegistryPort,
     ) -> None:
         self._uow = uow
         self._import_port = transaction_import_port
@@ -227,7 +227,6 @@ class BankSyncService:
                 merchant=pending.normalized.merchant,
             )
             pending.mark_imported(txn_id)
-            await self._uow.pending_transactions.save(pending)
 
             connection._register_event(
                 PendingTransactionApproved(
@@ -253,7 +252,6 @@ class BankSyncService:
                 )
 
             pending.reject()
-            await self._uow.pending_transactions.save(pending)
 
             connection._register_event(
                 PendingTransactionRejected(

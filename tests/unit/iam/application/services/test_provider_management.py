@@ -21,7 +21,7 @@ from emerald.iam.domain.models.value_objects.hashed_password import HashedPasswo
 from emerald.iam.domain.models.value_objects.oidc_claims import OidcClaims
 from emerald.iam.domain.models.value_objects.user_status import UserStatus
 from emerald.iam.domain.models.value_objects.username import Username
-from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasher, FakeTokenService
+from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasherPort, FakeTokenPort
 
 
 def _make_user(**overrides: Any) -> User:
@@ -58,7 +58,7 @@ def uow() -> FakeIamUnitOfWork:
 
 @pytest.fixture
 def service(uow: FakeIamUnitOfWork) -> AuthenticationService:
-    return AuthenticationService(uow, FakePasswordHasher(), FakeTokenService())
+    return AuthenticationService(uow, FakePasswordHasherPort(), FakeTokenPort())
 
 
 class TestLinkProvider:

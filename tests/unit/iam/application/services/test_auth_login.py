@@ -23,7 +23,7 @@ from emerald.shared_kernel.domain.models.value_objects.retention_period import (
     RetentionPeriod,
     RetentionUnit,
 )
-from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasher, FakeTokenService
+from tests.unit.iam.fakes import FakeIamUnitOfWork, FakePasswordHasherPort, FakeTokenPort
 
 
 async def _create_active_user(uow: FakeIamUnitOfWork) -> User:
@@ -41,8 +41,8 @@ async def _create_active_user(uow: FakeIamUnitOfWork) -> User:
 @pytest.fixture
 def auth_env():
     uow = FakeIamUnitOfWork()
-    hasher = FakePasswordHasher()
-    token_service = FakeTokenService()
+    hasher = FakePasswordHasherPort()
+    token_service = FakeTokenPort()
     service = AuthenticationService(uow, hasher, token_service)
     return service, uow, hasher, token_service
 
