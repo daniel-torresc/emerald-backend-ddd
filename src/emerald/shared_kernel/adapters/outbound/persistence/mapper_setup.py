@@ -13,5 +13,8 @@ def configure_all_mappers() -> None:
     """Register all domain class -> table mappings.
 
     Called once during app startup and by Alembic env.py.
-    SQLAlchemy's registry prevents double-mapping, so no idempotency flag needed.
+    Importing ORM model modules is sufficient to register their tables with
+    the shared MetaData.
     """
+    import emerald.iam.adapters.outbound.persistence.orm_models  # noqa: F401
+    import emerald.shared_kernel.adapters.outbound.persistence.orm_models  # noqa: F401
