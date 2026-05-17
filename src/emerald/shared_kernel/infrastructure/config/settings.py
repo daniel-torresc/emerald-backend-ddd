@@ -92,7 +92,7 @@ class AppSettings(BaseSettings):
     app_name: str = Field(default="Emerald Finance", min_length=1)
     environment: Literal["development", "staging", "production", "testing"] = "development"
     debug: bool = False
-    database: DatabaseSettings = DatabaseSettings()  # type: ignore[call-arg]
-    jwt: JwtSettings = JwtSettings()  # type: ignore[call-arg]
-    oidc: OidcSettings = OidcSettings()
-    cors: CorsSettings = CorsSettings()
+    database: DatabaseSettings = Field(default_factory=DatabaseSettings)
+    jwt: JwtSettings = Field(default_factory=JwtSettings)
+    oidc: OidcSettings = Field(default_factory=OidcSettings)
+    cors: CorsSettings = Field(default_factory=CorsSettings)
